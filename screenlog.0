@@ -1,0 +1,1578 @@
+
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0.
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 98 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 98 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 30 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 30 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 30 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:    Ping
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 20 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 30 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 82 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 30 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 1 0 1 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 1 0 1 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 1 0 1 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 1 0 1 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    No device in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      3
+   Data:           11 1 46
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    No device in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      3
+   Data:           11 1 46
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Ping
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 20 1
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 1 0 1 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 CB 6 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 CB 5 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 45 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 51 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 51 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+AvcReadMessage: Parity error @ Data[4]
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 55 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0
+
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C7 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 37 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 37 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 CB 5 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 CB 5 4 0 0 0 
+-----
+
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Ping
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 20 F 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
