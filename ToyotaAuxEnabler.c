@@ -125,6 +125,14 @@ int main ( void )
     sprintf( UsartMsgBuffer, "\t\t     Firmware %s, %s\r\n\r\n", FIRMWARE_VERSION, FIRMWARE_DATE );
     UsartPutStr( UsartMsgBuffer );
 
+    bool success = AvcRegisterMe();
+    if (!success) {
+      UsartPutCStr( PSTR("\r\nRegister failed.\r\n"));
+    }
+    else {
+      UsartPutCStr( PSTR("\r\nRegister succeeded.\r\n"));
+    }
+
     while ( 1 )
     {
         // Reset watchdog.

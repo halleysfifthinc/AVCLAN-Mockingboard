@@ -1,0 +1,6404 @@
+
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0.
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 98 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 98 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 41 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 30 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 30 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 30 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:    Ping
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 20 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 30 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 82 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 30 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      11
+   Data:           62 31 F1 0 F8 1 0 FF 7F 0 C0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 1 0 1 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 1 0 1 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 1 0 1 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 1 0 1 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    No device in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      3
+   Data:           11 1 46
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    No device in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      3
+   Data:           11 1 46
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Ping
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 20 1
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 1 0 1 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 80 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 3 1 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 CB 6 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 CB 5 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 43 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 45 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 51 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 51 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+AvcReadMessage: Parity error @ Data[4]
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0xFFF
+   Control:        0xF
+   Data size:      4
+   Data:           11 1 45 60
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 4 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      14
+   Data:           74 31 F1 90 55 10 10 10 10 10 0 F 0 0
+-----
+
+AUX Enabler <<--- HU
+   Description:
+   Broadcast:      0
+   Master address: 0x190
+   Slave address:  0x1FF
+   Control:        0xF
+   Data size:      13
+   Data:           60 31 F1 1 1 81 0 AF 4 0
+
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C7 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 37 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 37 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 CB 5 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 CB 5 4 0 0 0 
+-----
+
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Ping
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 20 F 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+AUX Enabler <<--- HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+AUX Enabler --->> HU
+   Description:    LAN Register
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      3 
+   Data:           11 1 0 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    LAN Restart
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      3 
+   Data:           11 1 1 
+-----
+AvcProcessActionID: Unknown action ID!
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+   FM Frequency:           10 10 10 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+   FM Frequency:           10 10 10 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+   FM Frequency:           10 10 10 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      3 
+   Data:           1 1 58 
+-----
+ï
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      3 
+   Data:           1 1 58 
+-----
+Õ
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           1 1 59 39 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C9 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C7 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C7 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C5 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C5 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C5 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C5 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C5 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C5 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C5 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C5 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C3 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C3 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 B0 48 10 10 10 10 10 0 F 0 0 
+-----
+AvcReadMessage: Parity error @ Data[4]
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C1 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C1 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C1 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C1 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C1 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C1 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 C1 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 C1 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 BF 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 BF 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 BD 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 BD 
+-----
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 B0 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 B7 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 B7 
+-----
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 B3 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 B3 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 B3 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 B3 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 B0 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 AF 4 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 AF 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 AD 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 AD 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 AB 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 AB 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 A9 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 A9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 A9 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 A9 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 A7 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 A7 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 A5 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 A5 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 A5 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 A5 
+-----
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 A1 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 A1 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 A1 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 A1 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 9F 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 9F 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 9D 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 9D 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 9D 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 9D 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 9B 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 9B 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 9B 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 9B 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 99 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 99 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 B0 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 97 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 97 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 95 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 95 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 95 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 95 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 95 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 95 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 B0 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 93 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 93 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+AvcReadMessage: Parity error @ SlaveAddress!
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 B0 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 8F 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 8F 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 8D 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 8D 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 B0 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 89 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 89 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 87 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 87 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 85 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 85 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 85 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 85 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 85 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 85 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 B0 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 81 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 81 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 7F 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 7F 
+-----
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Ping
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 20 11 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 7D 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 7D 
+-----
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 B0 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 7B 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 7B 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 79 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 79 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 79 0 4 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 79 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 77 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 77 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Audio Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 90 48 10 10 10 10 10 0 F 0 0 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 81 0 75 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           81 0 75 
+-----
+
+AUX Enabler --->> HU
+   Description:    No device in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      3 
+   Data:           11 1 46 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 1 0 1 1 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           1 0 1 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 80 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 1 0 1 1 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           1 0 1 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 80 48 10 10 10 10 10 0 F 0 0 
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 80 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 1 0 4 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           1 0 4 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 A0 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 1 0 6 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           1 0 6 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      14 
+   Data:           74 31 F1 A0 48 10 10 10 10 10 0 F 0 0 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner Status
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0x1FF 
+   Control:        0xF 
+   Data size:      13 
+   Data:           60 31 F1 1 1 1 0 7 0 0 0 0 0 
+-----
+
+-----
+   FM Frequency:           1 0 7 
+-----
+
+AUX Enabler --->> HU
+   Description:    Tuner in use
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      4 
+   Data:           11 1 45 60 
+-----
+
+AUX Enabler --->> HU
+   Description:    
+   Broadcast:      0 
+   Master address: 0x190 
+   Slave address:  0xFFF 
+   Control:        0xF 
+   Data size:      3 
+   Data:           1 1 58 
+-----
+
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+AvcProcessActionID: Unknown action ID!
+AvcProcessActionID: Unknown action ID!
+
+-----
+   FM Frequency:           1 0 7 
+-----
+
+-----
+   FM Frequency:           1 0 7 
+-----
+
+-----
+   FM Frequency:           1 0 7 
+-----
+
+-----
+   FM Frequency:           1 0 6 
+-----
+
+-----
+   FM Frequency:           1 0 5 
+-----
+
+-----
+   FM Frequency:           1 0 4 
+-----
+
+-----
+   FM Frequency:           1 0 3 
+-----
+
+-----
+   FM Frequency:           1 0 2 
+-----
+
+-----
+   FM Frequency:           1 0 1 
+-----
+
+-----
+   FM Frequency:           1 0 77 
+-----
+
+-----
+   FM Frequency:           1 0 76 
+-----
+
+-----
+   FM Frequency:           1 0 75 
+-----
+
+-----
+   FM Frequency:           1 0 74 
+-----
+
+-----
+   FM Frequency:           1 0 73 
+-----
+
+-----
+   FM Frequency:           1 0 73 
+-----
+
+-----
+   FM Frequency:           1 0 72 
+-----
+
+-----
+   FM Frequency:           1 0 71 
+-----
+
+-----
+   FM Frequency:           1 0 70 
+-----
+
+-----
+   FM Frequency:           1 0 6F 
+-----
+
+-----
+   FM Frequency:           1 0 6E 
+-----
+
+-----
+   FM Frequency:           1 0 6D 
+-----
+
+-----
+   FM Frequency:           1 0 6C 
+-----
+
+-----
+   FM Frequency:           1 0 6B 
+-----
+
+-----
+   FM Frequency:           1 0 6C 
+-----
+
+-----
+   FM Frequency:           1 0 6D 
+-----
+
+-----
+   FM Frequency:           1 0 6E 
+-----
+
+-----
+   FM Frequency:           1 0 6F 
+-----
+
+-----
+   FM Frequency:           1 0 71 
+-----
+
+-----
+   FM Frequency:           1 0 73 
+-----
+
+-----
+   FM Frequency:           1 0 74 
+-----
+
+-----
+   FM Frequency:           1 0 75 
+-----
+
+-----
+   FM Frequency:           1 0 76 
+-----
+
+-----
+   FM Frequency:           1 0 77 
+-----
+
+-----
+   FM Frequency:           1 0 1 
+-----
+
+-----
+   FM Frequency:           1 0 77 
+-----
+
+-----
+   FM Frequency:           1 0 77 
+-----
+
+-----
+   FM Frequency:           1 0 77 
+-----
+
+-----
+   FM Frequency:           81 0 73 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           81 0 73 
+-----
+
+-----
+   FM Frequency:           81 0 73 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           81 0 73 
+-----
+
+-----
+   FM Frequency:           82 0 3 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           81 0 73 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 3 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 1 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 CB 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 1 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 1 
+-----
+
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+-----
+   FM Frequency:           82 0 1 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 1 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 3 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 5 
+-----
+
+-----
+   FM Frequency:           82 0 7 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 9 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 11 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 13 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 1B 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 1F 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+AvcReadMessage: Parity error @ SlaveAddress!
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 27 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 31 
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   FM Frequency:           82 0 33 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 4B 
+-----
+
+-----
+   FM Frequency:           82 0 4F 
+-----
+
+-----
+   FM Frequency:           82 0 51 
+-----
+AvcReadMessage: Parity error @ SlaveAddress!
+
+-----
+   FM Frequency:           82 0 53 
+-----
+
+-----
+   FM Frequency:           82 0 57 
+-----
+
+-----
+   FM Frequency:           82 0 59 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 65 
+-----
+
+-----
+   FM Frequency:           82 0 67 
+-----
+AvcReadMessage: Parity error @ SlaveAddress!
+
+-----
+   FM Frequency:           82 0 69 
+-----
+
+-----
+   FM Frequency:           82 0 6D 
+-----
+
+-----
+   FM Frequency:           82 0 73 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 79 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+AvcReadMessage: Parity error @ SlaveAddress!
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 89 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 8F 
+-----
+
+-----
+   FM Frequency:           82 0 91 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 95 
+-----
+
+-----
+   FM Frequency:           82 0 97 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 99 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   FM Frequency:           82 0 A1 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 A5 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 AD 
+-----
+
+-----
+   FM Frequency:           82 0 AF 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 B5 
+-----
+
+-----
+   FM Frequency:           82 0 B9 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   FM Frequency:           82 0 BF 
+-----
+
+-----
+   FM Frequency:           82 0 C3 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 C7 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 C9 
+-----
+
+-----
+   FM Frequency:           82 0 CB 
+-----
+
+-----
+   FM Frequency:           82 0 1 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 CB 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 C9 
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   FM Frequency:           82 0 B7 
+-----
+
+-----
+   FM Frequency:           82 0 B5 
+-----
+
+-----
+   FM Frequency:           82 0 B5 
+-----
+
+-----
+   FM Frequency:           82 0 A9 
+-----
+
+-----
+   FM Frequency:           82 0 A1 
+-----
+
+-----
+   FM Frequency:           82 0 9D 
+-----
+
+-----
+   FM Frequency:           82 0 91 
+-----
+
+-----
+   FM Frequency:           82 0 8D 
+-----
+
+-----
+   FM Frequency:           82 0 7B 
+-----
+
+-----
+   FM Frequency:           82 0 75 
+-----
+
+-----
+   FM Frequency:           82 0 67 
+-----
+
+-----
+   FM Frequency:           82 0 63 
+-----
+
+-----
+   FM Frequency:           82 0 53 
+-----
+
+-----
+   FM Frequency:           82 0 51 
+-----
+
+-----
+   FM Frequency:           82 0 41 
+-----
+
+-----
+   FM Frequency:           82 0 3F 
+-----
+
+-----
+   FM Frequency:           82 0 2F 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 2F 
+-----
+
+-----
+   FM Frequency:           82 0 1B 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 19 
+-----
+
+-----
+   FM Frequency:           82 0 D 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 7 
+-----
+
+-----
+   FM Frequency:           82 0 C9 
+-----
+
+-----
+   FM Frequency:           82 0 C3 
+-----
+
+-----
+   FM Frequency:           82 0 C1 
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   FM Frequency:           82 0 BF 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  11 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  12 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  13 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  14 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  15 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  14 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  12 
+   Treble:  10 
+
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  10 
+
+-----
+AvcReadMessage: Parity error @ DataSize!
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  E 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  12 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  13 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  14 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  15 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  14 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  13 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  12 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  10 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  E 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  C 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  11 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  12 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  13 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  14 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  15 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  16 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  17 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  16 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  15 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  14 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  13 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  12 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  11 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  F 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  D 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  B 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  A 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  9 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  A 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  B 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  C 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  E 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  F 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  11 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  12 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  13 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  15 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  17 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  16 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  14 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+AvcReadMessage: Parity error @ DataSize!
+
+-----
+   Volume:  48 
+   Balance:  11 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  F 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  C 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  A 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM Frequency:           82 0 BD 
+-----
+
+-----
+   FM Frequency:           82 0 C3 
+-----
+
+-----
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+AvcReadMessage: Parity error @ SlaveAddress!
+
+-----
+   FM Frequency:           82 0 CB 
+-----
+
+-----
+   FM Frequency:           82 0 CB 
+-----
+
+-----
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM Frequency:           82 0 13 
+-----
+
+-----
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   FM Frequency:           82 0 17 
+-----
+
+-----
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM Frequency:           82 0 23 
+-----
+
+-----
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+AvcReadMessage: Parity error @ Data[1]
+
+-----
+   FM Frequency:           82 0 2B 
+-----
+
+-----
+   FM Frequency:           82 0 31 
+-----
+
+-----
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+AvcReadMessage: Parity error @ SlaveAddress!
+
+-----
+   FM Frequency:           82 0 35 
+-----
+
+-----
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM Frequency:           82 0 3D 
+-----
+
+-----
+   FM Frequency:           82 0 3D 
+-----
+
+		     Toyota AVC-Lan AUX Enabler
+		Copyright (C) 2007, SigmaObjects Inc.
+		     Firmware v1.0, Jul 18 2015
+
+
+-----
+   FM Frequency:           82 0 1 
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM Frequency:           82 0 1 
+-----
+
+-----
+   FM Frequency:           1 0 77 
+-----
+
+-----
+   FM Frequency:           1 0 77 
+-----
+
+-----
+   FM Frequency:           1 0 76 
+-----
+
+-----
+   FM Frequency:           1 0 75 
+-----
+
+-----
+   FM Frequency:           1 0 76 
+-----
+
+-----
+   FM Frequency:           1 0 76 
+-----
+
+-----
+   FM Frequency:           1 0 76 
+-----
+
+-----
+   FM Frequency:           1 0 76 
+-----
+
+-----
+   FM Frequency:           1 0 76 
+-----
+
+-----
+   FM Frequency:           1 0 76 
+-----
+
+-----
+   FM Frequency:           1 0 76 
+-----
+
+-----
+   FM Frequency:           1 0 76 
+-----
+
+-----
+   FM Frequency:           1 0 76 
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  45 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  43 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  41 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  39 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  38 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  9 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  A 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  C 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  D 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  E 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  F 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  B 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  C 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  D 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  E 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  10 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  11 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  12 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  12 
+   Treble:  B 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  12 
+   Treble:  C 
+
+-----
+AvcReadMessage: Parity error @ Data[1]
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  12 
+   Treble:  F 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  12 
+   Treble:  11 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  12 
+   Treble:  12 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  10 
+   Fade:  10 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  38 
+   Balance:  10 
+   Fade:  10 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  43 
+   Balance:  10 
+   Fade:  10 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  45 
+   Balance:  10 
+   Fade:  10 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  10 
+   Fade:  11 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  11 
+   Fade:  11 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  12 
+   Fade:  11 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  11 
+   Fade:  11 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  10 
+   Fade:  11 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  11 
+   Fade:  11 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  45 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  39 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  36 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  33 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  30 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+AvcReadMessage: Parity error @ Data[0]
+
+-----
+   FM in use:  
+   Volume:  23 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  17 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  17 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  20 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+AvcReadMessage: Parity error @ SlaveAddress!
+
+-----
+   FM in use:  
+   Volume:  25 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  29 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  33 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  36 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  37 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  41 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  55 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  59 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  67 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  FF 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  67 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  59 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  55 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  34 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  22 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  18 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+AvcReadMessage: Parity error @ SlaveAddress!
+AvcReadMessage: Parity error @ DataSize!
+
+-----
+   FM in use:  
+   Volume:  1 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  2 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  9 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   FM in use:  
+   Volume:  20 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+AvcReadMessage: Parity error @ SlaveAddress!
+AvcReadMessage: Parity error @ MasterAddress!
+AvcReadMessage: Parity error @ SlaveAddress!
+
+-----
+   FM in use:  
+   Volume:  27 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  30 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  32 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  34 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  36 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+AvcReadMessage: Parity error @ MasterAddress!
+
+-----
+   FM in use:  
+   Volume:  41 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  48 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  51 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  59 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  FF 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  67 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----
+
+-----
+   FM in use:  
+   Volume:  59 
+   Balance:  11 
+   Fade:  12 
+   Bass:  12 
+   Treble:  13 
+
+-----

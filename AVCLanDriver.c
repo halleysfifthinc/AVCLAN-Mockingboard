@@ -103,7 +103,7 @@ static bool         ParityBit;
 static byte         Data[ 256 ];
 
 bool         AUX_Enabled     = FALSE;
-AvcActionID  DeviceEnabled   = ACT_NONE; //casting possibly unneccesary
+AvcActionID  DeviceEnabled   = ACT_NONE;
 
 static AvcInMessage MessageTable [] PROGMEM =
 {
@@ -121,11 +121,12 @@ static AvcInMessage MessageTable [] PROGMEM =
 
     { ACT_NONE,         3, {0x11, 0x01, 0x46}, "No device in use" },
     { ACT_NONE,         3, {0x11, 0x01, 0x20 /* xx */}, "Ping" }, // Get this once every minute in radio off mode. xx increments
-    { ACT_TUNER_INFO, 5, {0x60, 0x31, 0xF1, 0x01, 0x01 /* xx xx xx 0x00 0x00 0x00 0x00 */ /* 81 0 C9 = 107.9 or 107.7*/}, "Tuner Status"},
-    { ACT_EJECT_CD,    10, {0x62, 0x31, 0xF1, 0x00, 0x30, 0x01, 0x01, 0x00, 0x00, 0x00, 0x80}, "Eject CD" },
+    { ACT_TUNER_INFO,   5, {0x60, 0x31, 0xF1, 0x01, 0x01 /* 0x82 (or 0x81) 0x00 xx (1 - CB = 87.7 - 107.9) 0x00 0x00 0x00 0x00 */ /* 81 0 C9 = 107.9 or 107.7*/}, "Tuner Status"},
+    { ACT_EJECT_CD,    10, {0x62, 0x31, 0xF1, 0x00, 0x30, 0x01, 0x00, 0x00, 0x00, 0x00, 0x80}, "Eject CD" },
     { ACT_NO_CD,       10, {0x62, 0x31, 0xF1, 0x00, 0xF8, 0x01, 0x01, 0x00, 0x00, 0x00, 0x80}, "No CD" },
 //    { ACT_CD_INFO,      6, {0x62, 0x31, 0xF1, 0x01, 0x10, 0x01 /* Track #, Min, Sec, 0x00, 0x80 */}, "CD Info: " },
-    {ACT_AUDIO_STATUS, 4, { 0x74, 0x31, 0xF1, 0x90 /* Volume, Balance, Fade, Bass, 0x10, Treble, 0x00, 0x0F, 0x00, 0x00 */ }, "Audio Status"},
+    {ACT_FM_AUDIO_STATUS, 4, { 0x74, 0x31, 0xF1, 0x90 /* Volume (0xFF to 0x01 = Low to High), Balance, Fade, Bass, Mid, Treble, 0x00, 0x0F, 0x00, 0x00 */ }, "Audio Status"},
+    {ACT_AM_AUDIO_STATUS, 4, { 0x74, 0x31, 0xA0, 0x90 /* Volume, Balance, Fade, Bass, Mid, Treble, 0x00, 0x0F, 0x00, 0x00 */ }, "Audio Status"},
 
     { ACT_STATUS,       3, {0x00, 0x01, 0x0A}, "LAN Status" },
     { ACT_REGISTER,     3, {0x11, 0x01, 0x00}, "LAN Register" },
@@ -142,7 +143,7 @@ const byte MessageTableSize = sizeof( MessageTable ) / sizeof( AvcInMessage );
 --------------------------------------------------------------------------------------------------*/
 AvcOutMessage CmdReset    PROGMEM = { MSG_BCAST,  5, {0x00, 0x00, 0x00, 0x00, 0x00}, "Reset" }; // This causes HU to send ACT_REGISTER
 
-//AvcOutMessage CmdRegister PROGMEM = { MSG_NORMAL, 5, {0x00, 0x01, 0x11, 0x10, 0x63}, "Register" };
+AvcOutMessage CmdRegister PROGMEM = { MSG_NORMAL, 5, {0x00, 0x01, 0x11, 0x10, 0x63}, "Register" };
 //AvcOutMessage CmdRegister PROGMEM = { MSG_NORMAL, 5, {0x00, 0x01, 0x11, 0x54, 0x63}, "Toggle HU On/Off" };
 //AvcOutMessage CmdRegister PROGMEM = { MSG_NORMAL, 5, {0x00, 0x01, 0x11, 0x54, 0x63}, "Toggle HU On/Off" };
 AvcOutMessage CmdEnableAux  PROGMEM = { MSG_NORMAL, 5, {0x00, 0x01, 0x11, 0x50, 0x61}, "Enable AUX" };
@@ -287,9 +288,6 @@ AvcActionID AvcReadMessage ( void )
 
     AvcActionID actionID = GetActionID();
 
-    // switch ( actionID ) {
-    //   case /* value */:
-    // }
     DumpRawMessage( FALSE );
 
     LedOff();
@@ -320,9 +318,94 @@ bool AvcProcessActionID ( AvcActionID actionID )
         return FALSE;
 
     case ACT_TUNER_IN_USE:
+      break;
     case ACT_TAPE_IN_USE:
-//    case ACT_AUDIO_STATUS: This is where we should print interpretted data (Volume, Balance, etc.)
-//    case ACT_TUNER_INFO:  Same here
+      break;
+    // case ACT_FM_AUDIO_STATUS:
+    //   UsartPutStr( (char*)"\r\n-----\r\n" );
+    //   sprintf( UsartMsgBuffer, "   FM in use:  \r\n" );
+    //   UsartPutStr( UsartMsgBuffer );
+    //   sprintf( UsartMsgBuffer, "   Volume:  " );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "%X \r\n", Data[4] );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "   Balance:  " );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "%X \r\n", Data[5] );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "   Fade:  " );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "%X \r\n", Data[6] );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "   Bass:  " );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "%X \r\n", Data[7] );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "   Treble:  " );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "%X \r\n", Data[9] );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   UsartPutStr( (char*)"\r\n-----\r\n" );
+    //   break;
+    // case ACT_AM_AUDIO_STATUS:
+    //   UsartPutStr( (char*)"\r\n-----\r\n" );
+    //   sprintf( UsartMsgBuffer, "   AM in use:  \r\n" );
+    //   UsartPutStr( UsartMsgBuffer );
+    //   sprintf( UsartMsgBuffer, "   Volume:  " );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "%X \r\n", Data[4] );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "   Balance:  " );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "%X \r\n", Data[5] );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "   Fade:  " );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "%X \r\n", Data[6] );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "   Bass:  " );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "%X \r\n", Data[7] );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "   Treble:  " );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   sprintf( UsartMsgBuffer, "%X \r\n", Data[9] );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   UsartPutStr( (char*)"\r\n-----\r\n" );
+    //   break;
+    // case ACT_TUNER_INFO:
+    //   UsartPutStr( (char*)"\r\n-----\r\n" );
+    //   sprintf( UsartMsgBuffer, "   FM Frequency:           " );
+    //   UsartPutStr( UsartMsgBuffer );
+    //
+    //   for ( byte i = 5; i < 8; i++ )
+    //   {
+    //       sprintf( UsartMsgBuffer, "%X ", Data[i] );
+    //       UsartPutStr( UsartMsgBuffer );
+    //   }
+    //
+    //   UsartPutStr( (char*)"\r\n-----\r\n" );
+    //   break;
     case ACT_CD_IN_USE:
 
         DeviceEnabled = actionID;
@@ -349,6 +432,11 @@ bool AvcProcessActionID ( AvcActionID actionID )
 
         return SendMessage();
         break;
+
+    case ACT_REGISTER:
+      LoadDataInGlogalRegisters ( &CmdRegister );
+      return SendMessage();
+      break;
 
     default:
 
@@ -733,7 +821,7 @@ bool SendMessage ( void )
 
     if ( ! HandleAcknowledge() )
     {
-        DumpRawMessage( TRUE );
+        DumpRawMessage( FALSE );
         UsartPutStr( (char*)"SendMessage: No Ack @ Slave address\r\n" );
         return FALSE;
     }
@@ -744,7 +832,7 @@ bool SendMessage ( void )
 
     if ( ! HandleAcknowledge() )
     {
-        DumpRawMessage( TRUE );
+        DumpRawMessage( FALSE );
         UsartPutStr( (char*)"SendMessage: No Ack @ Control\r\n" );
         return FALSE;
     }
@@ -755,7 +843,7 @@ bool SendMessage ( void )
 
     if ( ! HandleAcknowledge() )
     {
-        DumpRawMessage( TRUE );
+        DumpRawMessage( FALSE );
         UsartPutStr( (char*)"SendMessage: No Ack @ DataSize\r\n" );
         return FALSE;
     }
@@ -767,14 +855,14 @@ bool SendMessage ( void )
 
         if ( ! HandleAcknowledge() )
         {
-            DumpRawMessage( TRUE );
+            DumpRawMessage( FALSE );
             sprintf( UsartMsgBuffer, "SendMessage: No Ack @ Data[%d]\r\n", i );
             UsartPutStr( UsartMsgBuffer );
             return FALSE;
         }
     }
 
-    DumpRawMessage( TRUE );
+    DumpRawMessage( FALSE );
 
     LedOff();
 

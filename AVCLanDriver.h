@@ -41,6 +41,11 @@
 #define START_BIT_LENGTH            372 //186*2
 #define START_BIT_HOLD_ON_LENGTH    336 //168*2
 
+#define AVC_OUT_EN()	sbi(PORTD, 6); sbi(DDRD, 6);  sbi(DDRD, 7); sbi(ACSR, ACD);
+#define AVC_OUT_DIS()	cbi(PORTD, 6); cbi(DDRD, 6);  cbi(DDRD, 7); cbi(ACSR, ACD);
+#define AVC_SET_1()  	sbi(PORTD, 6);
+#define AVC_SET_0()  	cbi(PORTD, 6);
+
 typedef enum
 {   // No this is not a mistake, broadcast = 0!
     MSG_NORMAL      = 1,
@@ -60,7 +65,8 @@ typedef enum
     ACT_EJECT_CD,
     ACT_NO_CD,
     ACT_TUNER_INFO,
-    ACT_AUDIO_STATUS,
+    ACT_FM_AUDIO_STATUS,
+    ACT_AM_AUDIO_STATUS,
 //    ACT_CD_INFO,
 
     ACT_STATUS,
@@ -99,6 +105,7 @@ AvcActionID     AvcReadMessage ( void );
 
 bool            AvcProcessActionID ( AvcActionID actionID );
 void            AvcUpdateStatus ( void );
+bool            AvcRegisterMe ( void );
 
 void            DumpRawMessage ( bool incoming );
 
