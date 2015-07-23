@@ -41,8 +41,8 @@
 #define START_BIT_LENGTH            372 //186*2
 #define START_BIT_HOLD_ON_LENGTH    336 //168*2
 
-#define AVC_OUT_EN()	sbi(PORTD, 6); sbi(DDRD, 6);  sbi(DDRD, 7); sbi(ACSR, ACD);
-#define AVC_OUT_DIS()	cbi(PORTD, 6); cbi(DDRD, 6);  cbi(DDRD, 7); cbi(ACSR, ACD);
+#define AVC_OUT_EN()	sbi(PORTD, 6); sbi(DDRD, 6);  sbi(DDRD, 7); sbi(ACSR, ACD); // Output mode
+#define AVC_OUT_DIS()	cbi(PORTD, 6); cbi(DDRD, 6);  cbi(DDRD, 7); cbi(ACSR, ACD); // Read mode
 #define AVC_SET_1()  	sbi(PORTD, 6);
 #define AVC_SET_0()  	cbi(PORTD, 6);
 

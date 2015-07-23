@@ -31,8 +31,8 @@
 #define LED_PORT                PORTB
 #define LEDOUT                  _BV(PORT5)
 
-#define sbi(port, bit) (port) |= (1 << (bit))
-#define cbi(port, bit) (port) &= ~(1 << (bit))
+#define sbi(port, bit) (port) |= (1 << (bit))  // Set bit (i.e. to 1)
+#define cbi(port, bit) (port) &= ~(1 << (bit)) // Clear bit (i.e. set bit to 0)
 
 /*--------------------------------------------------------------------------------------------------
                                        Type definitions
