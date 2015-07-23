@@ -1,28 +1,29 @@
 CC=avr-g++
-CFLAGS=-c -g -Os -Wall -fno-exceptions -fpermissive -ffunction-sections -fdata-sections -fno-threadsafe-statics -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10605 -DARDUINO_AVR_DUEMILANOVE -DARDUINO_ARCH_AVR
-LFLAGS=-g -MMD -mmcu=atmega328p -DF_CPU=16000000L -DARDUINO=10605 -DARDUINO_AVR_DUEMILANOVE -DARDUINO_ARCH_AVR
+CFLAGS=-c -g -Os -Wall -fno-exceptions -fpermissive -ffunction-sections -fdata-sections -fno-threadsafe-statics -mmcu=atmega328p
+DEFS= -DF_CPU=16000000L -DARDUINO=10605 -DARDUINO_AVR_DUEMILANOVE -DARDUINO_ARCH_AVR
+LFLAGS=-g -MMD -mmcu=atmega328p
 
-all: ToyotaAuxEnabler.hex
+all: sniffer.hex
 
-ToyotaAuxEnabler.hex: ToyotaAuxEnabler.elf
-	avr-objcopy -j .text -j .data -O ihex ToyotaAuxEnabler.elf ToyotaAuxEnabler.hex
+sniffer.hex: sniffer.elf
+	avr-objcopy -j .text -j .data -O ihex sniffer.elf sniffer.hex
 
-ToyotaAuxEnabler.elf: ToyotaAuxEnabler.o USART.o AVCLanDriver.o
-	$(CC) $(LFLAGS) -o ToyotaAuxEnabler.elf ToyotaAuxEnabler.o USART.o AVCLanDriver.o
+sniffer.elf: sniffer.o com232.o avclandrv.o
+	$(CC) $(LFLAGS) $(DEFS) -o sniffer.elf sniffer.o com232.o avclandrv.o
 
-ToyotaAuxEnabler.o: ToyotaAuxEnabler.c GlobalDef.h USART.h AVCLanDriver.h
-	$(CC) $(CFLAGS) ToyotaAuxEnabler.c
+sniffer.o: sniffer.c GlobalDef.h com232.h avclandrv.h
+	$(CC) $(CFLAGS) $(DEFS) sniffer.c
 
-USART.o: USART.c USART.h GlobalDef.h
-	$(CC) $(CFLAGS) USART.c
+com232.o: com232.c com232.h GlobalDef.h
+	$(CC) $(CFLAGS) $(DEFS) com232.c
 
-AVCLanDriver.o: AVCLanDriver.c GlobalDef.h USART.h AVCLanDriver.h
-	$(CC) $(CFLAGS) AVCLanDriver.c
+avclandrv.o: avclandrv.c GlobalDef.h com232.h avclandrv.h
+	$(CC) $(CFLAGS) $(DEFS) avclandrv.c
 
 clean:
 	rm *.o *.hex *.elf
 
-upload: ToyotaAuxEnabler.hex
-	avrdude -C/home/allen/Programs/arduino-1.6.5/hardware/tools/avr/etc/avrdude.conf -v -patmega328p -carduino -P/dev/arduino -b57600 -D -Uflash:w:ToyotaAuxEnabler.hex:i
+upload: sniffer.hex
+	avrdude -C/home/allen/Programs/arduino-1.6.5/hardware/tools/avr/etc/avrdude.conf -v -patmega328p -carduino -P/dev/arduino -b57600 -D -Uflash:w:sniffer.hex:i
 
 .PHONY: upload
