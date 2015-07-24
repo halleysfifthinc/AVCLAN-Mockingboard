@@ -66,16 +66,16 @@ int main()
 
 
 
- RS232_S((u16)PSTR("AVCLan reader 1.00\nReady\n\n"));
+ RS232_S((unsigned char)PSTR("AVCLan reader 1.00\nReady\n\n"));
  LED_OFF();
- RS232_S((u16)PSTR("T - device id\n"));
- RS232_S((u16)PSTR("H - HU id\n"));
- RS232_S((u16)PSTR("S - read sequence\n"));
- RS232_S((u16)PSTR("W - send command\n"));
- RS232_S((u16)PSTR("Q - send broadcast\n"));
- RS232_S((u16)PSTR("L/l - log on/off\n"));
- RS232_S((u16)PSTR("K/k - seq. echo on/off\n"));
- RS232_S((u16)PSTR("R/r - register device\n"));
+ RS232_S((unsigned char)PSTR("T - device id\n"));
+ RS232_S((unsigned char)PSTR("H - HU id\n"));
+ RS232_S((unsigned char)PSTR("S - read sequence\n"));
+ RS232_S((unsigned char)PSTR("W - send command\n"));
+ RS232_S((unsigned char)PSTR("Q - send broadcast\n"));
+ RS232_S((unsigned char)PSTR("L/l - log on/off\n"));
+ RS232_S((unsigned char)PSTR("K/k - seq. echo on/off\n"));
+ RS232_S((unsigned char)PSTR("R/r - register device\n"));
 
 
 
@@ -111,15 +111,15 @@ int main()
 			case 'T':	if (readSeq) {
 						  CD_ID_1 = data_tmp[0];
 						  CD_ID_2 = data_tmp[1];
-						  RS232_Print("DEV ID SET: 0x");
+						  RS232_S((unsigned char)PSTR("DEV ID SET: 0x"));
 						  RS232_PrintHex8(CD_ID_1);
 						  RS232_PrintHex8(CD_ID_2);
-						  RS232_Print("\n");
+						  RS232_S((unsigned char)PSTR("\n"));
 						  showLog = 1;
 						  readSeq=0;
 						} else {
 						  showLog = 0;
-						  RS232_Print("DEV ID > \n");
+						  RS232_S((unsigned char)PSTR("DEV ID > \n"));
 						  readSeq = 1;
 						  s_len=0;
 						  s_dig=0;
@@ -130,15 +130,15 @@ int main()
 			case 'H':	if (readSeq) {
 						  HU_ID_1 = data_tmp[0];
 						  HU_ID_2 = data_tmp[1];
-						  RS232_Print("HU ID SET: 0x");
+						  RS232_S((unsigned char)PSTR("HU ID SET: 0x"));
 						  RS232_PrintHex8(HU_ID_1);
 						  RS232_PrintHex8(HU_ID_2);
-						  RS232_Print("\n");
+						  RS232_S((unsigned char)PSTR("\n"));
 						  showLog = 1;
 						  readSeq=0;
 						} else {
 						  showLog = 0;
-						  RS232_Print("HU ID > \n");
+						  RS232_S((unsigned char)PSTR("HU ID > \n"));
 						  readSeq = 1;
 						  s_len=0;
 						  s_dig=0;
@@ -147,7 +147,7 @@ int main()
 						break;
 
 			case 'S':	showLog = 0;
-						RS232_Print("READ SEQUENCE > \n");
+						RS232_S((unsigned char)PSTR("READ SEQUENCE > \n"));
 						readSeq = 1;
 						s_len=0;
 						s_dig=0;
@@ -163,7 +163,7 @@ int main()
 						break;
 
 
-			case 'R':	RS232_Print("REGIST:\n");
+			case 'R':	RS232_S((unsigned char)PSTR("REGIST:\n"));
 						AVCLan_Command( cmRegister );
           	TCNT0 = 0;
           	while( TCNT0 < 135 );
@@ -173,17 +173,17 @@ int main()
 						break;
 
 
-			case 'l':	RS232_Print("Log OFF\n");
+			case 'l':	RS232_S((unsigned char)PSTR("Log OFF\n"));
 						showLog = 0;
 						break;
-			case 'L':	RS232_Print("Log ON\n");
+			case 'L':	RS232_S((unsigned char)PSTR("Log ON\n"));
 						showLog = 1;
 						break;
 
-			case 'k':	RS232_Print("str OFF\n");
+			case 'k':	RS232_S((unsigned char)PSTR("str OFF\n"));
 						showLog2 = 0;
 						break;
-			case 'K':	RS232_Print("str ON\n");
+			case 'K':	RS232_S((unsigned char)PSTR("str ON\n"));
 						showLog2 = 1;
 						break;
 
@@ -204,12 +204,12 @@ int main()
 						s_c[0]=s_c[1]=0;
 					}
 					if (showLog2) {
-						RS232_Print("CURRENT SEQUENCE > ");
+						RS232_S((unsigned char)PSTR("CURRENT SEQUENCE > "));
 						for (i=0; i<s_len; i++) {
 								RS232_PrintHex8(data_tmp[i]);
 								RS232_SendByte(' ');
 						}
-						RS232_Print("\n");
+						RS232_S((unsigned char)PSTR("\n"));
 					}
 				}
 		} // switch (readkey)

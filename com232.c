@@ -29,6 +29,8 @@
 #include <avr/pgmspace.h>
 #include "com232.h"
 
+byte RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
+byte readkey;
 
 //------------------------------------------------------------------------------
 void RS232_Init(void)
@@ -42,25 +44,25 @@ void RS232_Init(void)
  UCSR0A = 0;
  UCSR0B = ((1<<RXCIE0) | (1<<RXEN0) | (1<<TXEN0));	// enable RxD/TxD and interrupts
  UCSR0C = ((1<<UCSZ01)|(1<<UCSZ00));				// 8N1
- UBRR0L  = 3; // 250000
+ UBRR0L  = 3; // baud rate 250000
 
 }
 //------------------------------------------------------------------------------
-SIGNAL(SIG_USART_RECV)
+ISR(USART_RX_vect)
 {
 	RS232_RxCharBuffer[RS232_RxCharEnd] = UDR0;		// Store received character to the End of Buffer
     RS232_RxCharEnd++;
 }
 //------------------------------------------------------------------------------
-void RS232_SendByte(u08 Data)
+void RS232_SendByte(byte Data)
 {
 	while ((UCSR0A & _BV(UDRE0)) != _BV(UDRE0));	// wait for UART to become available
 	UDR0 = Data;									// send character
 }
 //------------------------------------------------------------------------------
-void RS232_S(u16 str_addr)
+void RS232_S(unsigned short str_addr)
 {
-	register u08 c;
+	register byte c;
 	while ( (c = pgm_read_byte(str_addr++) ) )
 	{
 		if (c == '\n')
@@ -71,7 +73,7 @@ void RS232_S(u16 str_addr)
 //------------------------------------------------------------------------------
 void RS232_Print(char* pBuf)
 {
-	register u08 c;
+	register byte c;
 	while ((c = *pBuf++))
 	{
 		if (c == '\n')
@@ -80,22 +82,22 @@ void RS232_Print(char* pBuf)
 	}
 }
 //------------------------------------------------------------------------------
-void RS232_PrintHex4(u08 Data)
+void RS232_PrintHex4(byte Data)
 {
-	u08 Character = Data & 0x0f;
+	byte Character = Data & 0x0f;
 	Character += '0';
 	if (Character > '9')
 		Character += 'A' - '0' - 10;
 	RS232_SendByte(Character);
 }
 //------------------------------------------------------------------------------
-void RS232_PrintHex8(u08 Data)
+void RS232_PrintHex8(byte Data)
 {
     RS232_PrintHex4(Data >> 4);
     RS232_PrintHex4(Data);
 }
 //------------------------------------------------------------------------------
-void RS232_PrintDec(u08 Data)
+void RS232_PrintDec(byte Data)
 {
  if (Data>99) {
    RS232_SendByte('*');
@@ -105,8 +107,8 @@ void RS232_PrintDec(u08 Data)
    RS232_SendByte('0'+Data);
    return;
  }
- u08 c;
- u16 v,v1;
+ byte c;
+ unsigned short v,v1;
  v  = Data;
  v1 = v/10;
  c  = '0' + (v-v1*10);
@@ -114,7 +116,7 @@ void RS232_PrintDec(u08 Data)
  RS232_SendByte(c);
 }
 //------------------------------------------------------------------------------
-void RS232_PrintDec2(u08 Data)
+void RS232_PrintDec2(byte Data)
 {
  if (Data<10) RS232_SendByte('0');
  RS232_PrintDec(Data);

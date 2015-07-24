@@ -24,31 +24,14 @@
 
 */
 
-#ifndef __COM232_H
-#define __COM232_H
-//------------------------------------------------------------------------------
-
 #include "GlobalDef.h"
-
 //------------------------------------------------------------------------------
 
-extern byte RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
-extern byte readkey;
-//------------------------------------------------------------------------------
 
-void RS232_Init(void);
-extern void RS232_S(unsigned short str_addr);
-extern void RS232_SendByte(byte Data);
-extern void RS232_Print(char* pBuf);
-extern void RS232_PrintHex4(byte Data);
-extern void RS232_PrintHex8(byte Data);
-extern void RS232_PrintDec(byte Data);
-extern void RS232_PrintDec2(byte Data);
+// max 10 events in fifo
+byte EventCount;
+byte EventCmd[10];
+byte Event;
 
-//------------------------------------------------------------------------------
-// LED
-#define LED_ON()	cbi(PORTB, 5)
-#define LED_OFF()	sbi(PORTB, 5)
-
-//------------------------------------------------------------------------------
-#endif
+byte showLog;
+byte showLog2;

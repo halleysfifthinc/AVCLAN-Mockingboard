@@ -84,20 +84,20 @@ extern byte CD_ID_2;		// 0x60
 #define cmStopReq2	9
 
 typedef enum { stStop=0, stPlay=1 } cd_modes;
-cd_modes CD_Mode;
+extern cd_modes CD_Mode;
 
 
-byte broadcast;
-byte master1;
-byte master2;
-byte slave1;
-byte slave2;
-byte message_len;
-byte message[MAXMSGLEN];
+extern byte broadcast;
+extern byte master1;
+extern byte master2;
+extern byte slave1;
+extern byte slave2;
+extern byte message_len;
+extern byte message[MAXMSGLEN];
 
-byte data_control;
-byte data_len;
-byte data[MAXMSGLEN];
+extern byte data_control;
+extern byte data_len;
+extern byte data[MAXMSGLEN];
 
 byte AVCLan_Read_Message();
 void AVCLan_Send_Status();

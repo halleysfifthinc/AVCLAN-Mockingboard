@@ -46,6 +46,38 @@ typedef unsigned int            word;
 inline void LedOff( void );
 inline void LedOn( void );
 
+/*--------------------------------------------------------------------------------------------------
+                                    From Marcin's "const.h"
+--------------------------------------------------------------------------------------------------*/
+
+// max 10 events in fifo
+extern byte EventCount;
+extern byte EventCmd[10];
+extern byte Event;
+
+#define EV_NOTHING	0
+#define EV_DISPLAY	1
+#define EV_STATUS	4
+
+//------------------------------------------------------------------------------
+
+// const
+#define smYear		1
+#define smMonth		2
+#define smDay		3
+#define smHour		4
+#define smMin		5
+#define smWDay		6
+
+
+
+//#define STOPEvent  cbi(TIMSK, TOIE1); cbi(UCSRB, RXCIE);
+//#define STARTEvent sbi(TIMSK, TOIE1); sbi(UCSRB, RXCIE);
+
+
+extern byte showLog;
+extern byte showLog2;
+
 #endif   //  _GLOBALDEF_H_
 
 /*--------------------------------------------------------------------------------------------------

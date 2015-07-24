@@ -29,7 +29,8 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
-//#include <avr/pgmspace.h> // Unnecessary?
+#include <avr/pgmspace.h>
+
 #include "avclandrv.h"
 #include "com232.h"
 #include "GlobalDef.h"
@@ -63,6 +64,21 @@ byte cd_Time_Sec;
 
 byte answerReq;
 
+cd_modes CD_Mode;
+
+
+byte broadcast;
+byte master1;
+byte master2;
+byte slave1;
+byte slave2;
+byte message_len;
+byte message[MAXMSGLEN];
+
+byte data_control;
+byte data_len;
+byte data[MAXMSGLEN];
+
 // we need check answer (to avclan check) timeout
 // when is more then 1 min, FORCE answer.
 byte check_timeout;
@@ -74,10 +90,6 @@ const byte stat1[]		= { 0x4, 0x00, 0x00, 0x01, 0x0A };
 const byte stat2[]		= { 0x4, 0x00, 0x00, 0x01, 0x08 };
 const byte stat3[]		= { 0x4, 0x00, 0x00, 0x01, 0x0D };
 const byte stat4[] 		= { 0x4, 0x00, 0x00, 0x01, 0x0C };
-
-// Updated avclandrv.c had these
-const u08 stat5[]			= { 0x6, 0x00, 0x12, 0x5C, 0x43, 0x02, 0x00 };
-const u08 stat6[]			= { 0x4, 0x00, 0x58, 0x63, 0xE0 };
 
 // broadcast
 const byte lan_stat1[]	= { 0x3, 0x00, 0x01, 0x0A };
@@ -274,8 +286,6 @@ void AVCLan_Send_Bit0()
 //------------------------------------------------------------------------------
 byte AVCLan_Read_ACK()
 {
-	byte time = 0;
-
 	AVC_SET_1();
 	TCNT0 = 0;
 	while( TCNT0 < 39 );
@@ -288,8 +298,7 @@ byte AVCLan_Read_ACK()
 	AVC_OUT_DIS(); // switch to read mode
 	TCNT0 = 1;
 	while(1) {
-	time = TCNT0;
-	if (INPUT_IS_SET && (TCNT0 > 1)) break;
+	if (INPUT_IS_SET && (TCNT0 > 2)) break;
 	if (TCNT0 > 41) return 1;					// Not sure if this fix is intent correct
 	}
 
@@ -343,7 +352,7 @@ byte AVCLan_Send_Byte(byte bite, byte len)
    }
    len--;
    if (!len) {
-     //if (INPUT_IS_SET) RS232_Print("SBER\n"); // Send Bit ERror
+     //if (INPUT_IS_SET) RS232_S((unsigned char)PSTR("SBER\n")); // Send Bit ERror
      return 1;
    }
    b = b << 1;
@@ -392,14 +401,14 @@ byte AVCLan_Read_Message()
  byte i;
  byte for_me = 0;
 
- //RS232_Print("$ ");
+ //RS232_S((unsigned char)PSTR("$ "));
 
  // check start bit
  TCNT0 = 0;
  while (INPUT_IS_SET) {
 	if ( TCNT0 > 2286 ) { // Originally 254
 		STARTEvent;
-		RS232_Print("LAN>T1\n");
+		RS232_S((unsigned char)PSTR("LAN>T1\n"));
 		return 0;
 	}
  }
@@ -407,7 +416,7 @@ byte AVCLan_Read_Message()
 
  if ( TCNT0 < 90 ) {		// !!!!!!! 20 !!!!!!!!!!! (Originally 10)
  	STARTEvent;
-	RS232_Print("LAN>T2\n");
+	RS232_S((unsigned char)PSTR("LAN>T2\n"));
 	return 0;
  }
 
@@ -457,7 +466,7 @@ byte AVCLan_Read_Message()
  		else AVCLan_Read_Byte(1);
 
  if (message_len > MAXMSGLEN) {
-//	RS232_Print("LAN> Command error");
+//	RS232_S((unsigned char)PSTR("LAN> Command error"));
 	STARTEvent;
 	return 0;
  }
@@ -553,7 +562,7 @@ byte AVCLan_SendData()
  if (AVCLan_Read_ACK()) {
  	 AVC_OUT_DIS();
 	 STARTEvent;
-	 RS232_Print("E1\n");
+	 RS232_S((unsigned char)PSTR("E1\n"));
 	 return 1;
  }
 
@@ -563,7 +572,7 @@ byte AVCLan_SendData()
  if (AVCLan_Read_ACK()) {
  	 AVC_OUT_DIS();
 	 STARTEvent;
-	 RS232_Print("E2\n");
+	 RS232_S((unsigned char)PSTR("E2\n"));
 	 return 2;
  }
 
@@ -572,7 +581,7 @@ byte AVCLan_SendData()
  if (AVCLan_Read_ACK()) {
  	 AVC_OUT_DIS();
 	 STARTEvent;
-	 RS232_Print("E3\n");
+	 RS232_S((unsigned char)PSTR("E3\n"));
 	 return 3;
  }
 
@@ -582,9 +591,9 @@ byte AVCLan_SendData()
  	if (AVCLan_Read_ACK()) {
 	 	 AVC_OUT_DIS();
 		 STARTEvent;
- 		 RS232_Print("E4(");
+ 		 RS232_S((unsigned char)PSTR("E4("));
 		 RS232_PrintDec(i);
-		 RS232_Print(")\n");
+		 RS232_S((unsigned char)PSTR(")\n"));
 		 return 4;
  	}
  }
@@ -776,13 +785,13 @@ byte AVCLan_SendAnswer()
 						break;
  	case cmRegister:	r = AVCLan_SendAnswerFrame((byte*)CMD_REGISTER);
 						break;
- 	case cmInit:		//RS232_Print("INIT\n");
+ 	case cmInit:		//RS232_S((unsigned char)PSTR("INIT\n"));
 						r = AVCLan_SendInitCommands();
 						break;
  	case cmCheck:		r = AVCLan_SendAnswerFrame((byte*)CMD_CHECK);
 						check_timeout = 0;
 						CMD_CHECK[6]++;
- 						RS232_Print("AVCCHK\n");
+ 						RS232_S((unsigned char)PSTR("AVCCHK\n"));
 						break;
  	case cmPlayReq1:	playMode = 0;
 						r = AVCLan_SendAnswerFrame((byte*)CMD_PLAY_OK1);
@@ -794,7 +803,7 @@ byte AVCLan_SendAnswer()
 						CD_Mode = stPlay;
 						break;
 	case cmPlayIt:		playMode = 1;
-						RS232_Print("PLAY\n");
+						RS232_S((unsigned char)PSTR("PLAY\n"));
 						CMD_PLAY_OK4[7]=cd_Disc;
 						CMD_PLAY_OK4[8]=cd_Track;
 						CMD_PLAY_OK4[9]=cd_Time_Min;
@@ -826,9 +835,9 @@ byte AVCLan_SendAnswer()
 //------------------------------------------------------------------------------
 void AVCLan_Register()
 {
- RS232_Print("REG_ST\n");
+ RS232_S((unsigned char)PSTR("REG_ST\n"));
  AVCLan_SendAnswerFrame((byte*)CMD_REGISTER);
- RS232_Print("REG_END\n");
+ RS232_S((unsigned char)PSTR("REG_END\n"));
  //AVCLan_Command( cmRegister );
  AVCLan_Command( cmInit );
 }
@@ -842,9 +851,9 @@ byte AVCLan_Command(byte command)
  answerReq = command;
  r = AVCLan_SendAnswer();
  /*
- RS232_Print("ret=");
+ RS232_S((unsigned char)PSTR("ret="));
  RS232_PrintHex8(r);
- RS232_Print("\n");
+ RS232_S((unsigned char)PSTR("\n"));
  */
  return r;
 }
@@ -876,7 +885,7 @@ byte HexDec(byte data)
 byte Dec2Toy(byte data)
 {
  byte d,d1;
- d = (u32)data/(u32)10;
+ d = (unsigned int)data/(unsigned int)10;
  d1 = d * 16;
  d  = d1 + (data - 10*d);
  return d;
@@ -891,24 +900,24 @@ void ShowInMessage()
  AVC_HoldLine();
 
 
- RS232_S((u16)PSTR("HU < ("));
+ RS232_S((unsigned char)PSTR("HU < ("));
 
- if (broadcast==0) RS232_S((u16)PSTR("bro) "));
- else RS232_Print("dir) ");
+ if (broadcast==0) RS232_S((unsigned char)PSTR("bro) "));
+ else RS232_S((unsigned char)PSTR("dir) "));
 
  RS232_PrintHex4(master1);
  RS232_PrintHex8(master2);
- RS232_Print("| ");
+ RS232_S((unsigned char)PSTR("| "));
  RS232_PrintHex4(slave1);
  RS232_PrintHex8(slave2);
- RS232_Print("| ");
+ RS232_S((unsigned char)PSTR("| "));
 
  byte i;
  for (i=0;i<message_len;i++) {
 	RS232_PrintHex8(message[i]);
-	RS232_Print(" ");
+	RS232_S((unsigned char)PSTR(" "));
  }
- RS232_Print("\n");
+ RS232_S((unsigned char)PSTR("\n"));
 
  AVC_ReleaseLine();
 }
@@ -920,12 +929,12 @@ void ShowOutMessage()
 
  AVC_HoldLine();
 
- RS232_S((u16)PSTR("out > "));
+ RS232_S((unsigned char)PSTR("out > "));
  for (i=0; i<data_len; i++) {
 	RS232_PrintHex8(data[i]);
 	RS232_SendByte(' ');
  }
- RS232_Print("\n");
+ RS232_S((unsigned char)PSTR("\n"));
 
  AVC_ReleaseLine();
 }
