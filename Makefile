@@ -27,10 +27,13 @@ GlobalDef.o: GlobalDef.c GlobalDef.h
 clean::
 	@rm -f *.o *.hex *.elf
 
-.PHONY: upload connect
+.PHONY: upload connect size
 
 upload: sniffer.hex
 	avrdude -C/home/allen/Programs/arduino-1.6.5/hardware/tools/avr/etc/avrdude.conf -v -patmega328p -carduino -P/dev/arduino -b57600 -D -Uflash:w:sniffer.hex:i
 
 connect:
 	@picocom --nolock -b 115200 /dev/arduino ||:
+
+size:
+	avr-size -C --mcu=atmega328p sniffer.elf
