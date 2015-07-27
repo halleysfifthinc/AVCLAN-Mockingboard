@@ -230,8 +230,8 @@ byte AVCLan_Read_Byte(byte length)
  while (1) {
    while (INPUT_IS_CLEAR);
    TCNT0 = 0;
-   while (INPUT_IS_SET);
-   if ( TCNT0 < 72 ) {
+   while (INPUT_IS_SET); 	// If input was set for less than a
+   if ( TCNT0 < 52 ) {		// generous half period, bit was a 1
       bite++;
 	  parity_bit++;
    }
@@ -247,7 +247,9 @@ byte AVCLan_Send_StartBit()
 {
 	AVC_SET_1();
 	TCNT0 = 0;
-	while( TCNT0 < 333 );
+	while( TCNT0 < 255 );
+	TCNT0 = 0;
+	while( TCNT0 < 76 );
 
 	AVC_SET_0();
 	TCNT0 = 0;
@@ -266,7 +268,7 @@ void AVCLan_Send_Bit1()
 
 	AVC_SET_0();
 	TCNT0 = 0;
-	while( TCNT0 < 33 );							// 12-21 us
+	while( TCNT0 < 38 );							// 12-21 us
 }
 
 // DONE: Timing adjusted
@@ -279,7 +281,7 @@ void AVCLan_Send_Bit0()
 
 	AVC_SET_0();
 	TCNT0 = 0;
-	while( TCNT0 < 9 );								// 00-09 us
+	while( TCNT0 < 15 );								// 00-09 us
 }
 
 //	DONE: Timing adjusted.
@@ -292,14 +294,15 @@ byte AVCLan_Read_ACK()
 
 	AVC_SET_0();
 	TCNT0 = 0;
-	while( TCNT0 < 3 );
+	while( TCNT0 < 4 );													// Replace with AVC_ReleaseLine?
 
 
 	AVC_OUT_DIS(); // switch to read mode
 	TCNT0 = 1;
 	while(1) {
-	if (INPUT_IS_SET && (TCNT0 > 2)) break;
-	if (TCNT0 > 41) return 1;					// Not sure if this fix is intent correct
+	if (INPUT_IS_SET && (TCNT0 > 5)) break;		// Make sure INPUT is not still set from us
+	// Line of experimentation: Try changing TCNT0 comparison value or remove check entirely
+	if (TCNT0 > 174 ) return 1;					// Not sure if this fix is intent correct
 	}
 
 	while(INPUT_IS_SET);
@@ -325,7 +328,7 @@ byte AVCLan_Send_ACK()
 
 	AVC_SET_0();
 	TCNT0 = 0;
-	while( TCNT0 < 9 );									//00-09
+	while( TCNT0 < 15 );									//00-09
 
 	AVC_OUT_DIS();
 
@@ -352,7 +355,7 @@ byte AVCLan_Send_Byte(byte bite, byte len)
    }
    len--;
    if (!len) {
-     //if (INPUT_IS_SET) RS232_S((unsigned char)PSTR("SBER\n")); // Send Bit ERror
+     //if (INPUT_IS_SET) RS232_Print_P(PSTR("SBER\n")); // Send Bit ERror
      return 1;
    }
    b = b << 1;
@@ -396,107 +399,109 @@ byte CheckCmd(byte *cmd)
 //------------------------------------------------------------------------------
 byte AVCLan_Read_Message()
 {
- STOPEvent;						// disable timer1 interrupt
+	STOPEvent;						// disable timer1 interrupt
 
- byte i;
- byte for_me = 0;
+	byte i;
+	byte for_me = 0;
 
- //RS232_S((unsigned char)PSTR("$ "));
+	//RS232_Print_P(PSTR("$ "));
+	// TCCR1B |= (1 << CS11)|(1 << CS10); // Timer1 prescaler at 64
+	// TCNT1 = 0;
+	// TCNT0 = 0;
+	// while (INPUT_IS_SET) {
+	// if ( TCNT0 > 255 ) { // 170 us
+	// 	// TCCR1B = 0;
+	// 	// TCCR1B |= (1 << WGM12)|(1 << CS12); // Set CTC, prescaler at 256
+	// 	STARTEvent;
+	// 	RS232_Print_P(PSTR("LAN>T1\n"));
+	// 	return 0;
+	// }
+	// }
+	//
+	// if ( TCNT0 < 20 ) {		// 20 us
+	// 	// TCCR1B = 0;
+	// 	// TCCR1B |= (1 << WGM12)|(1 << CS12);
+	// 	STARTEvent;
+	// 	RS232_Print_P(PSTR("LAN>T2\n"));
+	// 	return 0;
+	// }
+	AVCLan_Read_Byte(1);
 
- // check start bit
- TCNT0 = 0;
- while (INPUT_IS_SET) {
-	if ( TCNT0 > 2286 ) { // Originally 254
-		STARTEvent;
-		RS232_S((unsigned char)PSTR("LAN>T1\n"));
-		return 0;
-	}
- }
+	broadcast = AVCLan_Read_Byte(1);
 
-
- if ( TCNT0 < 90 ) {		// !!!!!!! 20 !!!!!!!!!!! (Originally 10)
- 	STARTEvent;
-	RS232_S((unsigned char)PSTR("LAN>T2\n"));
-	return 0;
- }
-
-
-
- broadcast = AVCLan_Read_Byte(1);
-
- parity_bit = 0;
- master1 = AVCLan_Read_Byte(4);
- master2 = AVCLan_Read_Byte(8);
- if ((parity_bit&1)!=AVCLan_Read_Byte(1)) {
-	STARTEvent;
-	return 0;
- }
-
- parity_bit = 0;
- slave1 = AVCLan_Read_Byte(4);
- slave2 = AVCLan_Read_Byte(8);
- if ((parity_bit&1)!=AVCLan_Read_Byte(1)) {
-	STARTEvent;
-	return 0;
- }
- // is this command for me ?
- if ((slave1==CD_ID_1)&&(slave2==CD_ID_2)) {
- 	for_me=1;
- }
-
- if (for_me) AVCLan_Send_ACK();
- 		else AVCLan_Read_Byte(1);
-
- parity_bit = 0;
- AVCLan_Read_Byte(4);	// control - always 0xF
- if ((parity_bit&1)!=AVCLan_Read_Byte(1)) {
-	STARTEvent;
-	return 0;
- }
- if (for_me) AVCLan_Send_ACK();
- 		else AVCLan_Read_Byte(1);
-
- parity_bit = 0;
- message_len = AVCLan_Read_Byte(8);
- if ((parity_bit&1)!=AVCLan_Read_Byte(1)) {
-	STARTEvent;
-	return 0;
- }
- if (for_me) AVCLan_Send_ACK();
- 		else AVCLan_Read_Byte(1);
-
- if (message_len > MAXMSGLEN) {
-//	RS232_S((unsigned char)PSTR("LAN> Command error"));
-	STARTEvent;
-	return 0;
- }
-
- for (i=0; i<message_len; i++) {
 	parity_bit = 0;
- 	message[i] = AVCLan_Read_Byte(8);
+	master1 = AVCLan_Read_Byte(4);
+	master2 = AVCLan_Read_Byte(8);
+	if ((parity_bit&1)!=AVCLan_Read_Byte(1)) {
+	STARTEvent;
+	return 0;
+	}
+
+	parity_bit = 0;
+	slave1 = AVCLan_Read_Byte(4);
+	slave2 = AVCLan_Read_Byte(8);
+	if ((parity_bit&1)!=AVCLan_Read_Byte(1)) {
+	STARTEvent;
+	return 0;
+	}
+	// is this command for me ?
+	if ((slave1==CD_ID_1)&&(slave2==CD_ID_2)) {
+		for_me=1;
+	}
+
+	if (for_me) AVCLan_Send_ACK();
+			else AVCLan_Read_Byte(1);
+
+	parity_bit = 0;
+	AVCLan_Read_Byte(4);	// control - always 0xF
+	if ((parity_bit&1)!=AVCLan_Read_Byte(1)) {
+	STARTEvent;
+	return 0;
+	}
+	if (for_me) AVCLan_Send_ACK();
+			else AVCLan_Read_Byte(1);
+
+	parity_bit = 0;
+	message_len = AVCLan_Read_Byte(8);
+	if ((parity_bit&1)!=AVCLan_Read_Byte(1)) {
+	STARTEvent;
+	return 0;
+	}
+	if (for_me) AVCLan_Send_ACK();
+			else AVCLan_Read_Byte(1);
+
+	if (message_len > MAXMSGLEN) {
+	//	RS232_Print_P(PSTR("LAN> Command error"));
+	STARTEvent;
+	return 0;
+	}
+
+	for (i=0; i<message_len; i++) {
+	parity_bit = 0;
+		message[i] = AVCLan_Read_Byte(8);
 	if ((parity_bit&1)!=AVCLan_Read_Byte(1)) {
 		STARTEvent;
 		return 0;
- 	}
+		}
 	if (for_me) {
 		AVCLan_Send_ACK();
- 	} else {
+		} else {
 		AVCLan_Read_Byte(1);
 	}
- }
+	}
 
 
- STARTEvent;
+	STARTEvent;
 
- if (showLog) ShowInMessage();
+	if (showLog) ShowInMessage();
 
- if (for_me) {
+	if (for_me) {
 
 	if (CheckCmd((byte*)stat1)) { answerReq = cmStatus1; return 1; }
 	if (CheckCmd((byte*)stat2)) { answerReq = cmStatus2; return 1; }
 	if (CheckCmd((byte*)stat3)) { answerReq = cmStatus3; return 1; }
 	if (CheckCmd((byte*)stat4)) { answerReq = cmStatus4; return 1; }
-//	if (CheckCmd((byte*)stat5)) { answerReq = cmStatus5; return 1; }
+	//	if (CheckCmd((byte*)stat5)) { answerReq = cmStatus5; return 1; }
 
 	if (CheckCmd((byte*)play_req1)) { answerReq = cmPlayReq1; return 1; }
 	if (CheckCmd((byte*)play_req2)) { answerReq = cmPlayReq2; return 1; }
@@ -504,22 +509,22 @@ byte AVCLan_Read_Message()
 	if (CheckCmd((byte*)stop_req))  { answerReq = cmStopReq;  return 1; }
 	if (CheckCmd((byte*)stop_req2)) { answerReq = cmStopReq2; return 1; }
 
- } else { // broadcast check
+	} else { // broadcast check
 
 	if (CheckCmd((byte*)lan_playit))	{ answerReq = cmPlayIt;	return 1; }
 	if (CheckCmd((byte*)lan_check))	{
-			answerReq = cmCheck;
-			CMD_CHECK[6]=message[3];
-			return 1;
+		answerReq = cmCheck;
+		CMD_CHECK[6]=message[3];
+		return 1;
 	}
 	if (CheckCmd((byte*)lan_reg))	{ answerReq = cmRegister;	return 1; }
 	if (CheckCmd((byte*)lan_init))	{ answerReq = cmInit;		return 1; }
 	if (CheckCmd((byte*)lan_stat1))	{ answerReq = cmStatus1;	return 1; }
 
 
- }
- answerReq = cmNull;
- return 1;
+	}
+	answerReq = cmNull;
+	return 1;
 }
 
 // DONE: Timing adjusted.
@@ -562,7 +567,7 @@ byte AVCLan_SendData()
  if (AVCLan_Read_ACK()) {
  	 AVC_OUT_DIS();
 	 STARTEvent;
-	 RS232_S((unsigned char)PSTR("E1\n"));
+	 RS232_Print_P(PSTR("Error ACK 1 (Transmission ACK)\n"));
 	 return 1;
  }
 
@@ -572,7 +577,7 @@ byte AVCLan_SendData()
  if (AVCLan_Read_ACK()) {
  	 AVC_OUT_DIS();
 	 STARTEvent;
-	 RS232_S((unsigned char)PSTR("E2\n"));
+	 RS232_Print_P(PSTR("Error ACK 2 (COMMMAND WRITE)\n"));
 	 return 2;
  }
 
@@ -581,7 +586,7 @@ byte AVCLan_SendData()
  if (AVCLan_Read_ACK()) {
  	 AVC_OUT_DIS();
 	 STARTEvent;
-	 RS232_S((unsigned char)PSTR("E3\n"));
+	 RS232_Print_P(PSTR("Error ACK 3 (Data Length)\n"));
 	 return 3;
  }
 
@@ -591,9 +596,9 @@ byte AVCLan_SendData()
  	if (AVCLan_Read_ACK()) {
 	 	 AVC_OUT_DIS();
 		 STARTEvent;
- 		 RS232_S((unsigned char)PSTR("E4("));
+ 		 RS232_Print_P(PSTR("Error ACK 4 (Data Byte: "));
 		 RS232_PrintDec(i);
-		 RS232_S((unsigned char)PSTR(")\n"));
+		 RS232_Print_P(PSTR(")\n"));
 		 return 4;
  	}
  }
@@ -785,13 +790,13 @@ byte AVCLan_SendAnswer()
 						break;
  	case cmRegister:	r = AVCLan_SendAnswerFrame((byte*)CMD_REGISTER);
 						break;
- 	case cmInit:		//RS232_S((unsigned char)PSTR("INIT\n"));
+ 	case cmInit:		//RS232_Print_P(PSTR("INIT\n"));
 						r = AVCLan_SendInitCommands();
 						break;
  	case cmCheck:		r = AVCLan_SendAnswerFrame((byte*)CMD_CHECK);
 						check_timeout = 0;
 						CMD_CHECK[6]++;
- 						RS232_S((unsigned char)PSTR("AVCCHK\n"));
+ 						RS232_Print_P(PSTR("AVCCHK\n"));
 						break;
  	case cmPlayReq1:	playMode = 0;
 						r = AVCLan_SendAnswerFrame((byte*)CMD_PLAY_OK1);
@@ -803,7 +808,7 @@ byte AVCLan_SendAnswer()
 						CD_Mode = stPlay;
 						break;
 	case cmPlayIt:		playMode = 1;
-						RS232_S((unsigned char)PSTR("PLAY\n"));
+						RS232_Print_P(PSTR("PLAY\n"));
 						CMD_PLAY_OK4[7]=cd_Disc;
 						CMD_PLAY_OK4[8]=cd_Track;
 						CMD_PLAY_OK4[9]=cd_Time_Min;
@@ -835,9 +840,9 @@ byte AVCLan_SendAnswer()
 //------------------------------------------------------------------------------
 void AVCLan_Register()
 {
- RS232_S((unsigned char)PSTR("REG_ST\n"));
+ RS232_Print_P(PSTR("REG_ST\n"));
  AVCLan_SendAnswerFrame((byte*)CMD_REGISTER);
- RS232_S((unsigned char)PSTR("REG_END\n"));
+ RS232_Print_P(PSTR("REG_END\n"));
  //AVCLan_Command( cmRegister );
  AVCLan_Command( cmInit );
 }
@@ -851,9 +856,9 @@ byte AVCLan_Command(byte command)
  answerReq = command;
  r = AVCLan_SendAnswer();
  /*
- RS232_S((unsigned char)PSTR("ret="));
+ RS232_Print_P(PSTR("ret="));
  RS232_PrintHex8(r);
- RS232_S((unsigned char)PSTR("\n"));
+ RS232_Print_P(PSTR("\n"));
  */
  return r;
 }
@@ -900,24 +905,24 @@ void ShowInMessage()
  AVC_HoldLine();
 
 
- RS232_S((unsigned char)PSTR("HU < ("));
+ RS232_Print_P(PSTR("HU < ("));
 
- if (broadcast==0) RS232_S((unsigned char)PSTR("bro) "));
- else RS232_S((unsigned char)PSTR("dir) "));
+ if (broadcast==0) RS232_Print_P(PSTR("bro) "));
+ else RS232_Print_P(PSTR("dir) "));
 
  RS232_PrintHex4(master1);
  RS232_PrintHex8(master2);
- RS232_S((unsigned char)PSTR("| "));
+ RS232_Print_P(PSTR("| "));
  RS232_PrintHex4(slave1);
  RS232_PrintHex8(slave2);
- RS232_S((unsigned char)PSTR("| "));
+ RS232_Print_P(PSTR("| "));
 
  byte i;
  for (i=0;i<message_len;i++) {
 	RS232_PrintHex8(message[i]);
-	RS232_S((unsigned char)PSTR(" "));
+	RS232_Print_P(PSTR(" "));
  }
- RS232_S((unsigned char)PSTR("\n"));
+ RS232_Print_P(PSTR("\n"));
 
  AVC_ReleaseLine();
 }
@@ -929,14 +934,63 @@ void ShowOutMessage()
 
  AVC_HoldLine();
 
- RS232_S((unsigned char)PSTR("out > "));
+ RS232_Print_P(PSTR("out > "));
  for (i=0; i<data_len; i++) {
 	RS232_PrintHex8(data[i]);
 	RS232_SendByte(' ');
  }
- RS232_S((unsigned char)PSTR("\n"));
+ RS232_Print_P(PSTR("\n"));
 
  AVC_ReleaseLine();
+}
+
+void AVCLan_Measure()
+{
+	STOPEvent;
+
+	word tmp, tmp1, tmp2, bit0, bit1;
+	word n = 0;
+
+	cbi(TCCR1B,CS12);
+	TCCR1B = _BV(CS10);
+
+	while ( n < 1000 )
+	{
+		while(INPUT_IS_CLEAR);
+
+		TCNT1 = 0;
+
+		while(INPUT_IS_SET);
+
+		tmp = TCNT1;
+
+		while(INPUT_IS_CLEAR);
+
+		tmp1 = TCNT1;
+
+		while(INPUT_IS_SET);
+
+		tmp2 = TCNT1;
+
+		bit0 = tmp1-tmp;
+		bit1 = tmp2-tmp1;
+
+		RS232_Print_P(PSTR("1,"));
+		RS232_PrintDec(bit1);
+		RS232_Print_P(PSTR("\n"));
+
+		RS232_Print_P(PSTR("0,"));
+		RS232_PrintDec(bit0);
+		RS232_Print_P(PSTR("\n"));
+		n++;
+	}
+
+	RS232_Print_P(PSTR("Done.\n"));
+
+	cbi(TCCR1B,CS10);
+	TCCR1B = _BV(CS12);
+
+	STARTEvent;
 }
 
 //------------------------------------------------------------------------------

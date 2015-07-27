@@ -107,7 +107,7 @@ void AVCLan_Register();
 byte  AVCLan_SendData();
 byte  AVCLan_SendAnswer();
 byte  AVCLan_SendDataBroadcast();
-byte	 AVCLan_Command(byte command);
+byte	AVCLan_Command(byte command);
 
 byte  HexInc(byte data);
 byte  HexDec(byte data);
@@ -122,12 +122,13 @@ extern byte cd_Time_Sec;
 
 extern byte playMode;
 
-
 byte AVCLan_SendMyData(byte *data_tmp, byte s_len);
 byte AVCLan_SendMyDataBroadcast(byte *data_tmp, byte s_len);
 
 void ShowInMessage();
 void ShowOutMessage();
+
+void AVCLan_Measure();
 
 //------------------------------------------------------------------------------
 extern byte answerReq;

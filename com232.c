@@ -44,7 +44,12 @@ void RS232_Init(void)
  UCSR0A = 0;
  UCSR0B = ((1<<RXCIE0) | (1<<RXEN0) | (1<<TXEN0));	// enable RxD/TxD and interrupts
  UCSR0C = ((1<<UCSZ01)|(1<<UCSZ00));				// 8N1
- UBRR0L  = 3; // baud rate 250000
+ UBRR0L  = 8;   // Baud Rate 9600 (3 for 250000)
+                // 103  =>    9600
+                // 51   =>   19200
+                // 25   =>   38400
+                // 8    =>  115200
+                // 3    =>  250000
 
 }
 //------------------------------------------------------------------------------
@@ -60,7 +65,7 @@ void RS232_SendByte(byte Data)
 	UDR0 = Data;									// send character
 }
 //------------------------------------------------------------------------------
-void RS232_S(unsigned short str_addr)
+void RS232_Print_P(const char * str_addr)
 {
 	register byte c;
 	while ( (c = pgm_read_byte(str_addr++) ) )
@@ -71,7 +76,7 @@ void RS232_S(unsigned short str_addr)
 	}
 }
 //------------------------------------------------------------------------------
-void RS232_Print(char* pBuf)
+void RS232_Print(const char *pBuf)
 {
 	register byte c;
 	while ((c = *pBuf++))

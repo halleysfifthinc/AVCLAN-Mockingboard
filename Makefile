@@ -24,10 +24,13 @@ avclandrv.o: avclandrv.c GlobalDef.h com232.h avclandrv.h
 GlobalDef.o: GlobalDef.c GlobalDef.h
 	$(CC) $(CFLAGS) $(DEFS) GlobalDef.c
 
-clean:
-	rm *.o *.hex *.elf
+clean::
+	@rm -f *.o *.hex *.elf
+
+.PHONY: upload connect
 
 upload: sniffer.hex
 	avrdude -C/home/allen/Programs/arduino-1.6.5/hardware/tools/avr/etc/avrdude.conf -v -patmega328p -carduino -P/dev/arduino -b57600 -D -Uflash:w:sniffer.hex:i
 
-.PHONY: upload
+connect:
+	@picocom --nolock -b 115200 /dev/arduino ||:

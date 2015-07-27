@@ -37,9 +37,9 @@ extern byte readkey;
 //------------------------------------------------------------------------------
 
 void RS232_Init(void);
-extern void RS232_S(unsigned short str_addr);
+extern void RS232_Print_P(const char * str_addr);
 extern void RS232_SendByte(byte Data);
-extern void RS232_Print(char* pBuf);
+extern void RS232_Print(const char *pBuf);
 extern void RS232_PrintHex4(byte Data);
 extern void RS232_PrintHex8(byte Data);
 extern void RS232_PrintDec(byte Data);

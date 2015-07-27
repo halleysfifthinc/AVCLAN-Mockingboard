@@ -63,19 +63,18 @@ int main()
  byte data_tmp[32];
 
  Setup();
+ TCNT0 = 0;
+ while( TCNT0 < 250 );
+ TCNT0 = 0;
+ while( TCNT0 < 250 );
+ TCNT0 = 0;
+ while( TCNT0 < 250 );
 
 
 
- RS232_S((unsigned char)PSTR("AVCLan reader 1.00\nReady\n\n"));
+ RS232_Print("AVCLan reader 1.00\nReady\n\n");
  LED_OFF();
- RS232_S((unsigned char)PSTR("T - device id\n"));
- RS232_S((unsigned char)PSTR("H - HU id\n"));
- RS232_S((unsigned char)PSTR("S - read sequence\n"));
- RS232_S((unsigned char)PSTR("W - send command\n"));
- RS232_S((unsigned char)PSTR("Q - send broadcast\n"));
- RS232_S((unsigned char)PSTR("L/l - log on/off\n"));
- RS232_S((unsigned char)PSTR("K/k - seq. echo on/off\n"));
- RS232_S((unsigned char)PSTR("R/r - register device\n"));
+ RS232_Print_P(PSTR("D - device id\nH - HU id\nS - read sequence\nW - send command\nQ - send broadcast\nL/l - log on/off\nK/k - seq. echo on/off\nR/r - register device\nB - Beep\nT - Measure interval\n"));
 
 
 
@@ -108,18 +107,18 @@ int main()
 			RS232_RxCharBegin = RS232_RxCharEnd = 0;	// do reset Buffer
 		sbi(UCSR0B, RXCIE0);								// enable RX complete interrupt
 		switch (readkey) {
-			case 'T':	if (readSeq) {
+			case 'D':	if (readSeq) {
 						  CD_ID_1 = data_tmp[0];
 						  CD_ID_2 = data_tmp[1];
-						  RS232_S((unsigned char)PSTR("DEV ID SET: 0x"));
+						  RS232_Print_P(PSTR("DEV ID SET: 0x"));
 						  RS232_PrintHex8(CD_ID_1);
 						  RS232_PrintHex8(CD_ID_2);
-						  RS232_S((unsigned char)PSTR("\n"));
+						  RS232_Print_P(PSTR("\n"));
 						  showLog = 1;
 						  readSeq=0;
 						} else {
 						  showLog = 0;
-						  RS232_S((unsigned char)PSTR("DEV ID > \n"));
+						  RS232_Print_P(PSTR("DEV ID > \n"));
 						  readSeq = 1;
 						  s_len=0;
 						  s_dig=0;
@@ -130,15 +129,15 @@ int main()
 			case 'H':	if (readSeq) {
 						  HU_ID_1 = data_tmp[0];
 						  HU_ID_2 = data_tmp[1];
-						  RS232_S((unsigned char)PSTR("HU ID SET: 0x"));
+						  RS232_Print_P(PSTR("HU ID SET: 0x"));
 						  RS232_PrintHex8(HU_ID_1);
 						  RS232_PrintHex8(HU_ID_2);
-						  RS232_S((unsigned char)PSTR("\n"));
+						  RS232_Print_P(PSTR("\n"));
 						  showLog = 1;
 						  readSeq=0;
 						} else {
 						  showLog = 0;
-						  RS232_S((unsigned char)PSTR("HU ID > \n"));
+						  RS232_Print_P(PSTR("HU ID > \n"));
 						  readSeq = 1;
 						  s_len=0;
 						  s_dig=0;
@@ -147,7 +146,7 @@ int main()
 						break;
 
 			case 'S':	showLog = 0;
-						RS232_S((unsigned char)PSTR("READ SEQUENCE > \n"));
+						RS232_Print_P(PSTR("READ SEQUENCE > \n"));
 						readSeq = 1;
 						s_len=0;
 						s_dig=0;
@@ -163,7 +162,7 @@ int main()
 						break;
 
 
-			case 'R':	RS232_S((unsigned char)PSTR("REGIST:\n"));
+			case 'R':	RS232_Print_P(PSTR("REGIST:\n"));
 						AVCLan_Command( cmRegister );
           	TCNT0 = 0;
           	while( TCNT0 < 135 );
@@ -173,19 +172,31 @@ int main()
 						break;
 
 
-			case 'l':	RS232_S((unsigned char)PSTR("Log OFF\n"));
+			case 'l':	RS232_Print_P(PSTR("Log OFF\n"));
 						showLog = 0;
 						break;
-			case 'L':	RS232_S((unsigned char)PSTR("Log ON\n"));
+			case 'L':	RS232_Print_P(PSTR("Log ON\n"));
 						showLog = 1;
 						break;
 
-			case 'k':	RS232_S((unsigned char)PSTR("str OFF\n"));
+			case 'k':	RS232_Print_P(PSTR("str OFF\n"));
 						showLog2 = 0;
 						break;
-			case 'K':	RS232_S((unsigned char)PSTR("str ON\n"));
+			case 'K':	RS232_Print_P(PSTR("str ON\n"));
 						showLog2 = 1;
 						break;
+      case 'B':
+            data_tmp[0] = 0x00;
+            data_tmp[0] = 0x5E;
+            data_tmp[0] = 0x29;
+            data_tmp[0] = 0x60;
+            data_tmp[0] = 0x01;
+            s_len = 5;
+            AVCLan_SendMyData(data_tmp, s_len);
+            break;
+      case 'T':
+            AVCLan_Measure();
+            break;
 
 			default :
 				if (readSeq==1) {
@@ -204,12 +215,12 @@ int main()
 						s_c[0]=s_c[1]=0;
 					}
 					if (showLog2) {
-						RS232_S((unsigned char)PSTR("CURRENT SEQUENCE > "));
+						RS232_Print_P(PSTR("CURRENT SEQUENCE > "));
 						for (i=0; i<s_len; i++) {
 								RS232_PrintHex8(data_tmp[i]);
 								RS232_SendByte(' ');
 						}
-						RS232_S((unsigned char)PSTR("\n"));
+						RS232_Print_P(PSTR("\n"));
 					}
 				}
 		} // switch (readkey)
@@ -232,11 +243,11 @@ void Setup()
 {
 // GIMSK = 0;			// (GICR ?) disable external interupts
 
- CD_ID_1 = 0x02;
- CD_ID_2 = 0x80;
+ CD_ID_1 = 0x03;
+ CD_ID_2 = 0x60;
 
  HU_ID_1 = 0x01;
- HU_ID_2 = 0x40;
+ HU_ID_2 = 0x90;
 
  showLog = 1;
  showLog2 = 1;
@@ -248,7 +259,6 @@ void Setup()
  sbi(TIMSK1, OCIE1A); // Enable timer1 compare interrupt
  TCCR1A = 0;
  TCCR1B |= (1 << WGM12)|(1 << CS12); // Set CTC, prescaler at 256
- //TCNT1  = 0xFFFF - 0x7080;
  OCR1A = 62499; // Compare match at 1sec intervals
 
 
