@@ -19,9 +19,9 @@
   Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
  -----------------------------------------------------------------------
-	this file is a part of the TOYOTA Corolla MP3 Player Project
+  this file is a part of the TOYOTA Corolla MP3 Player Project
  -----------------------------------------------------------------------
- 		http://www.softservice.com.pl/corolla/avc
+     http://www.softservice.com.pl/corolla/avc
 
  May 28 / 2009	- version 2
 
@@ -128,7 +128,12 @@ byte AVCLan_SendMyDataBroadcast(byte *data_tmp, byte s_len);
 void ShowInMessage();
 void ShowOutMessage();
 
-void AVCLan_Measure();
+#ifdef SOFTWARE_DEBUG
+  void AVCLan_Measure();
+#endif
+#ifdef HARDWARE_DEBUG
+  void SetHighLow();
+#endif
 
 //------------------------------------------------------------------------------
 extern byte answerReq;

@@ -44,6 +44,7 @@ extern void RS232_PrintHex4(byte Data);
 extern void RS232_PrintHex8(byte Data);
 extern void RS232_PrintDec(byte Data);
 extern void RS232_PrintDec2(byte Data);
+extern char* itoa(int i, char b[]);
 
 //------------------------------------------------------------------------------
 // LED

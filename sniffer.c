@@ -52,50 +52,45 @@ byte rcv_time_clr = 0;
 //
 int main()
 {
-// byte h;
 
+  byte readSeq = 0;
+  byte s_len	= 0;
+  byte s_dig	= 0;
+  byte s_c[2];
+  byte i;
+  byte data_tmp[32];
 
- byte readSeq = 0;
- byte s_len	= 0;
- byte s_dig	= 0;
- byte s_c[2];
- byte i;
- byte data_tmp[32];
+  Setup();
 
- Setup();
- TCNT0 = 0;
- while( TCNT0 < 250 );
- TCNT0 = 0;
- while( TCNT0 < 250 );
- TCNT0 = 0;
- while( TCNT0 < 250 );
-
-
-
- RS232_Print("AVCLan reader 1.00\nReady\n\n");
- LED_OFF();
- RS232_Print_P(PSTR("D - device id\nH - HU id\nS - read sequence\nW - send command\nQ - send broadcast\nL/l - log on/off\nK/k - seq. echo on/off\nR/r - register device\nB - Beep\nT - Measure interval\n"));
-
-
+  RS232_Print("AVCLan reader 1.00\nReady\n\n");
+  LED_OFF();
+  RS232_Print_P(PSTR("\nS - read sequence\nW - send command\nQ - send broadcast\nL/l - log on/off\nK/k - seq. echo on/off\n"));
+  RS232_Print_P(PSTR("R/r - register device\nB - Beep\n"));
+#ifdef HARDWARE_DEBUG
+    RS232_Print_P(PSTR("1 - Hold High/low\nE - Print line status\n"));
+#endif
+#ifdef SOFTWARE_DEBUG
+    RS232_Print_P(PSTR("M - Measure high and low lengths\n"));
+#endif
 
  while (1) {
 
-	if (INPUT_IS_SET) {	 // if message from some device on AVCLan begin
-		LED_ON();
-  		AVCLan_Read_Message();
-		// show message
-	} else {
-		LED_OFF();
-		// check command from HU
-		if (answerReq != 0) AVCLan_SendAnswer();
-    }
+  if (INPUT_IS_SET) {	 // if message from some device on AVCLan begin
+  	LED_ON();
+  	AVCLan_Read_Message();
+  	// show message
+  } else {
+  	LED_OFF();
+  	// check command from HU
+  	if (answerReq != 0) AVCLan_SendAnswer();
+  }
 
-	// HandleEvent
-	switch (Event) {
-	  case EV_STATUS:	Event &= ~EV_STATUS;
-						AVCLan_Send_Status();
-						break;
-	}
+  // HandleEvent
+  switch (Event) {
+    case EV_STATUS:	Event &= ~EV_STATUS;
+			AVCLan_Send_Status();
+			break;
+  }
 
 
 	// Key handler
@@ -107,96 +102,70 @@ int main()
 			RS232_RxCharBegin = RS232_RxCharEnd = 0;	// do reset Buffer
 		sbi(UCSR0B, RXCIE0);								// enable RX complete interrupt
 		switch (readkey) {
-			case 'D':	if (readSeq) {
-						  CD_ID_1 = data_tmp[0];
-						  CD_ID_2 = data_tmp[1];
-						  RS232_Print_P(PSTR("DEV ID SET: 0x"));
-						  RS232_PrintHex8(CD_ID_1);
-						  RS232_PrintHex8(CD_ID_2);
-						  RS232_Print_P(PSTR("\n"));
-						  showLog = 1;
-						  readSeq=0;
-						} else {
-						  showLog = 0;
-						  RS232_Print_P(PSTR("DEV ID > \n"));
-						  readSeq = 1;
-						  s_len=0;
-						  s_dig=0;
-						  s_c[0]=s_c[1]=0;
-						}
-						break;
-
-			case 'H':	if (readSeq) {
-						  HU_ID_1 = data_tmp[0];
-						  HU_ID_2 = data_tmp[1];
-						  RS232_Print_P(PSTR("HU ID SET: 0x"));
-						  RS232_PrintHex8(HU_ID_1);
-						  RS232_PrintHex8(HU_ID_2);
-						  RS232_Print_P(PSTR("\n"));
-						  showLog = 1;
-						  readSeq=0;
-						} else {
-						  showLog = 0;
-						  RS232_Print_P(PSTR("HU ID > \n"));
-						  readSeq = 1;
-						  s_len=0;
-						  s_dig=0;
-						  s_c[0]=s_c[1]=0;
-						}
-						break;
-
 			case 'S':	showLog = 0;
-						RS232_Print_P(PSTR("READ SEQUENCE > \n"));
-						readSeq = 1;
-						s_len=0;
-						s_dig=0;
-						s_c[0]=s_c[1]=0;
-						break;
+				RS232_Print_P(PSTR("READ SEQUENCE > \n"));
+				readSeq = 1;
+				s_len=0;
+				s_dig=0;
+				s_c[0]=s_c[1]=0;
+				break;
 			case 'W' :  showLog = 1;
-						readSeq=0;
-						AVCLan_SendMyData(data_tmp, s_len);
-						break;
+				readSeq=0;
+				AVCLan_SendMyData(data_tmp, s_len);
+				break;
 			case 'Q' :  showLog = 1;
-						readSeq=0;
-						AVCLan_SendMyDataBroadcast(data_tmp, s_len);
-						break;
-
-
+				readSeq=0;
+				AVCLan_SendMyDataBroadcast(data_tmp, s_len);
+				break;
 			case 'R':	RS232_Print_P(PSTR("REGIST:\n"));
-						AVCLan_Command( cmRegister );
-          	TCNT0 = 0;
-          	while( TCNT0 < 135 );
- 						CHECK_AVC_LINE;
-						break;
+  			AVCLan_Command( cmRegister );
+      	TCNT0 = 0;
+      	while( TCNT0 < 135 );
+  				CHECK_AVC_LINE;
+  			break;
 			case 'r':	AVCLan_Register();
-						break;
-
-
+				break;
 			case 'l':	RS232_Print_P(PSTR("Log OFF\n"));
-						showLog = 0;
-						break;
+				showLog = 0;
+				break;
 			case 'L':	RS232_Print_P(PSTR("Log ON\n"));
-						showLog = 1;
-						break;
-
+				showLog = 1;
+				break;
 			case 'k':	RS232_Print_P(PSTR("str OFF\n"));
-						showLog2 = 0;
-						break;
+				showLog2 = 0;
+				break;
 			case 'K':	RS232_Print_P(PSTR("str ON\n"));
-						showLog2 = 1;
-						break;
+				showLog2 = 1;
+				break;
       case 'B':
-            data_tmp[0] = 0x00;
-            data_tmp[0] = 0x5E;
-            data_tmp[0] = 0x29;
-            data_tmp[0] = 0x60;
-            data_tmp[0] = 0x01;
-            s_len = 5;
-            AVCLan_SendMyData(data_tmp, s_len);
-            break;
-      case 'T':
-            AVCLan_Measure();
-            break;
+        data_tmp[0] = 0x00;
+        data_tmp[1] = 0x5E;
+        data_tmp[2] = 0x29;
+        data_tmp[3] = 0x60;
+        data_tmp[4] = 0x01;
+        s_len = 5;
+        AVCLan_SendMyData(data_tmp, s_len);
+        break;
+
+#ifdef HARDWARE_DEBUG
+        case '1':
+          SetHighLow();
+          break;
+        case 'E':
+          if(INPUT_IS_SET) {
+            RS232_Print_P(PSTR("Set/High/1\n"));
+          } else if (INPUT_IS_CLEAR) {
+            RS232_Print_P(PSTR("Unset/Low/0\n"));
+          } else {
+            RS232_Print_P(PSTR("WTF?\n"));
+          }
+          break;
+#endif
+#ifdef SOFTWARE_DEBUG
+        case 'M':
+          AVCLan_Measure();
+          break;
+#endif
 
 			default :
 				if (readSeq==1) {

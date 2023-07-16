@@ -10,7 +10,7 @@ sniffer.hex: sniffer.elf
 	avr-objcopy -j .text -j .data -O ihex sniffer.elf sniffer.hex
 
 sniffer.elf: sniffer.o com232.o avclandrv.o GlobalDef.o
-	$(CC) $(LFLAGS) $(DEFS) -o sniffer.elf sniffer.o com232.o avclandrv.o GlobalDef.o
+	$(CC) $(LFLAGS) -o sniffer.elf sniffer.o com232.o avclandrv.o GlobalDef.o
 
 sniffer.o: sniffer.c GlobalDef.h com232.h avclandrv.h
 	$(CC) $(CFLAGS) $(DEFS) sniffer.c
@@ -29,8 +29,11 @@ clean::
 
 .PHONY: upload connect size
 
-upload: sniffer.hex
-	avrdude -C/home/allen/Programs/arduino-1.6.5/hardware/tools/avr/etc/avrdude.conf -v -patmega328p -carduino -P/dev/arduino -b57600 -D -Uflash:w:sniffer.hex:i
+upload-final: sniffer.hex
+	avrdude -C/home/allen/Programs/arduino-1.6.5/hardware/tools/avr/etc/avrdude.conf -patmega328p -cstk500v1 -P/dev/arduino -b19200 -D -U flash:w:sniffer.hex:i
+
+upload-arduino: sniffer.hex
+	avrdude -C/home/allen/Programs/arduino-1.6.5/hardware/tools/avr/etc/avrdude.conf -patmega328p -carduino -P/dev/arduino -b57600 -D -U flash:w:sniffer.hex:i
 
 connect:
 	@picocom --nolock -b 115200 /dev/arduino ||:
