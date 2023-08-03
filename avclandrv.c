@@ -38,10 +38,12 @@
 
 //------------------------------------------------------------------------------
 
-#define AVC_OUT_EN()	sbi(PORTD, 6); sbi(DDRD, 6);  sbi(DDRD, 7); sbi(ACSR, ACD);	// Write mode
-#define AVC_OUT_DIS()	cbi(PORTD, 6); cbi(DDRD, 6);  cbi(DDRD, 7); cbi(ACSR, ACD); // Read mpde
-#define AVC_SET_1()  	sbi(PORTD, 6);
-#define AVC_SET_0()  	cbi(PORTD, 6);
+#define AVC_OUT_EN()	cbi(AC2_CTRLA, AC_ENABLE_bp); sbi(VPORTA_DIR, 6); // Write mode
+#define AVC_OUT_DIS()	cbi(VPORTA_DIR, 6); sbi(AC2_CTRLA, AC_ENABLE_bp); // Read mode
+#define AVC_SET_LOGICAL_1() \
+    __asm__ __volatile__ ("sbi VPORTA_OUT, 6;");
+#define AVC_SET_LOGICAL_0() \
+ 	__asm__ __volatile__ ("cbi VPORTA_OUT, 6;");
 
 
 byte CD_ID_1;
@@ -147,20 +149,20 @@ void AVC_HoldLine()
  // wait for free line
  byte line_busy = 1;
 
- TCNT0 = 0;
+ TCB1.CNT = 0;
  do {
      while (INPUT_IS_CLEAR) {
         /*	The comparison value was originally 25 with CK64 (tick period of 4.34 us)
                  at a clock frequency 14.7456MHz.
                 For a more accurate tick period of .5 us at 16MHz, the value should be approximately 225*/
-        if (TCNT0 >= 225) break;
+        if (TCB1.CNT >= 900) break;
      }
-     if (TCNT0 > 216) line_busy=0;
+     if (TCB1.CNT > 864) line_busy=0;
  } while (line_busy);
 
  // switch to out mode
  AVC_OUT_EN();
- AVC_SET_1();
+ AVC_SET_LOGICAL_1();
 
  STARTEvent;
 }
@@ -169,7 +171,7 @@ void AVC_HoldLine()
 //------------------------------------------------------------------------------
 void AVC_ReleaseLine()
 {
- AVC_SET_0();
+ AVC_SET_LOGICAL_0();
  AVC_OUT_DIS();
 }
 //------------------------------------------------------------------------------
@@ -179,31 +181,21 @@ void AVC_ReleaseLine()
 //------------------------------------------------------------------------------
 void AVCLan_Init()
 {
-    // OUTPUT ( set as input for comparator )
-    cbi(PORTD, 6);
-    cbi(DDRD, 6);
+    PORTA.PIN6CTRL = PORT_ISC_INPUT_DISABLE_gc; // Disable input buffer; recommended when using AC
+    PORTA.PIN7CTRL = PORT_ISC_INPUT_DISABLE_gc;
 
-    // INPUT
-    cbi(PORTD, 7);
-    cbi(DDRD, 7);
+    // Pull-ups are disabled by default
+    VPORTA.DIR &= ~(PIN6_bm | PIN7_bm); // Zero pin 6 and 7 to set as input
+
 
     // Analog comparator
+    AC2.CTRLA = AC_OUTEN_bm | AC_HYSMODE_25mV_gc | AC_ENABLE_bm;
 
-    cbi(ADCSRB, ACME);	// Analog Comparator Multiplexer Enable - NO
-    //cbi(ADCSRA, ADEN);
-    /*
-    cbi(ACSR, ACBG);	// Analog Comparator Bandgap Select
-                        // ACI: Analog Comparator Interrupt Flag
-
-    cbi(ACSR, ACIE);	// Analog Comparator Interrupt Enable - NO
-    cbi(ACSR, ACIC);	// Analog Comparator Input Capture Enable - NO
-    */
-    cbi(ACSR, ACIS1);	// Analog Comparator Interrupt Mode Select
-    cbi(ACSR, ACIS0);  // Comparator Interrupt on Output Toggle
-
-    cbi(ACSR, ACD); 	// Analog Comparator Disable - NO
-
-    TCCR0B = _BV(CS01);	// Timer 0 prescaler = 8 ( 2 count / us )
+    TCB1.CTRLB = TCB_ASYNC_bm | TCB_CNTMODE_SINGLE_gc;
+    TCB1.EVCTRL = TCB_CAPTEI_bm;
+    TCB1.INTCTRL = TCB_CAPT_bm;
+    EVSYS.ASYNCUSER0 = EVSYS_ASYNCUSER0_ASYNCCH0_gc;
+    TCB1.CTRLA = TCB_CLKSEL_CLKDIV2_gc | TCB_ENABLE_bm;
 
     message_len   = 0;
     answerReq     = cmNull;
@@ -228,9 +220,9 @@ byte AVCLan_Read_Byte(byte length)
 
  while (1) {
    while (INPUT_IS_CLEAR);
-   TCNT0 = 0;
-   while (INPUT_IS_SET); 	// If input was set for less than a
-   if ( TCNT0 < 52 ) {		// generous half period, bit was a 1
+   TCB1.CNT = 0;
+   while (INPUT_IS_SET); 	// If input was set for less than 26 us
+   if ( TCB1.CNT < 208 ) {  // (a generous half period), bit was a 1
       bite++;
       parity_bit++;
    }
@@ -240,19 +232,24 @@ byte AVCLan_Read_Byte(byte length)
  }
 }
 
+void set_AVC_logic_for(uint8_t val, uint16_t period) {
+    if (val == 1) {
+        AVC_SET_LOGICAL_1();
+    } else {
+        AVC_SET_LOGICAL_0();
+    }
+    TCB1.CCMP = period;
+    EVSYS.ASYNCSTROBE = EVSYS_ASYNCCH00_bm;
+    loop_until_bit_is_set(TCB1_INTFLAGS, 0);
+    TCB1_INTFLAGS = 1;
+}
+
 // DONE: Timing adjusted
 //------------------------------------------------------------------------------
 byte AVCLan_Send_StartBit()
 {
-    AVC_SET_1();
-    TCNT0 = 0;
-    while( TCNT0 < 255 );
-    TCNT0 = 0;
-    while( TCNT0 < 77 );
-
-    AVC_SET_0();
-    TCNT0 = 0;
-    while( TCNT0 < 38 );
+    set_AVC_logic_for(1, 1328); // 166 us @ 125 ns tick (for F_CPU = 16MHz)
+    set_AVC_logic_for(0, 152); // 19 us @ 125 ns tick (for F_CPU = 16MHz)
 
     return 1;
 }
@@ -261,69 +258,47 @@ byte AVCLan_Send_StartBit()
 //------------------------------------------------------------------------------
 void AVCLan_Send_Bit1()
 {
-    AVC_SET_1();
-    TCNT0 = 0;
-    while( TCNT0 < 41 );
-
-    AVC_SET_0();
-    TCNT0 = 0;
-    while( TCNT0 < 38 );							// 12-21 us
+    set_AVC_logic_for(1, 164); // 20.5 us @ 125 ns tick (for F_CPU = 16MHz)
+    set_AVC_logic_for(0, 152); // 19 us @ 125 ns tick (for F_CPU = 16MHz)
 }
 
-// DONE: Timing adjusted
-//------------------------------------------------------------------------------
 void AVCLan_Send_Bit0()
 {
-    AVC_SET_1();
-    TCNT0 = 0;
-    while( TCNT0 < 68 );						// 28-37 us
-
-    AVC_SET_0();
-    TCNT0 = 0;
-    while( TCNT0 < 11 );								// 00-09 us
+    set_AVC_logic_for(1, 272); // 34 us @ 125 ns tick (for F_CPU = 16MHz)
+    set_AVC_logic_for(0, 44); // 5.5 us @ 125 ns tick (for F_CPU = 16MHz)
 }
 
 //	DONE: Timing adjusted.
 //------------------------------------------------------------------------------
 byte AVCLan_Read_ACK()
 {
-    AVC_SET_1();
-    TCNT0 = 0;
-    while( TCNT0 < 38 );
-
-    AVC_SET_0();												// Replace with AVC_ReleaseLine?
+    set_AVC_logic_for(1, 152); // 34 us @ 125 ns tick (for F_CPU = 16MHz)
+    AVC_SET_LOGICAL_0(); // Replace with AVC_ReleaseLine?
     AVC_OUT_DIS(); // switch to read mode
 
+    TCB1.CNT = 0;
     while(1) {
-    if (INPUT_IS_SET && (TCNT0 > 52 )) break;		// Make sure INPUT is not still set from us
+    if (INPUT_IS_SET && (TCB1.CNT > 208 )) break; // Make sure INPUT is not still set from us
     // Line of experimentation: Try changing TCNT0 comparison value or remove check entirely
-    if (TCNT0 > 75 ) return 1;					// Not sure if this fix is intent correct
+    if (TCB1.CNT > 300 ) return 1; // Not sure if this fix is intent correct
     }
 
     while(INPUT_IS_SET);
     AVC_OUT_EN();	// back to write mode
     return 0;
-
 }
 
-//	DONE: Timing adjusted.
-//------------------------------------------------------------------------------
 byte AVCLan_Send_ACK()
 {
-    TCNT0 = 0;
+    TCB1.CNT = 0;
     while (INPUT_IS_CLEAR)	{
-        if (TCNT0 >= 225) return 0;			// max wait time
+        if (TCB1.CNT >= 900) return 0; // max wait time
     }
 
     AVC_OUT_EN();
 
-    AVC_SET_1();
-    TCNT0 = 0;
-    while( TCNT0 < 68 );								//28-37
-
-    AVC_SET_0();
-    TCNT0 = 0;
-    while( TCNT0 < 11 );									//00-09
+    set_AVC_logic_for(1, 272); // 34 us @ 125 ns tick (for F_CPU = 16MHz)
+    set_AVC_logic_for(0, 44); // 5.5 us @ 125 ns tick (for F_CPU = 16MHz)
 
     AVC_OUT_DIS();
 
@@ -533,12 +508,12 @@ byte AVCLan_SendData()
     // wait for free line
     byte line_busy = 1;
 
-    TCNT0 = 0;
+    TCB1.CNT = 0;
     do {
         while (INPUT_IS_CLEAR) {
-        if ( TCNT0 >= 225 ) break;
+        if ( TCB1.CNT >= 900 ) break;
         }
-        if ( TCNT0 > 216 ) line_busy=0;
+        if ( TCB1.CNT > 864 ) line_busy=0;
     } while (line_busy);
 
 
@@ -617,12 +592,12 @@ byte AVCLan_SendDataBroadcast()
     // wait for free line
     byte line_busy = 1;
 
-    TCNT0 = 0;
+    TCB1.CNT = 0;
     do {
         while (INPUT_IS_CLEAR) {
-        if ( TCNT0 >= 225 ) break;
+        if ( TCB1.CNT >= 900 ) break;
         }
-        if ( TCNT0 > 216 ) line_busy=0;
+        if ( TCB1.CNT > 864 ) line_busy=0;
     } while (line_busy);
 
 
@@ -1025,10 +1000,10 @@ void ShowOutMessage()
         sbi(TCCR1B, CS10);
         word n = 60000;
         TCNT1 = 0;
-        AVC_SET_1();
+        AVC_SET_LOGICAL_1();
         while ( TCNT1 < n );
         TCNT1 = 0;
-        AVC_SET_0();
+        AVC_SET_LOGICAL_0();
         while ( TCNT1 < n );
         cbi(TCCR1B, CS10);
         AVC_OUT_DIS();

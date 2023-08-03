@@ -18,14 +18,11 @@
 #define FALSE                   0
 #define TRUE                    (!FALSE)
 
-// AVC LAN bus directly connected to internal analog comparator (PD6/7)
-// PD6 AIN0 +
-// PD7 AIN1 -
-#define DATAIN_PIN              ACSR
-#define DATAIN                  ACO
-
-#define INPUT_IS_SET            ( bit_is_set( DATAIN_PIN, DATAIN ) )
-#define INPUT_IS_CLEAR          ( bit_is_clear( DATAIN_PIN, DATAIN ) )
+// AVC LAN bus on AC2 (PA6/7)
+// PA6 AINP0 +
+// PA7 AINN1 -
+#define INPUT_IS_SET            ( bit_is_set( AC2_STATUS, AC_STATE_bp ) )
+#define INPUT_IS_CLEAR          ( bit_is_clear( AC2_STATUS, AC_STATE_bp ) )
 
 #define LED_DDR                 DDRB
 #define LED_PORT                PORTB
