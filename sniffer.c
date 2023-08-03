@@ -223,12 +223,12 @@ void Setup()
 
  MCUCR = 0;
 
- // Timer 1
- TIMSK1 = 0;
- sbi(TIMSK1, OCIE1A); // Enable timer1 compare interrupt
- TCCR1A = 0;
- TCCR1B |= (1 << WGM12)|(1 << CS12); // Set CTC, prescaler at 256
- OCR1A = 62499; // Compare match at 1sec intervals
+    loop_until_bit_is_clear(RTC_STATUS, RTC_CTRLABUSY_bp);
+    RTC.CTRLA = RTC_PRESCALER_DIV1_gc;
+    RTC.CLKSEL = RTC_CLKSEL_INT32K_gc;
+    RTC.PITINTCTRL = RTC_PI_bm;
+    loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CTRLBUSY_bp);
+    RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm;
 
 
  RS232_Init();
@@ -244,24 +244,19 @@ void Setup()
 // -------------------------------------------------------------------------------------
 
 
-byte s1=0;
-//------------------------------------------------------------------------------
-ISR(TIMER1_COMPA_vect)					// Timer1 compare match every 1Sec
+ISR(RTC_PIT_vect)   // Periodic interrupt with a 1 sec period
 {
-	s1++;
-	if (s1==2) {
-		s1=0;
-		if (CD_Mode==stPlay) {
-			cd_Time_Sec=HexInc(cd_Time_Sec);
-			if (cd_Time_Sec==0x60) {
-				cd_Time_Sec = 0;
-				cd_Time_Min=HexInc(cd_Time_Min);
-				if (cd_Time_Min==0xA0) {
-					cd_Time_Min=0x0;
-				}
-			}
-			Event |= EV_STATUS;
-		}
-	}
+    if (CD_Mode==stPlay)
+    {
+        cd_Time_Sec=incBCD(cd_Time_Sec);
+        if (cd_Time_Sec==0x60) {
+            cd_Time_Sec = 0;
+            cd_Time_Min=incBCD(cd_Time_Min);
+            if (cd_Time_Min==0xA0) {
+                cd_Time_Min=0x0;
+            }
+        }
+    }
+    Event |= EV_STATUS;
+    RTC.PITINTFLAGS |= RTC_PI_bm;
 }
-//------------------------------------------------------------------------------
