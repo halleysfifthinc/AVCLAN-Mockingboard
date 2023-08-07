@@ -833,9 +833,9 @@ byte AVCLan_Command(byte command)
     return r;
 }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
-byte HexInc(byte data)
+/* Increment packed 2-digit BCD number.
+   WARNING: Overflow behavior is incorrect (e.g. `incBCD(0x99) != 0x00`) */
+byte incBCD(byte data)
 {
     if ((data & 0x9)==0x9)
         return (data + 7);
@@ -843,28 +843,24 @@ byte HexInc(byte data)
     return (data+1);
 }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
-byte HexDec(byte data)
-{
-    if ((data & 0xF)==0)
-        return (data - 7);
+// /* Decrement packed 2-digit BCD number */
+// byte decBCD(byte data)
+// {
+//     if ((data & 0xF)==0)
+//         return (data - 7);
 
-    return (data-1);
-}
+//     return (data-1);
+// }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
-// encode decimal valute to 'toyota' format :-)
-//  ex.   42 (dec)   =  0x42 (toy)
-byte Dec2Toy(byte data)
-{
-    byte d,d1;
-    d = (unsigned int)data/(unsigned int)10;
-    d1 = d * 16;
-    d  = d1 + (data - 10*d);
-    return d;
-}
+// /* convert 8-bit binary to packed 2-digit BCD */
+// byte bin2BCD8(byte data)
+// {
+//     byte d,d1;
+//     d = (unsigned int)data/(unsigned int)10;
+//     d1 = d * 16;
+//     d  = d1 + (data - 10*d);
+//     return d;
+// }
 
 // DONE: No timing adjustment needed.
 //------------------------------------------------------------------------------

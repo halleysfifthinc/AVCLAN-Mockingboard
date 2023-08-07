@@ -109,9 +109,9 @@ byte  AVCLan_SendAnswer();
 byte  AVCLan_SendDataBroadcast();
 byte	AVCLan_Command(byte command);
 
-byte  HexInc(byte data);
-byte  HexDec(byte data);
-byte  Dec2Toy(byte data);
+byte  incBCD(byte data);
+// byte  decBCD(byte data); // unused
+// byte  bin2BCD8(byte data);
 
 extern byte check_timeout;
 
