@@ -33,8 +33,8 @@
 //------------------------------------------------------------------------------
 #include "GlobalDef.h"
 
-#define STOPEvent  cbi(RTC.PITINTCTRL, RTC_PI_bp); cbi(UCSR0B, RXCIE0);
-#define STARTEvent sbi(RTC.PITINTCTRL, RTC_PI_bp); sbi(UCSR0B, RXCIE0);
+#define STOPEvent  cbi(RTC.PITINTCTRL, RTC_PI_bp); cbi(USART0.CTRLA, USART_RXCIE_bp);
+#define STARTEvent sbi(RTC.PITINTCTRL, RTC_PI_bp); sbi(USART0.CTRLA, USART_RXCIE_bp);
 
 
 #define CHECK_AVC_LINE		if (INPUT_IS_SET) AVCLan_Read_Message();

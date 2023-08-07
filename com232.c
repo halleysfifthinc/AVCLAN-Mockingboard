@@ -35,34 +35,28 @@ byte readkey;
 //------------------------------------------------------------------------------
 void RS232_Init(void)
 {
- // init LED
- sbi(DDRB, 5);
- cbi(PORTB, 5);
+//  // init LED
+//  sbi(DDRB, 5);
+//  cbi(PORTB, 5);
 
  RS232_RxCharBegin = RS232_RxCharEnd = 0;
 
- UCSR0A = 0;
- UCSR0B = ((1<<RXCIE0) | (1<<RXEN0) | (1<<TXEN0));	// enable RxD/TxD and interrupts
- UCSR0C = ((1<<UCSZ01)|(1<<UCSZ00));				// 8N1
- UBRR0L  = 8;   // Baud Rate 9600 (3 for 250000)
-                // 103  =>    9600
-                // 51   =>   19200
-                // 25   =>   38400
-                // 8    =>  115200
-                // 3    =>  250000
-
+    USART0.CTRLA = USART_RXCIE_bm; // Enable receive interrupts
+    USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc; // Enable Rx/Tx and set receive mode normal
+    USART0.CTRLC = USART_CMODE_ASYNCHRONOUS_gc | USART_PMODE_DISABLED_gc | USART_CHSIZE_8BIT_gc | USART_SBMODE_1BIT_gc; // Async UART with 8N1 config
+    USART0.BAUD = 256; // 250k baud rate (64*F_CPU/(16*250k)) for F_CPU = 16MHz
 }
 //------------------------------------------------------------------------------
-ISR(USART_RX_vect)
+ISR(USART0_RXC_vect)
 {
-	RS232_RxCharBuffer[RS232_RxCharEnd] = UDR0;		// Store received character to the End of Buffer
+	RS232_RxCharBuffer[RS232_RxCharEnd] = USART0_RXDATAL;		// Store received character to the End of Buffer
     RS232_RxCharEnd++;
 }
 //------------------------------------------------------------------------------
 void RS232_SendByte(byte Data)
 {
-	while ((UCSR0A & _BV(UDRE0)) != _BV(UDRE0));	// wait for UART to become available
-	UDR0 = Data;									// send character
+    loop_until_bit_is_set(USART0_STATUS, USART_DREIF_bp); // wait for UART to become available
+    USART0_TXDATAL = Data; // send character
 }
 //------------------------------------------------------------------------------
 void RS232_Print_P(const char * str_addr)

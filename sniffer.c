@@ -95,12 +95,12 @@ int main()
 
 	// Key handler
 	if (RS232_RxCharEnd) {
-		cbi(UCSR0B, RXCIE0);								// disable RX complete interrupt
+        cbi(USART0.CTRLA, USART_RXCIE_bp);								// disable RX complete interrupt
 		readkey = RS232_RxCharBuffer[RS232_RxCharBegin];// read begin of received Buffer
 		RS232_RxCharBegin++;
 		if (RS232_RxCharBegin == RS232_RxCharEnd)		// if Buffer is empty
 			RS232_RxCharBegin = RS232_RxCharEnd = 0;	// do reset Buffer
-		sbi(UCSR0B, RXCIE0);								// enable RX complete interrupt
+        sbi(USART0.CTRLA, USART_RXCIE_bp);								// enable RX complete interrupt
 		switch (readkey) {
 			case 'S':	showLog = 0;
 				RS232_Print_P(PSTR("READ SEQUENCE > \n"));
