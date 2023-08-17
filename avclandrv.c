@@ -36,8 +36,6 @@
 #include "GlobalDef.h"
 
 
-//------------------------------------------------------------------------------
-
 #define AVC_OUT_EN()	cbi(AC2_CTRLA, AC_ENABLE_bp); sbi(VPORTA_DIR, 6); // Write mode
 #define AVC_OUT_DIS()	cbi(VPORTA_DIR, 6); sbi(AC2_CTRLA, AC_ENABLE_bp); // Read mode
 #define AVC_SET_LOGICAL_1() \
@@ -137,11 +135,7 @@ byte		CMD_STOP2[]		= {0x0,	0x0B, 0x63, 0x31,  0xF1, 0x00, 0x30, 0x00, 0x00,0x00,
 
 const byte	CMD_BEEP[]		= {0x1,	0x05, 0x00, 0x63,  0x29, 0x60, 0x02 };
 
-//------------------------------------------------------------------------------
 
-
-// DONE: Timing adjusted, however refactoring may make code more clear/efficient
-//------------------------------------------------------------------------------
 void AVC_HoldLine()
 {
  STOPEvent;
@@ -167,18 +161,12 @@ void AVC_HoldLine()
  STARTEvent;
 }
 
-// DONE: No changes necessary
-//------------------------------------------------------------------------------
 void AVC_ReleaseLine()
 {
  AVC_SET_LOGICAL_0();
  AVC_OUT_DIS();
 }
-//------------------------------------------------------------------------------
 
-
-// DONE: No changes necessary
-//------------------------------------------------------------------------------
 void AVCLan_Init()
 {
     PORTA.PIN6CTRL = PORT_ISC_INPUT_DISABLE_gc; // Disable input buffer; recommended when using AC
@@ -212,8 +200,6 @@ void AVCLan_Init()
 
 }
 
-// DONE: Timing adjusted, however refactoring may make code more clear/efficient
-//------------------------------------------------------------------------------
 byte AVCLan_Read_Byte(byte length)
 {
  byte bite = 0;
@@ -244,8 +230,6 @@ void set_AVC_logic_for(uint8_t val, uint16_t period) {
     TCB1_INTFLAGS = 1;
 }
 
-// DONE: Timing adjusted
-//------------------------------------------------------------------------------
 byte AVCLan_Send_StartBit()
 {
     set_AVC_logic_for(1, 1328); // 166 us @ 125 ns tick (for F_CPU = 16MHz)
@@ -254,8 +238,6 @@ byte AVCLan_Send_StartBit()
     return 1;
 }
 
-// DONE: Timing adjusted. Comparison values are timer ticks, not us.
-//------------------------------------------------------------------------------
 void AVCLan_Send_Bit1()
 {
     set_AVC_logic_for(1, 164); // 20.5 us @ 125 ns tick (for F_CPU = 16MHz)
@@ -268,8 +250,6 @@ void AVCLan_Send_Bit0()
     set_AVC_logic_for(0, 44); // 5.5 us @ 125 ns tick (for F_CPU = 16MHz)
 }
 
-//	DONE: Timing adjusted.
-//------------------------------------------------------------------------------
 byte AVCLan_Read_ACK()
 {
     set_AVC_logic_for(1, 152); // 34 us @ 125 ns tick (for F_CPU = 16MHz)
@@ -305,8 +285,6 @@ byte AVCLan_Send_ACK()
     return 1;
 }
 
-// DONE: var 'byte' adjusted to 'bite' to avoid reserved word conflict
-//------------------------------------------------------------------------------
 byte AVCLan_Send_Byte(byte bite, byte len)
 {
  byte b;
@@ -333,8 +311,6 @@ byte AVCLan_Send_Byte(byte bite, byte len)
 
 }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
 byte AVCLan_Send_ParityBit()
 {
  if ( (parity_bit & 1)!=0 ) {
@@ -347,8 +323,6 @@ byte AVCLan_Send_ParityBit()
  return 1;
 }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
 byte CheckCmd(byte *cmd)
 {
  byte i;
@@ -365,8 +339,6 @@ byte CheckCmd(byte *cmd)
  return 1;
 }
 
-// DONE: Timing adjusted.
-//------------------------------------------------------------------------------
 byte AVCLan_Read_Message()
 {
     STOPEvent;						// disable timer1 interrupt
@@ -497,8 +469,6 @@ byte AVCLan_Read_Message()
     return 1;
 }
 
-// DONE: Timing adjusted.
-//------------------------------------------------------------------------------
 byte AVCLan_SendData()
 {
     byte i;
@@ -581,8 +551,6 @@ byte AVCLan_SendData()
     return 0;
 }
 
-// DONE: Timing adjusted.
-//------------------------------------------------------------------------------
 byte AVCLan_SendDataBroadcast()
 {
     byte i;
@@ -636,8 +604,6 @@ byte AVCLan_SendDataBroadcast()
     return 0;
 }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
 byte AVCLan_SendAnswerFrame(byte *cmd)
 {
     byte i;
@@ -658,8 +624,6 @@ byte AVCLan_SendAnswerFrame(byte *cmd)
         return AVCLan_SendDataBroadcast();
 }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
 byte AVCLan_SendMyData(byte *data_tmp, byte s_len)
 {
     byte i;
@@ -675,8 +639,6 @@ byte AVCLan_SendMyData(byte *data_tmp, byte s_len)
     return AVCLan_SendData();
 }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
 byte AVCLan_SendMyDataBroadcast(byte *data_tmp, byte s_len)
 {
     byte i;
@@ -693,8 +655,6 @@ byte AVCLan_SendMyDataBroadcast(byte *data_tmp, byte s_len)
     return AVCLan_SendDataBroadcast();
 }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
 byte AVCLan_SendInitCommands()
 {
     byte r;
@@ -726,8 +686,6 @@ byte AVCLan_SendInitCommands()
     return r;
 }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
 void AVCLan_Send_Status()
 {
     //                                                        disc  track t_min t_sec
@@ -743,8 +701,6 @@ void AVCLan_Send_Status()
      AVCLan_SendAnswerFrame((byte*)STATUS);
 }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
 byte AVCLan_SendAnswer()
 {
     byte r = 0 ;
@@ -806,8 +762,6 @@ byte AVCLan_SendAnswer()
     return r;
 }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
 void AVCLan_Register()
 {
     RS232_Print_P(PSTR("REG_ST\n"));
@@ -817,8 +771,6 @@ void AVCLan_Register()
     AVCLan_Command( cmInit );
 }
 
-// DONE: Nothing needed.
-//------------------------------------------------------------------------------
 byte AVCLan_Command(byte command)
 {
     byte r;
@@ -843,27 +795,6 @@ byte incBCD(byte data)
     return (data+1);
 }
 
-// /* Decrement packed 2-digit BCD number */
-// byte decBCD(byte data)
-// {
-//     if ((data & 0xF)==0)
-//         return (data - 7);
-
-//     return (data-1);
-// }
-
-// /* convert 8-bit binary to packed 2-digit BCD */
-// byte bin2BCD8(byte data)
-// {
-//     byte d,d1;
-//     d = (unsigned int)data/(unsigned int)10;
-//     d1 = d * 16;
-//     d  = d1 + (data - 10*d);
-//     return d;
-// }
-
-// DONE: No timing adjustment needed.
-//------------------------------------------------------------------------------
 void ShowInMessage()
 {
     if (message_len==0) return;
@@ -893,7 +824,6 @@ void ShowInMessage()
     AVC_ReleaseLine();
 }
 
-//------------------------------------------------------------------------------
 void ShowOutMessage()
 {
     byte i;
@@ -1005,5 +935,3 @@ void ShowOutMessage()
         AVC_OUT_DIS();
     }
 #endif
-
-//------------------------------------------------------------------------------

@@ -32,7 +32,6 @@
 byte RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
 byte readkey;
 
-//------------------------------------------------------------------------------
 void RS232_Init(void)
 {
 //  // init LED
@@ -46,19 +45,19 @@ void RS232_Init(void)
     USART0.CTRLC = USART_CMODE_ASYNCHRONOUS_gc | USART_PMODE_DISABLED_gc | USART_CHSIZE_8BIT_gc | USART_SBMODE_1BIT_gc; // Async UART with 8N1 config
     USART0.BAUD = 256; // 250k baud rate (64*F_CPU/(16*250k)) for F_CPU = 16MHz
 }
-//------------------------------------------------------------------------------
+
 ISR(USART0_RXC_vect)
 {
 	RS232_RxCharBuffer[RS232_RxCharEnd] = USART0_RXDATAL;		// Store received character to the End of Buffer
     RS232_RxCharEnd++;
 }
-//------------------------------------------------------------------------------
+
 void RS232_SendByte(byte Data)
 {
     loop_until_bit_is_set(USART0_STATUS, USART_DREIF_bp); // wait for UART to become available
     USART0_TXDATAL = Data; // send character
 }
-//------------------------------------------------------------------------------
+
 void RS232_Print_P(const char * str_addr)
 {
 	register byte c;
@@ -69,7 +68,7 @@ void RS232_Print_P(const char * str_addr)
 		RS232_SendByte(c);
 	}
 }
-//------------------------------------------------------------------------------
+
 void RS232_Print(const char *pBuf)
 {
 	register byte c;
@@ -80,7 +79,7 @@ void RS232_Print(const char *pBuf)
 		RS232_SendByte(c);
 	}
 }
-//------------------------------------------------------------------------------
+
 void RS232_PrintHex4(byte Data)
 {
 	byte Character = Data & 0x0f;
@@ -89,13 +88,13 @@ void RS232_PrintHex4(byte Data)
 		Character += 'A' - '0' - 10;
 	RS232_SendByte(Character);
 }
-//------------------------------------------------------------------------------
+
 void RS232_PrintHex8(byte Data)
 {
     RS232_PrintHex4(Data >> 4);
     RS232_PrintHex4(Data);
 }
-//------------------------------------------------------------------------------
+
 void RS232_PrintDec(byte Data)
 {
  if (Data>99) {
@@ -114,7 +113,7 @@ void RS232_PrintDec(byte Data)
  RS232_SendByte('0'+v1);
  RS232_SendByte(c);
 }
-//------------------------------------------------------------------------------
+
 void RS232_PrintDec2(byte Data)
 {
  if (Data<10) RS232_SendByte('0');
@@ -140,4 +139,3 @@ char* itoa(int i, char b[]){
     }while(i);
     return b;
 }
-//------------------------------------------------------------------------------

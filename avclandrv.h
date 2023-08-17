@@ -30,7 +30,7 @@
 
 #ifndef __AVCLANDRV_H
 #define __AVCLANDRV_H
-//------------------------------------------------------------------------------
+
 #include "GlobalDef.h"
 
 #define STOPEvent  cbi(RTC.PITINTCTRL, RTC_PI_bp); cbi(USART0.CTRLA, USART_RXCIE_bp);
@@ -110,8 +110,6 @@ byte  AVCLan_SendDataBroadcast();
 byte	AVCLan_Command(byte command);
 
 byte  incBCD(byte data);
-// byte  decBCD(byte data); // unused
-// byte  bin2BCD8(byte data);
 
 extern byte check_timeout;
 
@@ -135,7 +133,6 @@ void ShowOutMessage();
   void SetHighLow();
 #endif
 
-//------------------------------------------------------------------------------
 extern byte answerReq;
-//------------------------------------------------------------------------------
-#endif
+
+#endif // __AVCLANDRV_H

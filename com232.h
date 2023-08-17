@@ -26,15 +26,11 @@
 
 #ifndef __COM232_H
 #define __COM232_H
-//------------------------------------------------------------------------------
 
 #include "GlobalDef.h"
 
-//------------------------------------------------------------------------------
-
 extern byte RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
 extern byte readkey;
-//------------------------------------------------------------------------------
 
 void RS232_Init(void);
 extern void RS232_Print_P(const char * str_addr);
@@ -46,10 +42,8 @@ extern void RS232_PrintDec(byte Data);
 extern void RS232_PrintDec2(byte Data);
 extern char* itoa(int i, char b[]);
 
-//------------------------------------------------------------------------------
 // LED
 #define LED_ON()	cbi(PORTB, 5)
 #define LED_OFF()	sbi(PORTB, 5)
 
-//------------------------------------------------------------------------------
-#endif
+#endif // __COM232_H
