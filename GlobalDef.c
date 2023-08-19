@@ -16,16 +16,15 @@
   Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 
  -----------------------------------------------------------------------
-	this file is a part of the TOYOTA Corolla MP3 Player Project
+        this file is a part of the TOYOTA Corolla MP3 Player Project
  -----------------------------------------------------------------------
- 		http://www.softservice.com.pl/corolla/avc
+                http://www.softservice.com.pl/corolla/avc
 
  May 28 / 2009	- version 2
 
 */
 
 #include "GlobalDef.h"
-
 
 // max 10 events in fifo
 byte EventCount;

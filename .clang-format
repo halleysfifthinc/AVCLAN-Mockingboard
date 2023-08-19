@@ -1,0 +1,6 @@
+---
+BasedOnStyle: LLVM
+UseCRLF: false
+BreakBeforeBraces: Attach
+AllowShortBlocksOnASingleLine: Empty
+...

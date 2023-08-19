@@ -27,65 +27,66 @@
 
 */
 
-
 #ifndef __AVCLANDRV_H
 #define __AVCLANDRV_H
 
 #include "GlobalDef.h"
 
-#define STOPEvent  cbi(RTC.PITINTCTRL, RTC_PI_bp); cbi(USART0.CTRLA, USART_RXCIE_bp);
-#define STARTEvent sbi(RTC.PITINTCTRL, RTC_PI_bp); sbi(USART0.CTRLA, USART_RXCIE_bp);
+#define STOPEvent                                                              \
+  cbi(RTC.PITINTCTRL, RTC_PI_bp);                                              \
+  cbi(USART0.CTRLA, USART_RXCIE_bp);
+#define STARTEvent                                                             \
+  sbi(RTC.PITINTCTRL, RTC_PI_bp);                                              \
+  sbi(USART0.CTRLA, USART_RXCIE_bp);
 
-
-#define CHECK_AVC_LINE		if (INPUT_IS_SET) AVCLan_Read_Message();
+#define CHECK_AVC_LINE                                                         \
+  if (INPUT_IS_SET)                                                            \
+    AVCLan_Read_Message();
 
 void AVC_HoldLine();
 void AVC_ReleaseLine();
 
-#define MAXMSGLEN	32
+#define MAXMSGLEN 32
 
 // Head Unid ID
-extern byte HU_ID_1;		//	0x01
-extern byte HU_ID_2;		//	0x40
+extern byte HU_ID_1; //	0x01
+extern byte HU_ID_2; //	0x40
 
-extern byte CD_ID_1;		// 0x03
-extern byte CD_ID_2;		// 0x60
-
+extern byte CD_ID_1; // 0x03
+extern byte CD_ID_2; // 0x60
 
 // DVD CHANGER
-//#define CD_ID_1	0x02
-//#define CD_ID_2	0x50
+// #define CD_ID_1	0x02
+// #define CD_ID_2	0x50
 
-#define cmNull		0
-#define cmStatus1	1
-#define cmStatus2	2
-#define cmStatus3	3
-#define cmStatus4	4
+#define cmNull 0
+#define cmStatus1 1
+#define cmStatus2 2
+#define cmStatus3 3
+#define cmStatus4 4
 
+#define cmRegister 100
+#define cmInit 101
+#define cmCheck 102
+#define cmPlayIt 103
+#define cmBeep 110
 
-#define cmRegister		100
-#define cmInit			101
-#define cmCheck			102
-#define cmPlayIt		103
-#define cmBeep			110
+#define cmNextTrack 120
+#define cmPrevTrack 121
+#define cmNextDisc 122
+#define cmPrevDisc 123
 
-#define cmNextTrack		120
-#define cmPrevTrack		121
-#define cmNextDisc		122
-#define cmPrevDisc		123
+#define cmScanModeOn 130
+#define cmScanModeOff 131
 
-#define cmScanModeOn	130
-#define cmScanModeOff	131
+#define cmPlayReq1 5
+#define cmPlayReq2 6
+#define cmPlayReq3 7
+#define cmStopReq 8
+#define cmStopReq2 9
 
-#define cmPlayReq1	5
-#define cmPlayReq2	6
-#define cmPlayReq3	7
-#define cmStopReq	8
-#define cmStopReq2	9
-
-typedef enum { stStop=0, stPlay=1 } cd_modes;
+typedef enum { stStop = 0, stPlay = 1 } cd_modes;
 extern cd_modes CD_Mode;
-
 
 extern byte broadcast;
 extern byte master1;
@@ -104,12 +105,12 @@ void AVCLan_Send_Status();
 
 void AVCLan_Init();
 void AVCLan_Register();
-byte  AVCLan_SendData();
-byte  AVCLan_SendAnswer();
-byte  AVCLan_SendDataBroadcast();
-byte	AVCLan_Command(byte command);
+byte AVCLan_SendData();
+byte AVCLan_SendAnswer();
+byte AVCLan_SendDataBroadcast();
+byte AVCLan_Command(byte command);
 
-byte  incBCD(byte data);
+byte incBCD(byte data);
 
 extern byte check_timeout;
 
@@ -127,10 +128,10 @@ void ShowInMessage();
 void ShowOutMessage();
 
 #ifdef SOFTWARE_DEBUG
-  void AVCLan_Measure();
+void AVCLan_Measure();
 #endif
 #ifdef HARDWARE_DEBUG
-  void SetHighLow();
+void SetHighLow();
 #endif
 
 extern byte answerReq;
