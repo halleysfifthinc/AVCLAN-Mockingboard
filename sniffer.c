@@ -49,7 +49,6 @@ int main() {
   Setup();
 
   RS232_Print("AVCLan reader 1.00\nReady\n\n");
-  //   LED_OFF();
   RS232_Print_P(PSTR("\nS - read sequence\nW - send command\nQ - send "
                      "broadcast\nL/l - log on/off\nK/k - seq. echo on/off\n"));
   RS232_Print_P(PSTR("R/r - register device\nB - Beep\n"));
@@ -63,11 +62,9 @@ int main() {
   while (1) {
 
     if (INPUT_IS_SET) { // if message from some device on AVCLan begin
-      // LED_ON();
       AVCLan_Read_Message();
       // show message
     } else {
-      // LED_OFF();
       // check command from HU
       if (answerReq != 0)
         AVCLan_SendAnswer();

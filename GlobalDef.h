@@ -21,18 +21,11 @@
 #define INPUT_IS_SET (bit_is_set(AC2_STATUS, AC_STATE_bp))
 #define INPUT_IS_CLEAR (bit_is_clear(AC2_STATUS, AC_STATE_bp))
 
-#define LED_DDR DDRB
-#define LED_PORT PORTB
-#define LEDOUT _BV(PORT5)
-
 #define sbi(port, bit) (port) |= (1 << (bit))  // Set bit (i.e. to 1)
 #define cbi(port, bit) (port) &= ~(1 << (bit)) // Clear bit (i.e. set bit to 0)
 
 typedef unsigned char byte;
 typedef unsigned int word;
-
-inline void LedOff(void);
-inline void LedOn(void);
 
 // max 10 events in fifo
 extern byte EventCount;

@@ -33,10 +33,6 @@ byte RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
 byte readkey;
 
 void RS232_Init(void) {
-  //  // init LED
-  //  sbi(DDRB, 5);
-  //  cbi(PORTB, 5);
-
   RS232_RxCharBegin = RS232_RxCharEnd = 0;
 
   USART0.CTRLA = USART_RXCIE_bm; // Enable receive interrupts
