@@ -41,8 +41,12 @@
 #define AVC_OUT_DIS()                                                          \
   cbi(VPORTA_DIR, 6);                                                          \
   sbi(AC2_CTRLA, AC_ENABLE_bp); // Read mode
-#define AVC_SET_LOGICAL_1() __asm__ __volatile__("sbi VPORTA_OUT, 6;");
-#define AVC_SET_LOGICAL_0() __asm__ __volatile__("cbi VPORTA_OUT, 6;");
+#define AVC_SET_LOGICAL_1()                                                    \
+  __asm__ __volatile__(                                                        \
+      "sbi %[vporta_out], 6;" ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)));
+#define AVC_SET_LOGICAL_0()                                                    \
+  __asm__ __volatile__(                                                        \
+      "cbi %[vporta_out], 6;" ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)));
 
 byte CD_ID_1;
 byte CD_ID_2;
@@ -203,8 +207,8 @@ byte AVCLan_Read_Byte(byte length) {
   while (1) {
     while (INPUT_IS_CLEAR) {}
     TCB1.CNT = 0;
-    while (INPUT_IS_SET) {}                   // If input was set for less than 26 us
-    if (TCB1.CNT < 208) { // (a generous half period), bit was a 1
+    while (INPUT_IS_SET) {} // If input was set for less than 26 us
+    if (TCB1.CNT < 208) {   // (a generous half period), bit was a 1
       bite++;
       parity_bit++;
     }
