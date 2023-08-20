@@ -1,8 +1,8 @@
-CC=avr-g++
-CFLAGS=-c -g -Os -Wall  -mmcu=atmega328p
-CFLAGS+=-fno-exceptions -fpermissive -ffunction-sections -fdata-sections -fno-threadsafe-statics
-DEFS= -DF_CPU=16000000L -DARDUINO=10605 -DARDUINO_AVR_DUEMILANOVE -DARDUINO_ARCH_AVR
-LFLAGS=-g -MMD -mmcu=atmega328p
+CC=avr-gcc
+CFLAGS=-std=gnuc17  -c -g -Os -Wall -mmcu=attiny3216
+CFLAGS+=-fno-exceptions -ffunction-sections -fdata-sections -fshort-enums
+DEFS=-DF_CPU=16000000L
+LFLAGS=-mmcu=attiny3216 -MMD
 
 all: sniffer.hex
 
@@ -30,13 +30,13 @@ clean::
 .PHONY: upload connect size
 
 upload-final: sniffer.hex
-	avrdude -C/home/allen/Programs/arduino-1.6.5/hardware/tools/avr/etc/avrdude.conf -patmega328p -cstk500v1 -P/dev/arduino -b19200 -D -U flash:w:sniffer.hex:i
+	avrdude -C/home/allen/Programs/arduino-1.6.5/hardware/tools/avr/etc/avrdude.conf -pattiny3216 -cstk500v1 -P/dev/arduino -b19200 -D -U flash:w:sniffer.hex:i
 
 upload-arduino: sniffer.hex
-	avrdude -C/home/allen/Programs/arduino-1.6.5/hardware/tools/avr/etc/avrdude.conf -patmega328p -carduino -P/dev/arduino -b57600 -D -U flash:w:sniffer.hex:i
+	avrdude -C/home/allen/Programs/arduino-1.6.5/hardware/tools/avr/etc/avrdude.conf -pattiny3216 -carduino -P/dev/arduino -b57600 -D -U flash:w:sniffer.hex:i
 
 connect:
 	@picocom --nolock -b 115200 /dev/arduino ||:
 
 size:
-	avr-size -C --mcu=atmega328p sniffer.elf
+	@avr-size -G sniffer.hex
