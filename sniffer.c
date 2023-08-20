@@ -26,7 +26,6 @@
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include <avr/pgmspace.h>
 
 #include "GlobalDef.h"
 #include "avclandrv.h"
@@ -49,14 +48,14 @@ int main() {
   Setup();
 
   RS232_Print("AVCLan reader 1.00\nReady\n\n");
-  RS232_Print_P(PSTR("\nS - read sequence\nW - send command\nQ - send "
-                     "broadcast\nL/l - log on/off\nK/k - seq. echo on/off\n"));
-  RS232_Print_P(PSTR("R/r - register device\nB - Beep\n"));
+  RS232_Print("\nS - read sequence\nW - send command\nQ - send "
+              "broadcast\nL/l - log on/off\nK/k - seq. echo on/off\n");
+  RS232_Print("R/r - register device\nB - Beep\n");
 #ifdef HARDWARE_DEBUG
-  RS232_Print_P(PSTR("1 - Hold High/low\nE - Print line status\n"));
+  RS232_Print("1 - Hold High/low\nE - Print line status\n");
 #endif
 #ifdef SOFTWARE_DEBUG
-  RS232_Print_P(PSTR("M - Measure high and low lengths\n"));
+  RS232_Print("M - Measure high and low lengths\n");
 #endif
 
   while (1) {
@@ -90,7 +89,7 @@ int main() {
       switch (readkey) {
       case 'S':
         showLog = 0;
-        RS232_Print_P(PSTR("READ SEQUENCE > \n"));
+        RS232_Print("READ SEQUENCE > \n");
         readSeq = 1;
         s_len = 0;
         s_dig = 0;
@@ -107,7 +106,7 @@ int main() {
         AVCLan_SendMyDataBroadcast(data_tmp, s_len);
         break;
       case 'R':
-        RS232_Print_P(PSTR("REGIST:\n"));
+        RS232_Print("REGIST:\n");
         AVCLan_Command(cmRegister);
         TCB1.CNT = 0;
         while (TCB1.CNT < 540) {}
@@ -117,19 +116,19 @@ int main() {
         AVCLan_Register();
         break;
       case 'l':
-        RS232_Print_P(PSTR("Log OFF\n"));
+        RS232_Print("Log OFF\n");
         showLog = 0;
         break;
       case 'L':
-        RS232_Print_P(PSTR("Log ON\n"));
+        RS232_Print("Log ON\n");
         showLog = 1;
         break;
       case 'k':
-        RS232_Print_P(PSTR("str OFF\n"));
+        RS232_Print("str OFF\n");
         showLog2 = 0;
         break;
       case 'K':
-        RS232_Print_P(PSTR("str ON\n"));
+        RS232_Print("str ON\n");
         showLog2 = 1;
         break;
       case 'B':
@@ -148,11 +147,11 @@ int main() {
         break;
       case 'E':
         if (INPUT_IS_SET) {
-          RS232_Print_P(PSTR("Set/High/1\n"));
+          RS232_Print("Set/High/1\n");
         } else if (INPUT_IS_CLEAR) {
-          RS232_Print_P(PSTR("Unset/Low/0\n"));
+          RS232_Print("Unset/Low/0\n");
         } else {
-          RS232_Print_P(PSTR("WTF?\n"));
+          RS232_Print("WTF?\n");
         }
         break;
 #endif
@@ -183,12 +182,12 @@ int main() {
             s_c[0] = s_c[1] = 0;
           }
           if (showLog2) {
-            RS232_Print_P(PSTR("CURRENT SEQUENCE > "));
+            RS232_Print("CURRENT SEQUENCE > ");
             for (i = 0; i < s_len; i++) {
               RS232_PrintHex8(data_tmp[i]);
               RS232_SendByte(' ');
             }
-            RS232_Print_P(PSTR("\n"));
+            RS232_Print("\n");
           }
         }
       } // switch (readkey)

@@ -27,7 +27,6 @@
 #include "com232.h"
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include <avr/pgmspace.h>
 
 byte RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
 byte readkey;
@@ -56,15 +55,6 @@ void RS232_SendByte(byte Data) {
   loop_until_bit_is_set(USART0_STATUS,
                         USART_DREIF_bp); // wait for UART to become available
   USART0_TXDATAL = Data;                 // send character
-}
-
-void RS232_Print_P(const char *str_addr) {
-  register byte c;
-  while ((c = pgm_read_byte(str_addr++))) {
-    if (c == '\n')
-      RS232_SendByte('\r');
-    RS232_SendByte(c);
-  }
 }
 
 void RS232_Print(const char *pBuf) {

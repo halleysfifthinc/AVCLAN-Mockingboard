@@ -29,7 +29,6 @@
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
-#include <avr/pgmspace.h>
 
 #include "GlobalDef.h"
 #include "avclandrv.h"
@@ -302,7 +301,7 @@ byte AVCLan_Send_Byte(byte bite, byte len) {
     }
     len--;
     if (!len) {
-      // if (INPUT_IS_SET) RS232_Print_P(PSTR("SBER\n")); // Send Bit ERror
+      // if (INPUT_IS_SET) RS232_Print("SBER\n"); // Send Bit ERror
       return 1;
     }
     b = b << 1;
@@ -342,7 +341,7 @@ byte AVCLan_Read_Message() {
   byte i;
   byte for_me = 0;
 
-  // RS232_Print_P(PSTR("$ "));
+  // RS232_Print("$ ");
   //  TCCR1B |= (1 << CS11)|(1 << CS10); // Timer1 prescaler at 64
   //  TCNT1 = 0;
   //  TCNT0 = 0;
@@ -351,7 +350,7 @@ byte AVCLan_Read_Message() {
   //  	// TCCR1B = 0;
   //  	// TCCR1B |= (1 << WGM12)|(1 << CS12); // Set CTC, prescaler at 256
   //  	STARTEvent;
-  //  	RS232_Print_P(PSTR("LAN>T1\n"));
+  //  	RS232_Print("LAN>T1\n");
   //  	return 0;
   //  }
   //  }
@@ -360,7 +359,7 @@ byte AVCLan_Read_Message() {
   //  	// TCCR1B = 0;
   //  	// TCCR1B |= (1 << WGM12)|(1 << CS12);
   //  	STARTEvent;
-  //  	RS232_Print_P(PSTR("LAN>T2\n"));
+  //  	RS232_Print("LAN>T2\n");
   //  	return 0;
   //  }
   AVCLan_Read_Byte(1);
@@ -415,7 +414,7 @@ byte AVCLan_Read_Message() {
     AVCLan_Read_Byte(1);
 
   if (message_len > MAXMSGLEN) {
-    //	RS232_Print_P(PSTR("LAN> Command error"));
+    //	RS232_Print("LAN> Command error");
     STARTEvent;
     return 0;
   }
@@ -545,7 +544,7 @@ byte AVCLan_SendData() {
   if (AVCLan_Read_ACK()) {
     AVC_OUT_DIS();
     STARTEvent;
-    RS232_Print_P(PSTR("Error ACK 1 (Transmission ACK)\n"));
+    RS232_Print("Error ACK 1 (Transmission ACK)\n");
     return 1;
   }
 
@@ -554,7 +553,7 @@ byte AVCLan_SendData() {
   if (AVCLan_Read_ACK()) {
     AVC_OUT_DIS();
     STARTEvent;
-    RS232_Print_P(PSTR("Error ACK 2 (COMMMAND WRITE)\n"));
+    RS232_Print("Error ACK 2 (COMMMAND WRITE)\n");
     return 2;
   }
 
@@ -563,7 +562,7 @@ byte AVCLan_SendData() {
   if (AVCLan_Read_ACK()) {
     AVC_OUT_DIS();
     STARTEvent;
-    RS232_Print_P(PSTR("Error ACK 3 (Data Length)\n"));
+    RS232_Print("Error ACK 3 (Data Length)\n");
     return 3;
   }
 
@@ -573,9 +572,9 @@ byte AVCLan_SendData() {
     if (AVCLan_Read_ACK()) {
       AVC_OUT_DIS();
       STARTEvent;
-      RS232_Print_P(PSTR("Error ACK 4 (Data Byte: "));
+      RS232_Print("Error ACK 4 (Data Byte: ");
       RS232_PrintDec(i);
-      RS232_Print_P(PSTR(")\n"));
+      RS232_Print(")\n");
       return 4;
     }
   }
@@ -775,14 +774,14 @@ byte AVCLan_SendAnswer() {
   case cmRegister:
     r = AVCLan_SendAnswerFrame((byte *)CMD_REGISTER);
     break;
-  case cmInit: // RS232_Print_P(PSTR("INIT\n"));
+  case cmInit: // RS232_Print("INIT\n");
     r = AVCLan_SendInitCommands();
     break;
   case cmCheck:
     r = AVCLan_SendAnswerFrame((byte *)CMD_CHECK);
     check_timeout = 0;
     CMD_CHECK[6]++;
-    RS232_Print_P(PSTR("AVCCHK\n"));
+    RS232_Print("AVCCHK\n");
     break;
   case cmPlayReq1:
     playMode = 0;
@@ -798,7 +797,7 @@ byte AVCLan_SendAnswer() {
     break;
   case cmPlayIt:
     playMode = 1;
-    RS232_Print_P(PSTR("PLAY\n"));
+    RS232_Print("PLAY\n");
     CMD_PLAY_OK4[7] = cd_Disc;
     CMD_PLAY_OK4[8] = cd_Track;
     CMD_PLAY_OK4[9] = cd_Time_Min;
@@ -830,9 +829,9 @@ byte AVCLan_SendAnswer() {
 }
 
 void AVCLan_Register() {
-  RS232_Print_P(PSTR("REG_ST\n"));
+  RS232_Print("REG_ST\n");
   AVCLan_SendAnswerFrame((byte *)CMD_REGISTER);
-  RS232_Print_P(PSTR("REG_END\n"));
+  RS232_Print("REG_END\n");
   // AVCLan_Command( cmRegister );
   AVCLan_Command(cmInit);
 }
@@ -843,9 +842,9 @@ byte AVCLan_Command(byte command) {
   answerReq = command;
   r = AVCLan_SendAnswer();
   /*
-  RS232_Print_P(PSTR("ret="));
+  RS232_Print("ret=");
   RS232_PrintHex8(r);
-  RS232_Print_P(PSTR("\n"));
+  RS232_Print("\n");
   */
   return r;
 }
@@ -865,26 +864,26 @@ void ShowInMessage() {
 
   AVC_HoldLine();
 
-  RS232_Print_P(PSTR("HU < ("));
+  RS232_Print("HU < (");
 
   if (broadcast == 0)
-    RS232_Print_P(PSTR("bro) "));
+    RS232_Print("bro) ");
   else
-    RS232_Print_P(PSTR("dir) "));
+    RS232_Print("dir) ");
 
   RS232_PrintHex4(master1);
   RS232_PrintHex8(master2);
-  RS232_Print_P(PSTR("| "));
+  RS232_Print("| ");
   RS232_PrintHex4(slave1);
   RS232_PrintHex8(slave2);
-  RS232_Print_P(PSTR("| "));
+  RS232_Print("| ");
 
   byte i;
   for (i = 0; i < message_len; i++) {
     RS232_PrintHex8(message[i]);
-    RS232_Print_P(PSTR(" "));
+    RS232_Print(" ");
   }
-  RS232_Print_P(PSTR("\n"));
+  RS232_Print("\n");
 
   AVC_ReleaseLine();
 }
@@ -894,12 +893,12 @@ void ShowOutMessage() {
 
   AVC_HoldLine();
 
-  RS232_Print_P(PSTR("           out > "));
+  RS232_Print("           out > ");
   for (i = 0; i < data_len; i++) {
     RS232_PrintHex8(data[i]);
     RS232_SendByte(' ');
   }
-  RS232_Print_P(PSTR("\n"));
+  RS232_Print("\n");
 
   AVC_ReleaseLine();
 }
@@ -952,27 +951,27 @@ void AVCLan_Measure() {
     // bit0 = tmp1-tmp;
     // bit1 = tmp2-tmp1;
     //
-    // RS232_Print_P(PSTR("1,"));
+    // RS232_Print("1,");
     // RS232_PrintDec(bit1);
-    // RS232_Print_P(PSTR("\n"));
+    // RS232_Print("\n");
     //
-    // RS232_Print_P(PSTR("0,"));
+    // RS232_Print("0,");
     // RS232_PrintDec(bit0);
-    // RS232_Print_P(PSTR("\n"));
+    // RS232_Print("\n");
     n += 10;
   }
 
   for (byte i = 0; i < 100; i++) {
     itoa(temp_b[i], str);
     if (i & 1) {
-      RS232_Print_P(PSTR("High,"));
+      RS232_Print("High,");
     } else {
-      RS232_Print_P(PSTR("Low,"));
+      RS232_Print("Low,");
     }
     RS232_Print(str);
-    RS232_Print_P(PSTR("\n"));
+    RS232_Print("\n");
   }
-  RS232_Print_P(PSTR("\nDone.\n"));
+  RS232_Print("\nDone.\n");
 
   cbi(TCCR1B, CS10);
   TCCR1B = _BV(CS12);
