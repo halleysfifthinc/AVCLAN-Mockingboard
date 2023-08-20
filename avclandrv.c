@@ -759,69 +759,69 @@ byte AVCLan_SendAnswer() {
   byte r = 0;
 
   switch (answerReq) {
-  case cmStatus1:
-    r = AVCLan_SendAnswerFrame((byte *)CMD_STATUS1);
-    break;
-  case cmStatus2:
-    r = AVCLan_SendAnswerFrame((byte *)CMD_STATUS2);
-    break;
-  case cmStatus3:
-    r = AVCLan_SendAnswerFrame((byte *)CMD_STATUS3);
-    break;
-  case cmStatus4:
-    r = AVCLan_SendAnswerFrame((byte *)CMD_STATUS4);
-    break;
-  case cmRegister:
-    r = AVCLan_SendAnswerFrame((byte *)CMD_REGISTER);
-    break;
-  case cmInit: // RS232_Print("INIT\n");
-    r = AVCLan_SendInitCommands();
-    break;
-  case cmCheck:
-    r = AVCLan_SendAnswerFrame((byte *)CMD_CHECK);
-    check_timeout = 0;
-    CMD_CHECK[6]++;
-    RS232_Print("AVCCHK\n");
-    break;
-  case cmPlayReq1:
-    playMode = 0;
-    r = AVCLan_SendAnswerFrame((byte *)CMD_PLAY_OK1);
-    break;
-  case cmPlayReq2:
-  case cmPlayReq3:
-    playMode = 0;
-    r = AVCLan_SendAnswerFrame((byte *)CMD_PLAY_OK2);
-    if (!r)
-      r = AVCLan_SendAnswerFrame((byte *)CMD_PLAY_OK3);
-    CD_Mode = stPlay;
-    break;
-  case cmPlayIt:
-    playMode = 1;
-    RS232_Print("PLAY\n");
-    CMD_PLAY_OK4[7] = cd_Disc;
-    CMD_PLAY_OK4[8] = cd_Track;
-    CMD_PLAY_OK4[9] = cd_Time_Min;
-    CMD_PLAY_OK4[10] = cd_Time_Sec;
-    r = AVCLan_SendAnswerFrame((byte *)CMD_PLAY_OK4);
-    if (!r)
-      AVCLan_Send_Status();
-    CD_Mode = stPlay;
-    break;
-  case cmStopReq:
-  case cmStopReq2:
-    CD_Mode = stStop;
-    playMode = 0;
+    case cmStatus1:
+      r = AVCLan_SendAnswerFrame((byte *)CMD_STATUS1);
+      break;
+    case cmStatus2:
+      r = AVCLan_SendAnswerFrame((byte *)CMD_STATUS2);
+      break;
+    case cmStatus3:
+      r = AVCLan_SendAnswerFrame((byte *)CMD_STATUS3);
+      break;
+    case cmStatus4:
+      r = AVCLan_SendAnswerFrame((byte *)CMD_STATUS4);
+      break;
+    case cmRegister:
+      r = AVCLan_SendAnswerFrame((byte *)CMD_REGISTER);
+      break;
+    case cmInit: // RS232_Print("INIT\n");
+      r = AVCLan_SendInitCommands();
+      break;
+    case cmCheck:
+      r = AVCLan_SendAnswerFrame((byte *)CMD_CHECK);
+      check_timeout = 0;
+      CMD_CHECK[6]++;
+      RS232_Print("AVCCHK\n");
+      break;
+    case cmPlayReq1:
+      playMode = 0;
+      r = AVCLan_SendAnswerFrame((byte *)CMD_PLAY_OK1);
+      break;
+    case cmPlayReq2:
+    case cmPlayReq3:
+      playMode = 0;
+      r = AVCLan_SendAnswerFrame((byte *)CMD_PLAY_OK2);
+      if (!r)
+        r = AVCLan_SendAnswerFrame((byte *)CMD_PLAY_OK3);
+      CD_Mode = stPlay;
+      break;
+    case cmPlayIt:
+      playMode = 1;
+      RS232_Print("PLAY\n");
+      CMD_PLAY_OK4[7] = cd_Disc;
+      CMD_PLAY_OK4[8] = cd_Track;
+      CMD_PLAY_OK4[9] = cd_Time_Min;
+      CMD_PLAY_OK4[10] = cd_Time_Sec;
+      r = AVCLan_SendAnswerFrame((byte *)CMD_PLAY_OK4);
+      if (!r)
+        AVCLan_Send_Status();
+      CD_Mode = stPlay;
+      break;
+    case cmStopReq:
+    case cmStopReq2:
+      CD_Mode = stStop;
+      playMode = 0;
 
-    r = AVCLan_SendAnswerFrame((byte *)CMD_STOP1);
-    CMD_STOP2[7] = cd_Disc;
-    CMD_STOP2[8] = cd_Track;
-    CMD_STOP2[9] = cd_Time_Min;
-    CMD_STOP2[10] = cd_Time_Sec;
-    r = AVCLan_SendAnswerFrame((byte *)CMD_STOP2);
-    break;
-  case cmBeep:
-    AVCLan_SendAnswerFrame((byte *)CMD_BEEP);
-    break;
+      r = AVCLan_SendAnswerFrame((byte *)CMD_STOP1);
+      CMD_STOP2[7] = cd_Disc;
+      CMD_STOP2[8] = cd_Track;
+      CMD_STOP2[9] = cd_Time_Min;
+      CMD_STOP2[10] = cd_Time_Sec;
+      r = AVCLan_SendAnswerFrame((byte *)CMD_STOP2);
+      break;
+    case cmBeep:
+      AVCLan_SendAnswerFrame((byte *)CMD_BEEP);
+      break;
   }
 
   answerReq = cmNull;

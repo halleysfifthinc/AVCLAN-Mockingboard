@@ -3,4 +3,5 @@ BasedOnStyle: LLVM
 UseCRLF: false
 BreakBeforeBraces: Attach
 AllowShortBlocksOnASingleLine: Empty
+IndentCaseLabels: true
 ...
