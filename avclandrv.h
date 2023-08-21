@@ -49,11 +49,11 @@ void AVC_ReleaseLine();
 #define MAXMSGLEN 32
 
 // Head Unid ID
-extern byte HU_ID_1; //	0x01
-extern byte HU_ID_2; //	0x40
+extern uint8_t HU_ID_1; //	0x01
+extern uint8_t HU_ID_2; //	0x40
 
-extern byte CD_ID_1; // 0x03
-extern byte CD_ID_2; // 0x60
+extern uint8_t CD_ID_1; // 0x03
+extern uint8_t CD_ID_2; // 0x60
 
 // DVD CHANGER
 // #define CD_ID_1	0x02
@@ -88,41 +88,41 @@ extern byte CD_ID_2; // 0x60
 typedef enum { stStop = 0, stPlay = 1 } cd_modes;
 extern cd_modes CD_Mode;
 
-extern byte broadcast;
-extern byte master1;
-extern byte master2;
-extern byte slave1;
-extern byte slave2;
-extern byte message_len;
-extern byte message[MAXMSGLEN];
+extern uint8_t broadcast;
+extern uint8_t master1;
+extern uint8_t master2;
+extern uint8_t slave1;
+extern uint8_t slave2;
+extern uint8_t message_len;
+extern uint8_t message[MAXMSGLEN];
 
-extern byte data_control;
-extern byte data_len;
-extern byte data[MAXMSGLEN];
+extern uint8_t data_control;
+extern uint8_t data_len;
+extern uint8_t data[MAXMSGLEN];
 
-byte AVCLan_Read_Message();
+uint8_t AVCLan_Read_Message();
 void AVCLan_Send_Status();
 
 void AVCLan_Init();
 void AVCLan_Register();
-byte AVCLan_SendData();
-byte AVCLan_SendAnswer();
-byte AVCLan_SendDataBroadcast();
-byte AVCLan_Command(byte command);
+uint8_t AVCLan_SendData();
+uint8_t AVCLan_SendAnswer();
+uint8_t AVCLan_SendDataBroadcast();
+uint8_t AVCLan_Command(uint8_t command);
 
-byte incBCD(byte data);
+uint8_t incBCD(uint8_t data);
 
-extern byte check_timeout;
+extern uint8_t check_timeout;
 
-extern byte cd_Disc;
-extern byte cd_Track;
-extern byte cd_Time_Min;
-extern byte cd_Time_Sec;
+extern uint8_t cd_Disc;
+extern uint8_t cd_Track;
+extern uint8_t cd_Time_Min;
+extern uint8_t cd_Time_Sec;
 
-extern byte playMode;
+extern uint8_t playMode;
 
-byte AVCLan_SendMyData(byte *data_tmp, byte s_len);
-byte AVCLan_SendMyDataBroadcast(byte *data_tmp, byte s_len);
+uint8_t AVCLan_SendMyData(uint8_t *data_tmp, uint8_t s_len);
+uint8_t AVCLan_SendMyDataBroadcast(uint8_t *data_tmp, uint8_t s_len);
 
 void ShowInMessage();
 void ShowOutMessage();
@@ -134,6 +134,6 @@ void AVCLan_Measure();
 void SetHighLow();
 #endif
 
-extern byte answerReq;
+extern uint8_t answerReq;
 
 #endif // __AVCLANDRV_H

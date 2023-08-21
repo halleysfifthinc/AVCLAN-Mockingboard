@@ -33,17 +33,17 @@
 
 void Setup();
 
-byte rcv_command[5];
-byte rcv_pos = 0;
-byte rcv_time_clr = 0;
+uint8_t rcv_command[5];
+uint8_t rcv_pos = 0;
+uint8_t rcv_time_clr = 0;
 
 int main() {
-  byte readSeq = 0;
-  byte s_len = 0;
-  byte s_dig = 0;
-  byte s_c[2];
-  byte i;
-  byte data_tmp[32];
+  uint8_t readSeq = 0;
+  uint8_t s_len = 0;
+  uint8_t s_dig = 0;
+  uint8_t s_c[2];
+  uint8_t i;
+  uint8_t data_tmp[32];
 
   Setup();
 

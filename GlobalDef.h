@@ -24,30 +24,27 @@
 #define sbi(port, bit) (port) |= (1 << (bit))  // Set bit (i.e. to 1)
 #define cbi(port, bit) (port) &= ~(1 << (bit)) // Clear bit (i.e. set bit to 0)
 
-typedef unsigned char byte;
-typedef unsigned int word;
-
-// max 10 events in fifo
-extern byte EventCount;
-extern byte EventCmd[10];
-extern byte Event;
+// // max 10 events in fifo
+// extern uint8_t EventCount;
+// extern uint8_t EventCmd[10];
+extern uint8_t Event;
 
 #define EV_NOTHING 0
 #define EV_DISPLAY 1
 #define EV_STATUS 4
 
-// const
-#define smYear 1
-#define smMonth 2
-#define smDay 3
-#define smHour 4
-#define smMin 5
-#define smWDay 6
+// // const
+// #define smYear 1
+// #define smMonth 2
+// #define smDay 3
+// #define smHour 4
+// #define smMin 5
+// #define smWDay 6
 
 // #define STOPEvent  cbi(TIMSK, TOIE1); cbi(UCSRB, RXCIE);
 // #define STARTEvent sbi(TIMSK, TOIE1); sbi(UCSRB, RXCIE);
 
-extern byte showLog;
-extern byte showLog2;
+extern uint8_t showLog;
+extern uint8_t showLog2;
 
 #endif //  _GLOBALDEF_H_

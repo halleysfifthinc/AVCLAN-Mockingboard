@@ -27,9 +27,9 @@
 #include "GlobalDef.h"
 
 // max 10 events in fifo
-byte EventCount;
-byte EventCmd[10];
-byte Event;
+// uint8_t EventCount;
+// uint8_t EventCmd[10];
+uint8_t Event;
 
-byte showLog;
-byte showLog2;
+uint8_t showLog;
+uint8_t showLog2;

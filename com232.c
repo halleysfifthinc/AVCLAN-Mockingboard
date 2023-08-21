@@ -28,8 +28,8 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
-byte RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
-byte readkey;
+uint8_t RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
+uint8_t readkey;
 
 void RS232_Init(void) {
   RS232_RxCharBegin = RS232_RxCharEnd = 0;
@@ -53,14 +53,14 @@ ISR(USART0_RXC_vect) {
   RS232_RxCharEnd++;
 }
 
-void RS232_SendByte(byte Data) {
+void RS232_SendByte(uint8_t Data) {
   loop_until_bit_is_set(USART0_STATUS,
                         USART_DREIF_bp); // wait for UART to become available
   USART0_TXDATAL = Data;                 // send character
 }
 
 void RS232_Print(const char *pBuf) {
-  register byte c;
+  register uint8_t c;
   while ((c = *pBuf++)) {
     if (c == '\n')
       RS232_SendByte('\r');
@@ -68,20 +68,20 @@ void RS232_Print(const char *pBuf) {
   }
 }
 
-void RS232_PrintHex4(byte Data) {
-  byte Character = Data & 0x0f;
+void RS232_PrintHex4(uint8_t Data) {
+  uint8_t Character = Data & 0x0f;
   Character += '0';
   if (Character > '9')
     Character += 'A' - '0' - 10;
   RS232_SendByte(Character);
 }
 
-void RS232_PrintHex8(byte Data) {
+void RS232_PrintHex8(uint8_t Data) {
   RS232_PrintHex4(Data >> 4);
   RS232_PrintHex4(Data);
 }
 
-void RS232_PrintDec(byte Data) {
+void RS232_PrintDec(uint8_t Data) {
   if (Data > 99) {
     RS232_SendByte('*');
     return;
@@ -90,7 +90,7 @@ void RS232_PrintDec(byte Data) {
     RS232_SendByte('0' + Data);
     return;
   }
-  byte c;
+  uint8_t c;
   unsigned short v, v1;
   v = Data;
   v1 = v / 10;
@@ -99,7 +99,7 @@ void RS232_PrintDec(byte Data) {
   RS232_SendByte(c);
 }
 
-void RS232_PrintDec2(byte Data) {
+void RS232_PrintDec2(uint8_t Data) {
   if (Data < 10)
     RS232_SendByte('0');
   RS232_PrintDec(Data);

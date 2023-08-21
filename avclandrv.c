@@ -47,102 +47,102 @@
   __asm__ __volatile__(                                                        \
       "cbi %[vporta_out], 6;" ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)));
 
-byte CD_ID_1;
-byte CD_ID_2;
+uint8_t CD_ID_1;
+uint8_t CD_ID_2;
 
-byte HU_ID_1;
-byte HU_ID_2;
+uint8_t HU_ID_1;
+uint8_t HU_ID_2;
 
-byte parity_bit;
+uint8_t parity_bit;
 
-byte repeatMode;
-byte randomMode;
+uint8_t repeatMode;
+uint8_t randomMode;
 
-byte playMode;
+uint8_t playMode;
 
-byte cd_Disc;
-byte cd_Track;
-byte cd_Time_Min;
-byte cd_Time_Sec;
+uint8_t cd_Disc;
+uint8_t cd_Track;
+uint8_t cd_Time_Min;
+uint8_t cd_Time_Sec;
 
-byte answerReq;
+uint8_t answerReq;
 
 cd_modes CD_Mode;
 
-byte broadcast;
-byte master1;
-byte master2;
-byte slave1;
-byte slave2;
-byte message_len;
-byte message[MAXMSGLEN];
+uint8_t broadcast;
+uint8_t master1;
+uint8_t master2;
+uint8_t slave1;
+uint8_t slave2;
+uint8_t message_len;
+uint8_t message[MAXMSGLEN];
 
-byte data_control;
-byte data_len;
-byte data[MAXMSGLEN];
+uint8_t data_control;
+uint8_t data_len;
+uint8_t data[MAXMSGLEN];
 
 // we need check answer (to avclan check) timeout
 // when is more then 1 min, FORCE answer.
-byte check_timeout;
+uint8_t check_timeout;
 
 #define SW_ID 0x11 // 11 For my stereo
 
 // commands
-const byte stat1[] = {0x4, 0x00, 0x00, 0x01, 0x0A};
-const byte stat2[] = {0x4, 0x00, 0x00, 0x01, 0x08};
-const byte stat3[] = {0x4, 0x00, 0x00, 0x01, 0x0D};
-const byte stat4[] = {0x4, 0x00, 0x00, 0x01, 0x0C};
+const uint8_t stat1[] = {0x4, 0x00, 0x00, 0x01, 0x0A};
+const uint8_t stat2[] = {0x4, 0x00, 0x00, 0x01, 0x08};
+const uint8_t stat3[] = {0x4, 0x00, 0x00, 0x01, 0x0D};
+const uint8_t stat4[] = {0x4, 0x00, 0x00, 0x01, 0x0C};
 
 // broadcast
-const byte lan_stat1[] = {0x3, 0x00, 0x01, 0x0A};
-const byte lan_reg[] = {0x3, SW_ID, 0x01, 0x00};
-const byte lan_init[] = {0x3, SW_ID, 0x01, 0x01};
-const byte lan_check[] = {0x3, SW_ID, 0x01, 0x20};
-const byte lan_playit[] = {0x4, SW_ID, 0x01, 0x45, 0x63};
+const uint8_t lan_stat1[] = {0x3, 0x00, 0x01, 0x0A};
+const uint8_t lan_reg[] = {0x3, SW_ID, 0x01, 0x00};
+const uint8_t lan_init[] = {0x3, SW_ID, 0x01, 0x01};
+const uint8_t lan_check[] = {0x3, SW_ID, 0x01, 0x20};
+const uint8_t lan_playit[] = {0x4, SW_ID, 0x01, 0x45, 0x63};
 
-const byte play_req1[] = {0x4, 0x00, 0x25, 0x63, 0x80};
+const uint8_t play_req1[] = {0x4, 0x00, 0x25, 0x63, 0x80};
 
 #ifdef __AVENSIS__
-const byte play_req2[] = {0x6, 0x00, SW_ID, 0x63, 0x42};
+const uint8_t play_req2[] = {0x6, 0x00, SW_ID, 0x63, 0x42};
 #else
-const byte play_req2[] = {0x6, 0x00, SW_ID, 0x63, 0x42, 0x01, 0x00};
+const uint8_t play_req2[] = {0x6, 0x00, SW_ID, 0x63, 0x42, 0x01, 0x00};
 #endif
 
-const byte play_req3[] = {0x5, 0x00, SW_ID, 0x63, 0x42, 0x41};
-const byte stop_req[] = {0x5, 0x00, SW_ID, 0x63, 0x43, 0x01};
-const byte stop_req2[] = {0x5, 0x00, SW_ID, 0x63, 0x43, 0x41};
+const uint8_t play_req3[] = {0x5, 0x00, SW_ID, 0x63, 0x42, 0x41};
+const uint8_t stop_req[] = {0x5, 0x00, SW_ID, 0x63, 0x43, 0x01};
+const uint8_t stop_req2[] = {0x5, 0x00, SW_ID, 0x63, 0x43, 0x41};
 
 // answers
-const byte CMD_REGISTER[] = {0x1, 0x05, 0x00, 0x01, SW_ID, 0x10, 0x63};
-const byte CMD_STATUS1[] = {0x1, 0x04, 0x00, 0x01, 0x00, 0x1A};
-const byte CMD_STATUS2[] = {0x1, 0x04, 0x00, 0x01, 0x00, 0x18};
-const byte CMD_STATUS3[] = {0x1, 0x04, 0x00, 0x01, 0x00, 0x1D};
-const byte CMD_STATUS4[] = {0x1, 0x05, 0x00, 0x01, 0x00, 0x1C, 0x00};
-byte CMD_CHECK[] = {0x1, 0x06, 0x00, 0x01, SW_ID, 0x30, 0x00, 0x00};
+const uint8_t CMD_REGISTER[] = {0x1, 0x05, 0x00, 0x01, SW_ID, 0x10, 0x63};
+const uint8_t CMD_STATUS1[] = {0x1, 0x04, 0x00, 0x01, 0x00, 0x1A};
+const uint8_t CMD_STATUS2[] = {0x1, 0x04, 0x00, 0x01, 0x00, 0x18};
+const uint8_t CMD_STATUS3[] = {0x1, 0x04, 0x00, 0x01, 0x00, 0x1D};
+const uint8_t CMD_STATUS4[] = {0x1, 0x05, 0x00, 0x01, 0x00, 0x1C, 0x00};
+uint8_t CMD_CHECK[] = {0x1, 0x06, 0x00, 0x01, SW_ID, 0x30, 0x00, 0x00};
 
-const byte CMD_STATUS5[] = {0x1, 0x05, 0x00, 0x5C, 0x12, 0x53, 0x02};
-const byte CMD_STATUS5A[] = {0x0, 0x05, 0x5C, 0x31, 0xF1, 0x00, 0x00};
+const uint8_t CMD_STATUS5[] = {0x1, 0x05, 0x00, 0x5C, 0x12, 0x53, 0x02};
+const uint8_t CMD_STATUS5A[] = {0x0, 0x05, 0x5C, 0x31, 0xF1, 0x00, 0x00};
 
-const byte CMD_STATUS6[] = {0x1, 0x06, 0x00, 0x5C, 0x32, 0xF0, 0x02, 0x00};
+const uint8_t CMD_STATUS6[] = {0x1, 0x06, 0x00, 0x5C, 0x32, 0xF0, 0x02, 0x00};
 
-const byte CMD_PLAY_OK1[] = {0x1, 0x05, 0x00, 0x63, SW_ID, 0x50, 0x01};
-const byte CMD_PLAY_OK2[] = {0x1, 0x05, 0x00, 0x63, SW_ID, 0x52, 0x01};
-const byte CMD_PLAY_OK3[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x01, 0x00,
-                             0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80};
-byte CMD_PLAY_OK4[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x01, 0x28,
+const uint8_t CMD_PLAY_OK1[] = {0x1, 0x05, 0x00, 0x63, SW_ID, 0x50, 0x01};
+const uint8_t CMD_PLAY_OK2[] = {0x1, 0x05, 0x00, 0x63, SW_ID, 0x52, 0x01};
+const uint8_t CMD_PLAY_OK3[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x01, 0x00,
+                                0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80};
+uint8_t CMD_PLAY_OK4[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x01, 0x28,
+                          0x00, 0x00, 0x00, 0x00, 0x00, 0x80};
+
+const uint8_t CMD_STOP1[] = {0x1, 0x05, 0x00, 0x63, SW_ID, 0x53, 0x01};
+uint8_t CMD_STOP2[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x00, 0x30,
                        0x00, 0x00, 0x00, 0x00, 0x00, 0x80};
 
-const byte CMD_STOP1[] = {0x1, 0x05, 0x00, 0x63, SW_ID, 0x53, 0x01};
-byte CMD_STOP2[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x00, 0x30,
-                    0x00, 0x00, 0x00, 0x00, 0x00, 0x80};
-
-const byte CMD_BEEP[] = {0x1, 0x05, 0x00, 0x63, 0x29, 0x60, 0x02};
+const uint8_t CMD_BEEP[] = {0x1, 0x05, 0x00, 0x63, 0x29, 0x60, 0x02};
 
 void AVC_HoldLine() {
   STOPEvent;
 
   // wait for free line
-  byte line_busy = 1;
+  uint8_t line_busy = 1;
 
   TCB1.CNT = 0;
   do {
@@ -171,8 +171,7 @@ void AVC_ReleaseLine() {
 
 void AVCLan_Init() {
   PORTA.PIN6CTRL = PORT_ISC_INPUT_DISABLE_gc; // Disable input buffer;
-                                              // recommended when using AC
-  PORTA.PIN7CTRL = PORT_ISC_INPUT_DISABLE_gc;
+  PORTA.PIN7CTRL = PORT_ISC_INPUT_DISABLE_gc; // recommended when using AC
 
   // Pull-ups are disabled by default
   VPORTA.DIR &= ~(PIN6_bm | PIN7_bm); // Zero pin 6 and 7 to set as input
@@ -200,8 +199,8 @@ void AVCLan_Init() {
   CD_Mode = stStop;
 }
 
-byte AVCLan_Read_Byte(byte length) {
-  byte bite = 0;
+uint8_t AVCLan_Read_uint8_t(uint8_t length) {
+  uint8_t bite = 0;
 
   while (1) {
     while (INPUT_IS_CLEAR) {}
@@ -230,7 +229,7 @@ void set_AVC_logic_for(uint8_t val, uint16_t period) {
   TCB1_INTFLAGS = 1;
 }
 
-byte AVCLan_Send_StartBit() {
+uint8_t AVCLan_Send_StartBit() {
   set_AVC_logic_for(1, 1328); // 166 us @ 125 ns tick (for F_CPU = 16MHz)
   set_AVC_logic_for(0, 152);  // 19 us @ 125 ns tick (for F_CPU = 16MHz)
 
@@ -247,7 +246,7 @@ void AVCLan_Send_Bit0() {
   set_AVC_logic_for(0, 44);  // 5.5 us @ 125 ns tick (for F_CPU = 16MHz)
 }
 
-byte AVCLan_Read_ACK() {
+uint8_t AVCLan_Read_ACK() {
   set_AVC_logic_for(1, 152); // 34 us @ 125 ns tick (for F_CPU = 16MHz)
   AVC_SET_LOGICAL_0();       // Replace with AVC_ReleaseLine?
   AVC_OUT_DIS();             // switch to read mode
@@ -267,7 +266,7 @@ byte AVCLan_Read_ACK() {
   return 0;
 }
 
-byte AVCLan_Send_ACK() {
+uint8_t AVCLan_Send_ACK() {
   TCB1.CNT = 0;
   while (INPUT_IS_CLEAR) {
     if (TCB1.CNT >= 900)
@@ -284,8 +283,8 @@ byte AVCLan_Send_ACK() {
   return 1;
 }
 
-byte AVCLan_Send_Byte(byte bite, byte len) {
-  byte b;
+uint8_t AVCLan_Send_uint8_t(uint8_t bite, uint8_t len) {
+  uint8_t b;
   if (len == 8) {
     b = bite;
   } else {
@@ -308,7 +307,7 @@ byte AVCLan_Send_Byte(byte bite, byte len) {
   }
 }
 
-byte AVCLan_Send_ParityBit() {
+uint8_t AVCLan_Send_ParityBit() {
   if ((parity_bit & 1) != 0) {
     AVCLan_Send_Bit1();
     // parity_bit++;
@@ -319,10 +318,10 @@ byte AVCLan_Send_ParityBit() {
   return 1;
 }
 
-byte CheckCmd(byte *cmd) {
-  byte i;
-  byte *c;
-  byte l;
+uint8_t CheckCmd(uint8_t *cmd) {
+  uint8_t i;
+  uint8_t *c;
+  uint8_t l;
 
   c = cmd;
   l = *c++;
@@ -335,11 +334,11 @@ byte CheckCmd(byte *cmd) {
   return 1;
 }
 
-byte AVCLan_Read_Message() {
+uint8_t AVCLan_Read_Message() {
   STOPEvent; // disable timer1 interrupt
 
-  byte i;
-  byte for_me = 0;
+  uint8_t i;
+  uint8_t for_me = 0;
 
   // RS232_Print("$ ");
   //  TCCR1B |= (1 << CS11)|(1 << CS10); // Timer1 prescaler at 64
@@ -362,22 +361,22 @@ byte AVCLan_Read_Message() {
   //  	RS232_Print("LAN>T2\n");
   //  	return 0;
   //  }
-  AVCLan_Read_Byte(1);
+  AVCLan_Read_uint8_t(1);
 
-  broadcast = AVCLan_Read_Byte(1);
+  broadcast = AVCLan_Read_uint8_t(1);
 
   parity_bit = 0;
-  master1 = AVCLan_Read_Byte(4);
-  master2 = AVCLan_Read_Byte(8);
-  if ((parity_bit & 1) != AVCLan_Read_Byte(1)) {
+  master1 = AVCLan_Read_uint8_t(4);
+  master2 = AVCLan_Read_uint8_t(8);
+  if ((parity_bit & 1) != AVCLan_Read_uint8_t(1)) {
     STARTEvent;
     return 0;
   }
 
   parity_bit = 0;
-  slave1 = AVCLan_Read_Byte(4);
-  slave2 = AVCLan_Read_Byte(8);
-  if ((parity_bit & 1) != AVCLan_Read_Byte(1)) {
+  slave1 = AVCLan_Read_uint8_t(4);
+  slave2 = AVCLan_Read_uint8_t(8);
+  if ((parity_bit & 1) != AVCLan_Read_uint8_t(1)) {
     STARTEvent;
     return 0;
   }
@@ -389,29 +388,29 @@ byte AVCLan_Read_Message() {
   if (for_me)
     AVCLan_Send_ACK();
   else
-    AVCLan_Read_Byte(1);
+    AVCLan_Read_uint8_t(1);
 
   parity_bit = 0;
-  AVCLan_Read_Byte(4); // control - always 0xF
-  if ((parity_bit & 1) != AVCLan_Read_Byte(1)) {
+  AVCLan_Read_uint8_t(4); // control - always 0xF
+  if ((parity_bit & 1) != AVCLan_Read_uint8_t(1)) {
     STARTEvent;
     return 0;
   }
   if (for_me)
     AVCLan_Send_ACK();
   else
-    AVCLan_Read_Byte(1);
+    AVCLan_Read_uint8_t(1);
 
   parity_bit = 0;
-  message_len = AVCLan_Read_Byte(8);
-  if ((parity_bit & 1) != AVCLan_Read_Byte(1)) {
+  message_len = AVCLan_Read_uint8_t(8);
+  if ((parity_bit & 1) != AVCLan_Read_uint8_t(1)) {
     STARTEvent;
     return 0;
   }
   if (for_me)
     AVCLan_Send_ACK();
   else
-    AVCLan_Read_Byte(1);
+    AVCLan_Read_uint8_t(1);
 
   if (message_len > MAXMSGLEN) {
     //	RS232_Print("LAN> Command error");
@@ -421,15 +420,15 @@ byte AVCLan_Read_Message() {
 
   for (i = 0; i < message_len; i++) {
     parity_bit = 0;
-    message[i] = AVCLan_Read_Byte(8);
-    if ((parity_bit & 1) != AVCLan_Read_Byte(1)) {
+    message[i] = AVCLan_Read_uint8_t(8);
+    if ((parity_bit & 1) != AVCLan_Read_uint8_t(1)) {
       STARTEvent;
       return 0;
     }
     if (for_me) {
       AVCLan_Send_ACK();
     } else {
-      AVCLan_Read_Byte(1);
+      AVCLan_Read_uint8_t(1);
     }
   }
 
@@ -440,65 +439,65 @@ byte AVCLan_Read_Message() {
 
   if (for_me) {
 
-    if (CheckCmd((byte *)stat1)) {
+    if (CheckCmd((uint8_t *)stat1)) {
       answerReq = cmStatus1;
       return 1;
     }
-    if (CheckCmd((byte *)stat2)) {
+    if (CheckCmd((uint8_t *)stat2)) {
       answerReq = cmStatus2;
       return 1;
     }
-    if (CheckCmd((byte *)stat3)) {
+    if (CheckCmd((uint8_t *)stat3)) {
       answerReq = cmStatus3;
       return 1;
     }
-    if (CheckCmd((byte *)stat4)) {
+    if (CheckCmd((uint8_t *)stat4)) {
       answerReq = cmStatus4;
       return 1;
     }
-    //	if (CheckCmd((byte*)stat5)) { answerReq = cmStatus5; return 1; }
+    //	if (CheckCmd((uint8_t*)stat5)) { answerReq = cmStatus5; return 1; }
 
-    if (CheckCmd((byte *)play_req1)) {
+    if (CheckCmd((uint8_t *)play_req1)) {
       answerReq = cmPlayReq1;
       return 1;
     }
-    if (CheckCmd((byte *)play_req2)) {
+    if (CheckCmd((uint8_t *)play_req2)) {
       answerReq = cmPlayReq2;
       return 1;
     }
-    if (CheckCmd((byte *)play_req3)) {
+    if (CheckCmd((uint8_t *)play_req3)) {
       answerReq = cmPlayReq3;
       return 1;
     }
-    if (CheckCmd((byte *)stop_req)) {
+    if (CheckCmd((uint8_t *)stop_req)) {
       answerReq = cmStopReq;
       return 1;
     }
-    if (CheckCmd((byte *)stop_req2)) {
+    if (CheckCmd((uint8_t *)stop_req2)) {
       answerReq = cmStopReq2;
       return 1;
     }
 
   } else { // broadcast check
 
-    if (CheckCmd((byte *)lan_playit)) {
+    if (CheckCmd((uint8_t *)lan_playit)) {
       answerReq = cmPlayIt;
       return 1;
     }
-    if (CheckCmd((byte *)lan_check)) {
+    if (CheckCmd((uint8_t *)lan_check)) {
       answerReq = cmCheck;
       CMD_CHECK[6] = message[3];
       return 1;
     }
-    if (CheckCmd((byte *)lan_reg)) {
+    if (CheckCmd((uint8_t *)lan_reg)) {
       answerReq = cmRegister;
       return 1;
     }
-    if (CheckCmd((byte *)lan_init)) {
+    if (CheckCmd((uint8_t *)lan_init)) {
       answerReq = cmInit;
       return 1;
     }
-    if (CheckCmd((byte *)lan_stat1)) {
+    if (CheckCmd((uint8_t *)lan_stat1)) {
       answerReq = cmStatus1;
       return 1;
     }
@@ -507,13 +506,13 @@ byte AVCLan_Read_Message() {
   return 1;
 }
 
-byte AVCLan_SendData() {
-  byte i;
+uint8_t AVCLan_SendData() {
+  uint8_t i;
 
   STOPEvent;
 
   // wait for free line
-  byte line_busy = 1;
+  uint8_t line_busy = 1;
 
   TCB1.CNT = 0;
   do {
@@ -529,15 +528,15 @@ byte AVCLan_SendData() {
   AVC_OUT_EN();
 
   AVCLan_Send_StartBit();
-  AVCLan_Send_Byte(0x1, 1); // regular communication
+  AVCLan_Send_uint8_t(0x1, 1); // regular communication
 
   parity_bit = 0;
-  AVCLan_Send_Byte(CD_ID_1, 4); // CD Changer ID as master
-  AVCLan_Send_Byte(CD_ID_2, 8);
+  AVCLan_Send_uint8_t(CD_ID_1, 4); // CD Changer ID as master
+  AVCLan_Send_uint8_t(CD_ID_2, 8);
   AVCLan_Send_ParityBit();
 
-  AVCLan_Send_Byte(HU_ID_1, 4); // HeadUnit ID as slave
-  AVCLan_Send_Byte(HU_ID_2, 8);
+  AVCLan_Send_uint8_t(HU_ID_1, 4); // HeadUnit ID as slave
+  AVCLan_Send_uint8_t(HU_ID_2, 8);
 
   AVCLan_Send_ParityBit();
 
@@ -548,7 +547,7 @@ byte AVCLan_SendData() {
     return 1;
   }
 
-  AVCLan_Send_Byte(0xF, 4); // 0xf - control -> COMMAND WRITE
+  AVCLan_Send_uint8_t(0xF, 4); // 0xf - control -> COMMAND WRITE
   AVCLan_Send_ParityBit();
   if (AVCLan_Read_ACK()) {
     AVC_OUT_DIS();
@@ -557,7 +556,7 @@ byte AVCLan_SendData() {
     return 2;
   }
 
-  AVCLan_Send_Byte(data_len, 8); // data length
+  AVCLan_Send_uint8_t(data_len, 8); // data length
   AVCLan_Send_ParityBit();
   if (AVCLan_Read_ACK()) {
     AVC_OUT_DIS();
@@ -567,12 +566,12 @@ byte AVCLan_SendData() {
   }
 
   for (i = 0; i < data_len; i++) {
-    AVCLan_Send_Byte(data[i], 8); // data byte
+    AVCLan_Send_uint8_t(data[i], 8); // data uint8_t
     AVCLan_Send_ParityBit();
     if (AVCLan_Read_ACK()) {
       AVC_OUT_DIS();
       STARTEvent;
-      RS232_Print("Error ACK 4 (Data Byte: ");
+      RS232_Print("Error ACK 4 (Data uint8_t: ");
       RS232_PrintDec(i);
       RS232_Print(")\n");
       return 4;
@@ -588,13 +587,13 @@ byte AVCLan_SendData() {
   return 0;
 }
 
-byte AVCLan_SendDataBroadcast() {
-  byte i;
+uint8_t AVCLan_SendDataBroadcast() {
+  uint8_t i;
 
   STOPEvent;
 
   // wait for free line
-  byte line_busy = 1;
+  uint8_t line_busy = 1;
 
   TCB1.CNT = 0;
   do {
@@ -609,28 +608,28 @@ byte AVCLan_SendDataBroadcast() {
   AVC_OUT_EN();
 
   AVCLan_Send_StartBit();
-  AVCLan_Send_Byte(0x0, 1); // broadcast
+  AVCLan_Send_uint8_t(0x0, 1); // broadcast
 
   parity_bit = 0;
-  AVCLan_Send_Byte(CD_ID_1, 4); // CD Changer ID as master
-  AVCLan_Send_Byte(CD_ID_2, 8);
+  AVCLan_Send_uint8_t(CD_ID_1, 4); // CD Changer ID as master
+  AVCLan_Send_uint8_t(CD_ID_2, 8);
   AVCLan_Send_ParityBit();
 
-  AVCLan_Send_Byte(0x1, 4); // all audio devices
-  AVCLan_Send_Byte(0xFF, 8);
-  AVCLan_Send_ParityBit();
-  AVCLan_Send_Bit1();
-
-  AVCLan_Send_Byte(0xF, 4); // 0xf - control -> COMMAND WRITE
+  AVCLan_Send_uint8_t(0x1, 4); // all audio devices
+  AVCLan_Send_uint8_t(0xFF, 8);
   AVCLan_Send_ParityBit();
   AVCLan_Send_Bit1();
 
-  AVCLan_Send_Byte(data_len, 8); // data lenght
+  AVCLan_Send_uint8_t(0xF, 4); // 0xf - control -> COMMAND WRITE
+  AVCLan_Send_ParityBit();
+  AVCLan_Send_Bit1();
+
+  AVCLan_Send_uint8_t(data_len, 8); // data lenght
   AVCLan_Send_ParityBit();
   AVCLan_Send_Bit1();
 
   for (i = 0; i < data_len; i++) {
-    AVCLan_Send_Byte(data[i], 8); // data byte
+    AVCLan_Send_uint8_t(data[i], 8); // data uint8_t
     AVCLan_Send_ParityBit();
     AVCLan_Send_Bit1();
   }
@@ -642,10 +641,10 @@ byte AVCLan_SendDataBroadcast() {
   return 0;
 }
 
-byte AVCLan_SendAnswerFrame(byte *cmd) {
-  byte i;
-  byte *c;
-  byte b;
+uint8_t AVCLan_SendAnswerFrame(uint8_t *cmd) {
+  uint8_t i;
+  uint8_t *c;
+  uint8_t b;
 
   c = cmd;
 
@@ -661,9 +660,9 @@ byte AVCLan_SendAnswerFrame(byte *cmd) {
     return AVCLan_SendDataBroadcast();
 }
 
-byte AVCLan_SendMyData(byte *data_tmp, byte s_len) {
-  byte i;
-  byte *c;
+uint8_t AVCLan_SendMyData(uint8_t *data_tmp, uint8_t s_len) {
+  uint8_t i;
+  uint8_t *c;
 
   c = data_tmp;
 
@@ -675,9 +674,9 @@ byte AVCLan_SendMyData(byte *data_tmp, byte s_len) {
   return AVCLan_SendData();
 }
 
-byte AVCLan_SendMyDataBroadcast(byte *data_tmp, byte s_len) {
-  byte i;
-  byte *c;
+uint8_t AVCLan_SendMyDataBroadcast(uint8_t *data_tmp, uint8_t s_len) {
+  uint8_t i;
+  uint8_t *c;
 
   c = data_tmp;
 
@@ -689,61 +688,61 @@ byte AVCLan_SendMyDataBroadcast(byte *data_tmp, byte s_len) {
   return AVCLan_SendDataBroadcast();
 }
 
-byte AVCLan_SendInitCommands() {
-  byte r;
+uint8_t AVCLan_SendInitCommands() {
+  uint8_t r;
 
-  const byte c1[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x00, 0x80,
-                     0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x80};
-  const byte c2[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                     0x3F, 0x00, 0x00, 0x00, 0x00, 0x02};
-  const byte c3[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                     0x3F, 0x00, 0x01, 0x00, 0x01, 0x02};
-  const byte c4[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                     0x3D, 0x00, 0x01, 0x00, 0x01, 0x02};
-  const byte c5[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                     0x39, 0x00, 0x01, 0x00, 0x01, 0x02};
-  const byte c6[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                     0x31, 0x00, 0x01, 0x00, 0x01, 0x02};
-  const byte c7[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                     0x21, 0x00, 0x01, 0x00, 0x01, 0x02};
-  const byte c8[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x00, 0x90,
-                     0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80};
-  const byte c9[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                     0x01, 0x00, 0x01, 0x00, 0x01, 0x02};
-  const byte cA[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x00, 0x30,
-                     0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80};
+  const uint8_t c1[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x00, 0x80,
+                        0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x80};
+  const uint8_t c2[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
+                        0x3F, 0x00, 0x00, 0x00, 0x00, 0x02};
+  const uint8_t c3[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
+                        0x3F, 0x00, 0x01, 0x00, 0x01, 0x02};
+  const uint8_t c4[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
+                        0x3D, 0x00, 0x01, 0x00, 0x01, 0x02};
+  const uint8_t c5[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
+                        0x39, 0x00, 0x01, 0x00, 0x01, 0x02};
+  const uint8_t c6[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
+                        0x31, 0x00, 0x01, 0x00, 0x01, 0x02};
+  const uint8_t c7[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
+                        0x21, 0x00, 0x01, 0x00, 0x01, 0x02};
+  const uint8_t c8[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x00, 0x90,
+                        0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80};
+  const uint8_t c9[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
+                        0x01, 0x00, 0x01, 0x00, 0x01, 0x02};
+  const uint8_t cA[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x00, 0x30,
+                        0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80};
 
-  r = AVCLan_SendAnswerFrame((byte *)c1);
+  r = AVCLan_SendAnswerFrame((uint8_t *)c1);
   if (!r)
-    r = AVCLan_SendAnswerFrame((byte *)c2);
+    r = AVCLan_SendAnswerFrame((uint8_t *)c2);
   if (!r)
-    r = AVCLan_SendAnswerFrame((byte *)c3);
+    r = AVCLan_SendAnswerFrame((uint8_t *)c3);
   if (!r)
-    r = AVCLan_SendAnswerFrame((byte *)c4);
+    r = AVCLan_SendAnswerFrame((uint8_t *)c4);
   if (!r)
-    r = AVCLan_SendAnswerFrame((byte *)c5);
+    r = AVCLan_SendAnswerFrame((uint8_t *)c5);
   if (!r)
-    r = AVCLan_SendAnswerFrame((byte *)c6);
+    r = AVCLan_SendAnswerFrame((uint8_t *)c6);
   if (!r)
-    r = AVCLan_SendAnswerFrame((byte *)c7);
+    r = AVCLan_SendAnswerFrame((uint8_t *)c7);
   if (!r)
-    r = AVCLan_SendAnswerFrame((byte *)c8);
+    r = AVCLan_SendAnswerFrame((uint8_t *)c8);
   if (!r)
-    r = AVCLan_SendAnswerFrame((byte *)c9);
+    r = AVCLan_SendAnswerFrame((uint8_t *)c9);
   if (!r)
-    r = AVCLan_SendAnswerFrame((byte *)cA);
+    r = AVCLan_SendAnswerFrame((uint8_t *)cA);
 
-  // const byte c1[] = { 0x0, 0x0B,		0x63, 0x31, 0xF1, 0x00, 0x80,
+  // const uint8_t c1[] = { 0x0, 0x0B,		0x63, 0x31, 0xF1, 0x00, 0x80,
   // 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x80 }; r =
-  // AVCLan_SendAnswerFrame((byte*)c1);
+  // AVCLan_SendAnswerFrame((uint8_t*)c1);
   return r;
 }
 
 void AVCLan_Send_Status() {
   //                                                        disc  track t_min
   //                                                        t_sec
-  byte STATUS[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x01, 0x10,
-                   0x01, 0x01, 0x00, 0x00, 0x00, 0x80};
+  uint8_t STATUS[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x01, 0x10,
+                      0x01, 0x01, 0x00, 0x00, 0x00, 0x80};
 
   STATUS[7] = cd_Disc;
   STATUS[8] = cd_Track;
@@ -752,47 +751,47 @@ void AVCLan_Send_Status() {
 
   STATUS[11] = 0;
 
-  AVCLan_SendAnswerFrame((byte *)STATUS);
+  AVCLan_SendAnswerFrame((uint8_t *)STATUS);
 }
 
-byte AVCLan_SendAnswer() {
-  byte r = 0;
+uint8_t AVCLan_SendAnswer() {
+  uint8_t r = 0;
 
   switch (answerReq) {
     case cmStatus1:
-      r = AVCLan_SendAnswerFrame((byte *)CMD_STATUS1);
+      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STATUS1);
       break;
     case cmStatus2:
-      r = AVCLan_SendAnswerFrame((byte *)CMD_STATUS2);
+      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STATUS2);
       break;
     case cmStatus3:
-      r = AVCLan_SendAnswerFrame((byte *)CMD_STATUS3);
+      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STATUS3);
       break;
     case cmStatus4:
-      r = AVCLan_SendAnswerFrame((byte *)CMD_STATUS4);
+      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STATUS4);
       break;
     case cmRegister:
-      r = AVCLan_SendAnswerFrame((byte *)CMD_REGISTER);
+      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_REGISTER);
       break;
     case cmInit: // RS232_Print("INIT\n");
       r = AVCLan_SendInitCommands();
       break;
     case cmCheck:
-      r = AVCLan_SendAnswerFrame((byte *)CMD_CHECK);
+      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_CHECK);
       check_timeout = 0;
       CMD_CHECK[6]++;
       RS232_Print("AVCCHK\n");
       break;
     case cmPlayReq1:
       playMode = 0;
-      r = AVCLan_SendAnswerFrame((byte *)CMD_PLAY_OK1);
+      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_PLAY_OK1);
       break;
     case cmPlayReq2:
     case cmPlayReq3:
       playMode = 0;
-      r = AVCLan_SendAnswerFrame((byte *)CMD_PLAY_OK2);
+      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_PLAY_OK2);
       if (!r)
-        r = AVCLan_SendAnswerFrame((byte *)CMD_PLAY_OK3);
+        r = AVCLan_SendAnswerFrame((uint8_t *)CMD_PLAY_OK3);
       CD_Mode = stPlay;
       break;
     case cmPlayIt:
@@ -802,7 +801,7 @@ byte AVCLan_SendAnswer() {
       CMD_PLAY_OK4[8] = cd_Track;
       CMD_PLAY_OK4[9] = cd_Time_Min;
       CMD_PLAY_OK4[10] = cd_Time_Sec;
-      r = AVCLan_SendAnswerFrame((byte *)CMD_PLAY_OK4);
+      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_PLAY_OK4);
       if (!r)
         AVCLan_Send_Status();
       CD_Mode = stPlay;
@@ -812,15 +811,15 @@ byte AVCLan_SendAnswer() {
       CD_Mode = stStop;
       playMode = 0;
 
-      r = AVCLan_SendAnswerFrame((byte *)CMD_STOP1);
+      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STOP1);
       CMD_STOP2[7] = cd_Disc;
       CMD_STOP2[8] = cd_Track;
       CMD_STOP2[9] = cd_Time_Min;
       CMD_STOP2[10] = cd_Time_Sec;
-      r = AVCLan_SendAnswerFrame((byte *)CMD_STOP2);
+      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STOP2);
       break;
     case cmBeep:
-      AVCLan_SendAnswerFrame((byte *)CMD_BEEP);
+      AVCLan_SendAnswerFrame((uint8_t *)CMD_BEEP);
       break;
   }
 
@@ -830,14 +829,14 @@ byte AVCLan_SendAnswer() {
 
 void AVCLan_Register() {
   RS232_Print("REG_ST\n");
-  AVCLan_SendAnswerFrame((byte *)CMD_REGISTER);
+  AVCLan_SendAnswerFrame((uint8_t *)CMD_REGISTER);
   RS232_Print("REG_END\n");
   // AVCLan_Command( cmRegister );
   AVCLan_Command(cmInit);
 }
 
-byte AVCLan_Command(byte command) {
-  byte r;
+uint8_t AVCLan_Command(uint8_t command) {
+  uint8_t r;
 
   answerReq = command;
   r = AVCLan_SendAnswer();
@@ -851,7 +850,7 @@ byte AVCLan_Command(byte command) {
 
 /* Increment packed 2-digit BCD number.
    WARNING: Overflow behavior is incorrect (e.g. `incBCD(0x99) != 0x00`) */
-byte incBCD(byte data) {
+uint8_t incBCD(uint8_t data) {
   if ((data & 0x9) == 0x9)
     return (data + 7);
 
@@ -878,7 +877,7 @@ void ShowInMessage() {
   RS232_PrintHex8(slave2);
   RS232_Print("| ");
 
-  byte i;
+  uint8_t i;
   for (i = 0; i < message_len; i++) {
     RS232_PrintHex8(message[i]);
     RS232_Print(" ");
@@ -889,7 +888,7 @@ void ShowInMessage() {
 }
 
 void ShowOutMessage() {
-  byte i;
+  uint8_t i;
 
   AVC_HoldLine();
 
@@ -904,13 +903,13 @@ void ShowOutMessage() {
 }
 
 #ifdef SOFTWARE_DEBUG
-word temp_b[100];
+uint16_t temp_b[100];
 
 void AVCLan_Measure() {
   STOPEvent;
 
-  // word tmp, tmp1, tmp2, bit0, bit1;
-  byte n = 0;
+  // uint16_t tmp, tmp1, tmp2, bit0, bit1;
+  uint8_t n = 0;
 
   cbi(TCCR1B, CS12);
   TCCR1B = _BV(CS10);
@@ -961,7 +960,7 @@ void AVCLan_Measure() {
     n += 10;
   }
 
-  for (byte i = 0; i < 100; i++) {
+  for (uint8_t i = 0; i < 100; i++) {
     itoa(temp_b[i], str);
     if (i & 1) {
       RS232_Print("High,");
@@ -984,7 +983,7 @@ void AVCLan_Measure() {
 void SetHighLow() {
   AVC_OUT_EN();
   sbi(TCCR1B, CS10);
-  word n = 60000;
+  uint16_t n = 60000;
   TCNT1 = 0;
   AVC_SET_LOGICAL_1();
   while (TCNT1 < n) {}
