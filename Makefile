@@ -1,5 +1,5 @@
 CC=avr-gcc
-CFLAGS=-std=gnuc17  -c -g -Os -Wall -mmcu=attiny3216
+CFLAGS=-std=gnu17 --param=min-pagesize=0 -c -g -Os -Wall -mmcu=attiny3216
 CFLAGS+=-fno-exceptions -ffunction-sections -fdata-sections -fshort-enums
 DEFS=-DF_CPU=16000000L
 LFLAGS=-mmcu=attiny3216 -MMD
