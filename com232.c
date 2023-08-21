@@ -34,6 +34,8 @@ byte readkey;
 void RS232_Init(void) {
   RS232_RxCharBegin = RS232_RxCharEnd = 0;
 
+  PORTMUX.CTRLB = PORTMUX_USART0_ALTERNATE_gc; // Use PA1/PA2 for TxD/RxD
+
   USART0.CTRLA = USART_RXCIE_bm; // Enable receive interrupts
   USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm |
                  USART_RXMODE_NORMAL_gc; // Enable Rx/Tx and set receive mode
