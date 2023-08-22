@@ -224,7 +224,7 @@ void set_AVC_logic_for(uint8_t val, uint16_t period) {
     AVC_SET_LOGICAL_0();
   }
   TCB1.CCMP = period;
-  EVSYS.ASYNCSTROBE = EVSYS_ASYNCCH00_bm;
+  EVSYS.ASYNCSTROBE = EVSYS_ASYNCCH0_0_bm;
   loop_until_bit_is_set(TCB1_INTFLAGS, 0);
   TCB1_INTFLAGS = 1;
 }
