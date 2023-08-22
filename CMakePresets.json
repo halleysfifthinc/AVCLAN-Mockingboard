@@ -1,0 +1,15 @@
+{
+    "version": 2,
+    "configurePresets": [
+        {
+            "name": "main",
+            "displayName": "Default",
+            "description": "Sets Ninja generator, build and install directory",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        }
+    ]
+}
