@@ -1,0 +1,1 @@
+sudo apk --no-cache add make cmake avrdude avr-libc gcc-avr
