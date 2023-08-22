@@ -36,10 +36,9 @@ void RS232_Init(void) {
 
   PORTMUX.CTRLB = PORTMUX_USART0_ALTERNATE_gc; // Use PA1/PA2 for TxD/RxD
 
-  USART0.CTRLA = USART_RXCIE_bm; // Enable receive interrupts
-  USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm |
-                 USART_RXMODE_NORMAL_gc; // Enable Rx/Tx and set receive mode
-                                         // normal
+  USART0.CTRLA = USART_RXCIE_bm;                 // Enable receive interrupts
+  USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm | // Enable Rx/Tx and set receive
+                 USART_RXMODE_NORMAL_gc;         //  mode normal
   USART0.CTRLC = USART_CMODE_ASYNCHRONOUS_gc | USART_PMODE_DISABLED_gc |
                  USART_CHSIZE_8BIT_gc |
                  USART_SBMODE_1BIT_gc; // Async UART with 8N1 config
@@ -47,9 +46,8 @@ void RS232_Init(void) {
 }
 
 ISR(USART0_RXC_vect) {
-  RS232_RxCharBuffer[RS232_RxCharEnd] = USART0_RXDATAL; // Store received
-                                                        // character to the End
-                                                        // of Buffer
+  // Store received character to the End of Buffer
+  RS232_RxCharBuffer[RS232_RxCharEnd] = USART0_RXDATAL;
   RS232_RxCharEnd++;
 }
 
