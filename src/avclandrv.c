@@ -47,6 +47,11 @@
   __asm__ __volatile__(                                                        \
       "cbi %[vporta_out], 6;" ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)));
 
+// Name difference between avr-libc and Microchip pack
+#if defined(EVSYS_ASYNCCH00_bm)
+#define EVSYS_ASYNCCH0_0_bm EVSYS_ASYNCCH00_bm
+#endif
+
 uint8_t CD_ID_1;
 uint8_t CD_ID_2;
 
