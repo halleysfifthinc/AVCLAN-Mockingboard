@@ -4,9 +4,8 @@
 	"name": "AVR toolchain",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"image": "mcr.microsoft.com/devcontainers/base:alpine-3.18",
-	"features": {},
 	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
+	"features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	// Use 'postCreateCommand' to run commands after the container is created.
@@ -16,14 +15,10 @@
 		"vscode": {
 			"extensions": [
 				"ms-vscode.cpptools",
-				"ms-vscode.cmake-tools",
-				"ms-vscode.makefile-tools"
+				"ms-vscode.cmake-tools"
 			]
 		}
 	}
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"
-	// "runArgs": [
-	// 	"--device='class/86E0D1E0-8089-11D0-9CE4-08003E301F73'"
-	// ]
 }

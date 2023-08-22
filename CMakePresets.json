@@ -4,7 +4,7 @@
         {
             "name": "main",
             "displayName": "Default",
-            "description": "Sets Ninja generator, build and install directory",
+            "description": "Use Unix Makefiles generator; set build directory",
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
