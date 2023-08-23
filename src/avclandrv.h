@@ -51,31 +51,29 @@ void AVC_ReleaseLine();
 extern uint16_t CD_ID; // CD Changer ID
 extern uint16_t HU_ID; // Head-unit ID
 
-#define cmNull 0
-#define cmStatus1 1
-#define cmStatus2 2
-#define cmStatus3 3
-#define cmStatus4 4
-
-#define cmRegister 100
-#define cmInit 101
-#define cmCheck 102
-#define cmPlayIt 103
-#define cmBeep 110
-
-#define cmNextTrack 120
-#define cmPrevTrack 121
-#define cmNextDisc 122
-#define cmPrevDisc 123
-
-#define cmScanModeOn 130
-#define cmScanModeOff 131
-
-#define cmPlayReq1 5
-#define cmPlayReq2 6
-#define cmPlayReq3 7
-#define cmStopReq 8
-#define cmStopReq2 9
+typedef enum {
+  cm_Null = 0,
+  cm_Status1 = 1,
+  cm_Status2 = 2,
+  cm_Status3 = 3,
+  cm_Status4 = 4,
+  cm_PlayReq1 = 5,
+  cm_PlayReq2 = 6,
+  cm_PlayReq3 = 7,
+  cm_StopReq = 8,
+  cm_StopReq2 = 9,
+  cm_Register = 100,
+  cm_Init = 101,
+  cm_Check = 102,
+  cm_PlayIt = 103,
+  cm_Beep = 110,
+  cm_NextTrack = 120,
+  cm_PrevTrack = 121,
+  cm_NextDisc = 122,
+  cm_PrevDisc = 123,
+  cm_ScanModeOn = 130,
+  cm_ScanModeOff = 131,
+} commands;
 
 typedef enum { stStop = 0, stPlay = 1 } cd_modes;
 extern cd_modes CD_Mode;

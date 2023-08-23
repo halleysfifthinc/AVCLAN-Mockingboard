@@ -193,7 +193,7 @@ void AVCLan_Init() {
   TCB1.CTRLA = TCB_CLKSEL_CLKDIV2_gc | TCB_ENABLE_bm;
 
   message_len = 0;
-  answerReq = cmNull;
+  answerReq = cm_Null;
   check_timeout = 0;
 
   cd_Disc = 1;
@@ -453,69 +453,69 @@ uint8_t AVCLan_Read_Message() {
   if (for_me) {
 
     if (CheckCmd((uint8_t *)stat1)) {
-      answerReq = cmStatus1;
+      answerReq = cm_Status1;
       return 1;
     }
     if (CheckCmd((uint8_t *)stat2)) {
-      answerReq = cmStatus2;
+      answerReq = cm_Status2;
       return 1;
     }
     if (CheckCmd((uint8_t *)stat3)) {
-      answerReq = cmStatus3;
+      answerReq = cm_Status3;
       return 1;
     }
     if (CheckCmd((uint8_t *)stat4)) {
-      answerReq = cmStatus4;
+      answerReq = cm_Status4;
       return 1;
     }
-    //	if (CheckCmd((uint8_t*)stat5)) { answerReq = cmStatus5; return 1; }
+    //	if (CheckCmd((uint8_t*)stat5)) { answerReq = cm_Status5; return 1; }
 
     if (CheckCmd((uint8_t *)play_req1)) {
-      answerReq = cmPlayReq1;
+      answerReq = cm_PlayReq1;
       return 1;
     }
     if (CheckCmd((uint8_t *)play_req2)) {
-      answerReq = cmPlayReq2;
+      answerReq = cm_PlayReq2;
       return 1;
     }
     if (CheckCmd((uint8_t *)play_req3)) {
-      answerReq = cmPlayReq3;
+      answerReq = cm_PlayReq3;
       return 1;
     }
     if (CheckCmd((uint8_t *)stop_req)) {
-      answerReq = cmStopReq;
+      answerReq = cm_StopReq;
       return 1;
     }
     if (CheckCmd((uint8_t *)stop_req2)) {
-      answerReq = cmStopReq2;
+      answerReq = cm_StopReq2;
       return 1;
     }
 
   } else { // broadcast check
 
     if (CheckCmd((uint8_t *)lan_playit)) {
-      answerReq = cmPlayIt;
+      answerReq = cm_PlayIt;
       return 1;
     }
     if (CheckCmd((uint8_t *)lan_check)) {
-      answerReq = cmCheck;
+      answerReq = cm_Check;
       CMD_CHECK[6] = message[3];
       return 1;
     }
     if (CheckCmd((uint8_t *)lan_reg)) {
-      answerReq = cmRegister;
+      answerReq = cm_Register;
       return 1;
     }
     if (CheckCmd((uint8_t *)lan_init)) {
-      answerReq = cmInit;
+      answerReq = cm_Init;
       return 1;
     }
     if (CheckCmd((uint8_t *)lan_stat1)) {
-      answerReq = cmStatus1;
+      answerReq = cm_Status1;
       return 1;
     }
   }
-  answerReq = cmNull;
+  answerReq = cm_Null;
   return 1;
 }
 
@@ -771,43 +771,43 @@ uint8_t AVCLan_SendAnswer() {
   uint8_t r = 0;
 
   switch (answerReq) {
-    case cmStatus1:
+    case cm_Status1:
       r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STATUS1);
       break;
-    case cmStatus2:
+    case cm_Status2:
       r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STATUS2);
       break;
-    case cmStatus3:
+    case cm_Status3:
       r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STATUS3);
       break;
-    case cmStatus4:
+    case cm_Status4:
       r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STATUS4);
       break;
-    case cmRegister:
+    case cm_Register:
       r = AVCLan_SendAnswerFrame((uint8_t *)CMD_REGISTER);
       break;
-    case cmInit: // RS232_Print("INIT\n");
+    case cm_Init: // RS232_Print("INIT\n");
       r = AVCLan_SendInitCommands();
       break;
-    case cmCheck:
+    case cm_Check:
       r = AVCLan_SendAnswerFrame((uint8_t *)CMD_CHECK);
       check_timeout = 0;
       CMD_CHECK[6]++;
       RS232_Print("AVCCHK\n");
       break;
-    case cmPlayReq1:
+    case cm_PlayReq1:
       playMode = 0;
       r = AVCLan_SendAnswerFrame((uint8_t *)CMD_PLAY_OK1);
       break;
-    case cmPlayReq2:
-    case cmPlayReq3:
+    case cm_PlayReq2:
+    case cm_PlayReq3:
       playMode = 0;
       r = AVCLan_SendAnswerFrame((uint8_t *)CMD_PLAY_OK2);
       if (!r)
         r = AVCLan_SendAnswerFrame((uint8_t *)CMD_PLAY_OK3);
       CD_Mode = stPlay;
       break;
-    case cmPlayIt:
+    case cm_PlayIt:
       playMode = 1;
       RS232_Print("PLAY\n");
       CMD_PLAY_OK4[7] = cd_Disc;
@@ -819,8 +819,8 @@ uint8_t AVCLan_SendAnswer() {
         AVCLan_Send_Status();
       CD_Mode = stPlay;
       break;
-    case cmStopReq:
-    case cmStopReq2:
+    case cm_StopReq:
+    case cm_StopReq2:
       CD_Mode = stStop;
       playMode = 0;
 
@@ -831,12 +831,12 @@ uint8_t AVCLan_SendAnswer() {
       CMD_STOP2[10] = cd_Time_Sec;
       r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STOP2);
       break;
-    case cmBeep:
+    case cm_Beep:
       AVCLan_SendAnswerFrame((uint8_t *)CMD_BEEP);
       break;
   }
 
-  answerReq = cmNull;
+  answerReq = cm_Null;
   return r;
 }
 
@@ -844,8 +844,8 @@ void AVCLan_Register() {
   RS232_Print("REG_ST\n");
   AVCLan_SendAnswerFrame((uint8_t *)CMD_REGISTER);
   RS232_Print("REG_END\n");
-  // AVCLan_Command( cmRegister );
-  AVCLan_Command(cmInit);
+  // AVCLan_Command( cm_Register );
+  AVCLan_Command(cm_Init);
 }
 
 uint8_t AVCLan_Command(uint8_t command) {

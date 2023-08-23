@@ -107,7 +107,7 @@ int main() {
           break;
         case 'R':
           RS232_Print("REGIST:\n");
-          AVCLan_Command(cmRegister);
+          AVCLan_Command(cm_Register);
           TCB1.CNT = 0;
           while (TCB1.CNT < 540) {}
           CHECK_AVC_LINE;
