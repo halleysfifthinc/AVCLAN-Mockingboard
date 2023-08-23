@@ -34,12 +34,16 @@
 #include "avclandrv.h"
 #include "com232.h"
 
+// Enable AVC bus Tx
 #define AVC_OUT_EN()                                                           \
   cbi(AC2_CTRLA, AC_ENABLE_bp);                                                \
-  sbi(VPORTA_DIR, 6); // Write mode
+  sbi(VPORTA_DIR, 6);
+
+// Disable AVC bus Tx
 #define AVC_OUT_DIS()                                                          \
   cbi(VPORTA_DIR, 6);                                                          \
-  sbi(AC2_CTRLA, AC_ENABLE_bp); // Read mode
+  sbi(AC2_CTRLA, AC_ENABLE_bp);
+
 #define AVC_SET_LOGICAL_1()                                                    \
   __asm__ __volatile__(                                                        \
       "sbi %[vporta_out], 6;" ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)));
@@ -175,10 +179,12 @@ void AVCLan_Init() {
   PORTA.PIN7CTRL = PORT_ISC_INPUT_DISABLE_gc; // recommended when using AC
 
   // Pull-ups are disabled by default
-  VPORTA.DIR &= ~(PIN6_bm | PIN7_bm); // Zero pin 6 and 7 to set as input
+  // Set pin 6 and 7 as input
+  PORTA.DIRCLR = (PIN6_bm | PIN7_bm);
 
   // Analog comparator
   AC2.CTRLA = AC_OUTEN_bm | AC_HYSMODE_25mV_gc | AC_ENABLE_bm;
+  PORTB.DIRSET = PIN2_bm; // Enable AC2 OUT for LED
 
   TCB1.CTRLB = TCB_ASYNC_bm | TCB_CNTMODE_SINGLE_gc;
   TCB1.EVCTRL = TCB_CAPTEI_bm;
