@@ -52,11 +52,9 @@
 #define EVSYS_ASYNCCH0_0_bm EVSYS_ASYNCCH00_bm
 #endif
 
-uint8_t CD_ID_1;
-uint8_t CD_ID_2;
 
-uint8_t HU_ID_1;
-uint8_t HU_ID_2;
+uint16_t CD_ID;
+uint16_t HU_ID;
 
 uint8_t parity_bit;
 
@@ -75,10 +73,8 @@ uint8_t answerReq;
 cd_modes CD_Mode;
 
 uint8_t broadcast;
-uint8_t master1;
-uint8_t master2;
-uint8_t slave1;
-uint8_t slave2;
+uint16_t sender;
+uint16_t responder;
 uint8_t message_len;
 uint8_t message[MAXMSGLEN];
 
@@ -204,21 +200,21 @@ void AVCLan_Init() {
   CD_Mode = stStop;
 }
 
-uint8_t AVCLan_Read_uint8_t(uint8_t length) {
-  uint8_t bite = 0;
+uint8_t AVCLan_Read_Byte(uint8_t length) {
+  uint8_t byte = 0;
 
   while (1) {
     while (INPUT_IS_CLEAR) {}
     TCB1.CNT = 0;
     while (INPUT_IS_SET) {} // If input was set for less than 26 us
     if (TCB1.CNT < 208) {   // (a generous half period), bit was a 1
-      bite++;
+      byte++;
       parity_bit++;
     }
     length--;
     if (!length)
-      return bite;
-    bite = bite << 1;
+      return byte;
+    byte = byte << 1;
   }
 }
 
@@ -288,16 +284,18 @@ uint8_t AVCLan_Send_ACK() {
   return 1;
 }
 
-uint8_t AVCLan_Send_uint8_t(uint8_t bite, uint8_t len) {
+uint8_t AVCLan_Send_Byte(uint8_t byte, uint8_t len) {
   uint8_t b;
+  parity_bit = 0;
+
   if (len == 8) {
-    b = bite;
+    b = byte;
   } else {
-    b = bite << (8 - len);
+    b = byte << (8 - len);
   }
 
   while (1) {
-    if ((b & 128) != 0) {
+    if (b & 0x80) {
       AVCLan_Send_Bit1();
       parity_bit++;
     } else {
@@ -366,56 +364,60 @@ uint8_t AVCLan_Read_Message() {
   //  	RS232_Print("LAN>T2\n");
   //  	return 0;
   //  }
-  AVCLan_Read_uint8_t(1);
+  AVCLan_Read_Byte(1);
 
-  broadcast = AVCLan_Read_uint8_t(1);
+  broadcast = AVCLan_Read_Byte(1);
 
   parity_bit = 0;
-  master1 = AVCLan_Read_uint8_t(4);
-  master2 = AVCLan_Read_uint8_t(8);
-  if ((parity_bit & 1) != AVCLan_Read_uint8_t(1)) {
+  uint8_t *sender_hi = ((uint8_t *)&sender) + 1;
+  uint8_t *sender_lo = ((uint8_t *)&sender) + 0;
+  *sender_hi = AVCLan_Read_Byte(4);
+  *sender_lo = AVCLan_Read_Byte(8);
+  if ((parity_bit & 1) != AVCLan_Read_Byte(1)) {
     STARTEvent;
     return 0;
   }
 
   parity_bit = 0;
-  slave1 = AVCLan_Read_uint8_t(4);
-  slave2 = AVCLan_Read_uint8_t(8);
-  if ((parity_bit & 1) != AVCLan_Read_uint8_t(1)) {
+  uint8_t *responder_hi = ((uint8_t *)&responder) + 1;
+  uint8_t *responder_lo = ((uint8_t *)&responder) + 0;
+  *responder_hi = AVCLan_Read_Byte(4);
+  *responder_lo = AVCLan_Read_Byte(8);
+  if ((parity_bit & 1) != AVCLan_Read_Byte(1)) {
     STARTEvent;
     return 0;
   }
   // is this command for me ?
-  if ((slave1 == CD_ID_1) && (slave2 == CD_ID_2)) {
+  if (responder == CD_ID) {
     for_me = 1;
   }
 
   if (for_me)
     AVCLan_Send_ACK();
   else
-    AVCLan_Read_uint8_t(1);
+    AVCLan_Read_Byte(1);
 
   parity_bit = 0;
-  AVCLan_Read_uint8_t(4); // control - always 0xF
-  if ((parity_bit & 1) != AVCLan_Read_uint8_t(1)) {
+  AVCLan_Read_Byte(4); // control - always 0xF
+  if ((parity_bit & 1) != AVCLan_Read_Byte(1)) {
     STARTEvent;
     return 0;
   }
   if (for_me)
     AVCLan_Send_ACK();
   else
-    AVCLan_Read_uint8_t(1);
+    AVCLan_Read_Byte(1);
 
   parity_bit = 0;
-  message_len = AVCLan_Read_uint8_t(8);
-  if ((parity_bit & 1) != AVCLan_Read_uint8_t(1)) {
+  message_len = AVCLan_Read_Byte(8);
+  if ((parity_bit & 1) != AVCLan_Read_Byte(1)) {
     STARTEvent;
     return 0;
   }
   if (for_me)
     AVCLan_Send_ACK();
   else
-    AVCLan_Read_uint8_t(1);
+    AVCLan_Read_Byte(1);
 
   if (message_len > MAXMSGLEN) {
     //	RS232_Print("LAN> Command error");
@@ -425,15 +427,15 @@ uint8_t AVCLan_Read_Message() {
 
   for (i = 0; i < message_len; i++) {
     parity_bit = 0;
-    message[i] = AVCLan_Read_uint8_t(8);
-    if ((parity_bit & 1) != AVCLan_Read_uint8_t(1)) {
+    message[i] = AVCLan_Read_Byte(8);
+    if ((parity_bit & 1) != AVCLan_Read_Byte(1)) {
       STARTEvent;
       return 0;
     }
     if (for_me) {
       AVCLan_Send_ACK();
     } else {
-      AVCLan_Read_uint8_t(1);
+      AVCLan_Read_Byte(1);
     }
   }
 
@@ -533,15 +535,15 @@ uint8_t AVCLan_SendData() {
   AVC_OUT_EN();
 
   AVCLan_Send_StartBit();
-  AVCLan_Send_uint8_t(0x1, 1); // regular communication
+  AVCLan_Send_Byte(0x1, 1); // regular communication
 
   parity_bit = 0;
-  AVCLan_Send_uint8_t(CD_ID_1, 4); // CD Changer ID as master
-  AVCLan_Send_uint8_t(CD_ID_2, 8);
+  AVCLan_Send_Byte(*((uint8_t *)&CD_ID + 1), 4); // CD Changer ID as sender
+  AVCLan_Send_Byte(*((uint8_t *)&CD_ID + 0), 8);
   AVCLan_Send_ParityBit();
 
-  AVCLan_Send_uint8_t(HU_ID_1, 4); // HeadUnit ID as slave
-  AVCLan_Send_uint8_t(HU_ID_2, 8);
+  AVCLan_Send_Byte(*((uint8_t *)&HU_ID + 1), 4); // HeadUnit ID as responder
+  AVCLan_Send_Byte(*((uint8_t *)&HU_ID + 0), 8);
 
   AVCLan_Send_ParityBit();
 
@@ -552,7 +554,7 @@ uint8_t AVCLan_SendData() {
     return 1;
   }
 
-  AVCLan_Send_uint8_t(0xF, 4); // 0xf - control -> COMMAND WRITE
+  AVCLan_Send_Byte(0xF, 4); // 0xf - control -> COMMAND WRITE
   AVCLan_Send_ParityBit();
   if (AVCLan_Read_ACK()) {
     AVC_OUT_DIS();
@@ -561,7 +563,7 @@ uint8_t AVCLan_SendData() {
     return 2;
   }
 
-  AVCLan_Send_uint8_t(data_len, 8); // data length
+  AVCLan_Send_Byte(data_len, 8); // data length
   AVCLan_Send_ParityBit();
   if (AVCLan_Read_ACK()) {
     AVC_OUT_DIS();
@@ -571,7 +573,7 @@ uint8_t AVCLan_SendData() {
   }
 
   for (i = 0; i < data_len; i++) {
-    AVCLan_Send_uint8_t(data[i], 8); // data uint8_t
+    AVCLan_Send_Byte(data[i], 8); // data uint8_t
     AVCLan_Send_ParityBit();
     if (AVCLan_Read_ACK()) {
       AVC_OUT_DIS();
@@ -613,28 +615,28 @@ uint8_t AVCLan_SendDataBroadcast() {
   AVC_OUT_EN();
 
   AVCLan_Send_StartBit();
-  AVCLan_Send_uint8_t(0x0, 1); // broadcast
+  AVCLan_Send_Byte(0x0, 1); // broadcast
 
   parity_bit = 0;
-  AVCLan_Send_uint8_t(CD_ID_1, 4); // CD Changer ID as master
-  AVCLan_Send_uint8_t(CD_ID_2, 8);
+  AVCLan_Send_Byte(*((uint8_t *)&CD_ID + 1), 4); // CD Changer ID as sender
+  AVCLan_Send_Byte(*((uint8_t *)&CD_ID + 0), 8);
   AVCLan_Send_ParityBit();
 
-  AVCLan_Send_uint8_t(0x1, 4); // all audio devices
-  AVCLan_Send_uint8_t(0xFF, 8);
-  AVCLan_Send_ParityBit();
-  AVCLan_Send_Bit1();
-
-  AVCLan_Send_uint8_t(0xF, 4); // 0xf - control -> COMMAND WRITE
+  AVCLan_Send_Byte(0x1, 4); // all audio devices
+  AVCLan_Send_Byte(0xFF, 8);
   AVCLan_Send_ParityBit();
   AVCLan_Send_Bit1();
 
-  AVCLan_Send_uint8_t(data_len, 8); // data lenght
+  AVCLan_Send_Byte(0xF, 4); // 0xf - control -> COMMAND WRITE
+  AVCLan_Send_ParityBit();
+  AVCLan_Send_Bit1();
+
+  AVCLan_Send_Byte(data_len, 8); // data lenght
   AVCLan_Send_ParityBit();
   AVCLan_Send_Bit1();
 
   for (i = 0; i < data_len; i++) {
-    AVCLan_Send_uint8_t(data[i], 8); // data uint8_t
+    AVCLan_Send_Byte(data[i], 8); // data uint8_t
     AVCLan_Send_ParityBit();
     AVCLan_Send_Bit1();
   }
@@ -875,11 +877,11 @@ void ShowInMessage() {
   else
     RS232_Print("dir) ");
 
-  RS232_PrintHex4(master1);
-  RS232_PrintHex8(master2);
+  RS232_PrintHex4(*(((uint8_t *)&sender) + 1));
+  RS232_PrintHex8(*(((uint8_t *)&sender) + 0));
   RS232_Print("| ");
-  RS232_PrintHex4(slave1);
-  RS232_PrintHex8(slave2);
+  RS232_PrintHex4(*(((uint8_t *)&responder) + 1));
+  RS232_PrintHex8(*(((uint8_t *)&responder) + 0));
   RS232_Print("| ");
 
   uint8_t i;

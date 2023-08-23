@@ -48,16 +48,8 @@ void AVC_ReleaseLine();
 
 #define MAXMSGLEN 32
 
-// Head Unid ID
-extern uint8_t HU_ID_1; //	0x01
-extern uint8_t HU_ID_2; //	0x40
-
-extern uint8_t CD_ID_1; // 0x03
-extern uint8_t CD_ID_2; // 0x60
-
-// DVD CHANGER
-// #define CD_ID_1	0x02
-// #define CD_ID_2	0x50
+extern uint16_t CD_ID; // CD Changer ID
+extern uint16_t HU_ID; // Head-unit ID
 
 #define cmNull 0
 #define cmStatus1 1
@@ -89,10 +81,8 @@ typedef enum { stStop = 0, stPlay = 1 } cd_modes;
 extern cd_modes CD_Mode;
 
 extern uint8_t broadcast;
-extern uint8_t master1;
-extern uint8_t master2;
-extern uint8_t slave1;
-extern uint8_t slave2;
+extern uint16_t sender;
+extern uint16_t responder;
 extern uint8_t message_len;
 extern uint8_t message[MAXMSGLEN];
 

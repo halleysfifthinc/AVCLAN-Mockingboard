@@ -197,11 +197,13 @@ int main() {
 }
 
 void Setup() {
-  CD_ID_1 = 0x03;
-  CD_ID_2 = 0x60;
+  // CD_ID_1 = 0x03;
+  // CD_ID_2 = 0x60;
 
-  HU_ID_1 = 0x01;
-  HU_ID_2 = 0x90;
+  // HU_ID_1 = 0x01;
+  // HU_ID_2 = 0x90;
+  CD_ID = 0x360;
+  HU_ID = 0x190;
 
   showLog = 1;
   showLog2 = 1;
