@@ -206,9 +206,29 @@ void Setup() {
   showLog = 1;
   showLog2 = 1;
 
-  // Default is zero; resetting/zeroing unnecessary
-  //  MCUCR = 0;
+  // Handle unconnected pins PA3, PB3-5
+  // Set as inputs
+  PORTA.DIRCLR = PIN3_bm;
+  PORTB.DIRCLR = (PIN3_bm | PIN4_bm | PIN5_bm);
 
+  // Enable pull-up resistor and disable input buffer (reduces any EM caused pin
+  // toggling and saves power)
+  PORTA.PIN3CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
+  PORTB.PIN3CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
+  PORTB.PIN4CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
+  PORTB.PIN5CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
+
+  // Output only pins: PA4-5, PC0-1, PC3, PB2
+  // TODO: TxD (PA1), RTS (PB0) is output only, test if RxD needs the input
+  // buffer or if the UART peripheral bypasses it
+  PORTA.PIN4CTRL = PORT_ISC_INPUT_DISABLE_gc;
+  PORTA.PIN5CTRL = PORT_ISC_INPUT_DISABLE_gc;
+  PORTC.PIN0CTRL = PORT_ISC_INPUT_DISABLE_gc;
+  PORTC.PIN1CTRL = PORT_ISC_INPUT_DISABLE_gc;
+  PORTC.PIN3CTRL = PORT_ISC_INPUT_DISABLE_gc;
+  PORTB.PIN2CTRL = PORT_ISC_INPUT_DISABLE_gc;
+
+  // Setup RTC as 1 sec periodic timer
   loop_until_bit_is_clear(RTC_STATUS, RTC_CTRLABUSY_bp);
   RTC.CTRLA = RTC_PRESCALER_DIV1_gc;
   RTC.CLKSEL = RTC_CLKSEL_INT32K_gc;
