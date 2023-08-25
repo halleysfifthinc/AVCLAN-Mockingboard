@@ -33,10 +33,6 @@
 
 void Setup();
 
-uint8_t rcv_command[5];
-uint8_t rcv_pos = 0;
-uint8_t rcv_time_clr = 0;
-
 int main() {
   uint8_t readSeq = 0;
   uint8_t s_len = 0;
@@ -197,11 +193,6 @@ int main() {
 }
 
 void Setup() {
-  // CD_ID_1 = 0x03;
-  // CD_ID_2 = 0x60;
-
-  // HU_ID_1 = 0x01;
-  // HU_ID_2 = 0x90;
   CD_ID = 0x360;
   HU_ID = 0x190;
 
