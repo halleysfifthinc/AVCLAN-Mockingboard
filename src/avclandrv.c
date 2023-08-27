@@ -287,33 +287,15 @@ uint8_t AVCLan_Send_ACK() {
   return 1;
 }
 
-uint8_t AVCLan_Send_Byte(uint8_t byte, uint8_t len) {
-  uint8_t b;
-  uint8_t parity = 0;
+#define AVCLAN_sendbits(bits, len)                                             \
+  _Generic((bits),                                                             \
+      const uint16_t *: AVCLAN_sendbitsl,                                      \
+      uint16_t *: AVCLAN_sendbitsl,                                            \
+      const uint8_t *: AVCLAN_sendbitsi,                                       \
+      uint8_t *: AVCLAN_sendbitsi)(bits, len)
 
-  if (len == 8) {
-    b = byte;
-  } else {
-    b = byte << (8 - len);
-  }
-
-  while (1) {
-    if (b & 0x80) {
-      AVCLan_Send_Bit1();
-      parity++;
-    } else {
-      AVCLan_Send_Bit0();
-    }
-    len--;
-    if (!len) {
-      // if (INPUT_IS_SET) RS232_Print("SBER\n"); // Send Bit ERror
-      return (parity & 1);
-    }
-    b = b << 1;
-  }
-}
-
-uint8_t AVCLAN_sendbits(const uint8_t *byte, int8_t len) {
+// Send `len` bits on the AVCLAN bus; returns the even parity
+uint8_t AVCLAN_sendbitsi(const uint8_t *byte, int8_t len) {
   uint8_t b = *byte;
   uint8_t parity = 0;
   int8_t len_mod8 = 8;
@@ -338,6 +320,11 @@ uint8_t AVCLAN_sendbits(const uint8_t *byte, int8_t len) {
     b = *--byte;
   }
   return (parity & 1);
+}
+
+// Send `len` bits on the AVCLAN bus; returns the even parity
+uint8_t AVCLAN_sendbitsl(const uint16_t *word, int8_t len) {
+  return AVCLAN_sendbitsi((const uint8_t *)word + 1, len);
 }
 
 uint8_t AVCLAN_sendbyte(const uint8_t *byte) {
@@ -583,11 +570,10 @@ uint8_t AVCLan_SendData() {
   uint8_t broadcast_control = 0x1;
   AVCLAN_sendbits(&broadcast_control, 1); // regular communication
 
-  uint8_t parity = 0;
-  AVCLAN_sendbits((uint8_t *)(&CD_ID) + 1, 12); // CD Changer ID as sender
+  parity = AVCLAN_sendbits(&CD_ID, 12);
   AVCLan_Send_ParityBit(parity);
 
-  AVCLAN_sendbits((uint8_t *)(&HU_ID) + 1, 12); // HeadUnit ID as responder
+  parity = AVCLAN_sendbits(&HU_ID, 12);
   AVCLan_Send_ParityBit(parity);
 
   if (AVCLan_Read_ACK()) {
@@ -664,11 +650,11 @@ uint8_t AVCLan_SendDataBroadcast() {
   AVCLAN_sendbits(&broadcast_control, 1); // broadcast
 
   uint8_t parity = 0;
-  AVCLAN_sendbits((uint8_t *)(&CD_ID) + 1, 12); // CD Changer ID as sender
+  AVCLAN_sendbits(&CD_ID, 12); // CD Changer ID as sender
   AVCLan_Send_ParityBit(parity);
 
   uint16_t audio_addr = 0x1FF;
-  AVCLAN_sendbits((uint8_t *)(&audio_addr) + 1, 12); // all audio devices
+  AVCLAN_sendbits(&audio_addr, 12); // all audio devices
   AVCLan_Send_ParityBit(parity);
   AVCLan_Send_Bit1();
 
