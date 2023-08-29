@@ -73,16 +73,6 @@ uint8_t answerReq;
 
 cd_modes CD_Mode;
 
-uint8_t broadcast;
-uint16_t sender;
-uint16_t responder;
-uint8_t message_len;
-uint8_t message[MAXMSGLEN];
-
-uint8_t data_control;
-uint8_t data_len;
-uint8_t data[MAXMSGLEN];
-
 // we need check answer (to avclan check) timeout
 // when is more then 1 min, FORCE answer.
 uint8_t check_timeout;
@@ -114,31 +104,92 @@ const uint8_t play_req3[] = {0x5, 0x00, SW_ID, 0x63, 0x42, 0x41};
 const uint8_t stop_req[] = {0x5, 0x00, SW_ID, 0x63, 0x43, 0x01};
 const uint8_t stop_req2[] = {0x5, 0x00, SW_ID, 0x63, 0x43, 0x41};
 
+// Init commands
+const AVCLAN_KnownMessage_t c8 = {
+    BROADCAST,
+    11,
+    {0x63, 0x31, 0xF1, 0x00, 0x90, 0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80}};
+const AVCLAN_KnownMessage_t c1 = {
+    BROADCAST,
+    10,
+    {0x63, 0x31, 0xF1, 0x00, 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x80}};
+const AVCLAN_KnownMessage_t cA = {
+    BROADCAST,
+    11,
+    {0x63, 0x31, 0xF1, 0x00, 0x30, 0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80}};
+const AVCLAN_KnownMessage_t c2 = {
+    BROADCAST,
+    10,
+    {0x63, 0x31, 0xF3, 0x00, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x02}};
+const AVCLAN_KnownMessage_t c3 = {
+    BROADCAST,
+    10,
+    {0x63, 0x31, 0xF3, 0x00, 0x3F, 0x00, 0x01, 0x00, 0x01, 0x02}};
+const AVCLAN_KnownMessage_t c4 = {
+    BROADCAST,
+    10,
+    {0x63, 0x31, 0xF3, 0x00, 0x3D, 0x00, 0x01, 0x00, 0x01, 0x02}};
+const AVCLAN_KnownMessage_t c5 = {
+    BROADCAST,
+    10,
+    {0x63, 0x31, 0xF3, 0x00, 0x39, 0x00, 0x01, 0x00, 0x01, 0x02}};
+const AVCLAN_KnownMessage_t c6 = {
+    BROADCAST,
+    10,
+    {0x63, 0x31, 0xF3, 0x00, 0x31, 0x00, 0x01, 0x00, 0x01, 0x02}};
+const AVCLAN_KnownMessage_t c7 = {
+    BROADCAST,
+    10,
+    {0x63, 0x31, 0xF3, 0x00, 0x21, 0x00, 0x01, 0x00, 0x01, 0x02}};
+const AVCLAN_KnownMessage_t c9 = {
+    BROADCAST,
+    10,
+    {0x63, 0x31, 0xF3, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x02}};
+
 // answers
-const uint8_t CMD_REGISTER[] = {0x1, 0x05, 0x00, 0x01, SW_ID, 0x10, 0x63};
-const uint8_t CMD_STATUS1[] = {0x1, 0x04, 0x00, 0x01, 0x00, 0x1A};
-const uint8_t CMD_STATUS2[] = {0x1, 0x04, 0x00, 0x01, 0x00, 0x18};
-const uint8_t CMD_STATUS3[] = {0x1, 0x04, 0x00, 0x01, 0x00, 0x1D};
-const uint8_t CMD_STATUS4[] = {0x1, 0x05, 0x00, 0x01, 0x00, 0x1C, 0x00};
-uint8_t CMD_CHECK[] = {0x1, 0x06, 0x00, 0x01, SW_ID, 0x30, 0x00, 0x00};
+const AVCLAN_KnownMessage_t CMD_REGISTER = {
+    UNICAST, 5, {0x00, 0x01, SW_ID, 0x10, 0x63}};
+const AVCLAN_KnownMessage_t CMD_STATUS1 = {
+    UNICAST, 4, {0x00, 0x01, 0x00, 0x1A}};
+const AVCLAN_KnownMessage_t CMD_STATUS2 = {
+    UNICAST, 4, {0x00, 0x01, 0x00, 0x18}};
+const AVCLAN_KnownMessage_t CMD_STATUS3 = {
+    UNICAST, 4, {0x00, 0x01, 0x00, 0x1D}};
+const AVCLAN_KnownMessage_t CMD_STATUS4 = {
+    UNICAST, 5, {0x00, 0x01, 0x00, 0x1C, 0x00}};
+AVCLAN_KnownMessage_t CMD_CHECK = {
+    UNICAST, 6, {0x00, 0x01, SW_ID, 0x30, 0x00, 0x00}};
 
-const uint8_t CMD_STATUS5[] = {0x1, 0x05, 0x00, 0x5C, 0x12, 0x53, 0x02};
-const uint8_t CMD_STATUS5A[] = {0x0, 0x05, 0x5C, 0x31, 0xF1, 0x00, 0x00};
+const AVCLAN_KnownMessage_t CMD_STATUS5 = {
+    UNICAST, 5, {0x00, 0x5C, 0x12, 0x53, 0x02}};
+const AVCLAN_KnownMessage_t CMD_STATUS5A = {
+    BROADCAST, 5, {0x5C, 0x31, 0xF1, 0x00, 0x00}};
 
-const uint8_t CMD_STATUS6[] = {0x1, 0x06, 0x00, 0x5C, 0x32, 0xF0, 0x02, 0x00};
+const AVCLAN_KnownMessage_t CMD_STATUS6 = {
+    UNICAST, 6, {0x00, 0x5C, 0x32, 0xF0, 0x02, 0x00}};
 
-const uint8_t CMD_PLAY_OK1[] = {0x1, 0x05, 0x00, 0x63, SW_ID, 0x50, 0x01};
-const uint8_t CMD_PLAY_OK2[] = {0x1, 0x05, 0x00, 0x63, SW_ID, 0x52, 0x01};
-const uint8_t CMD_PLAY_OK3[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x01, 0x00,
-                                0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80};
-uint8_t CMD_PLAY_OK4[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x01, 0x28,
-                          0x00, 0x00, 0x00, 0x00, 0x00, 0x80};
+const AVCLAN_KnownMessage_t CMD_PLAY_OK1 = {
+    UNICAST, 5, {0x00, 0x63, SW_ID, 0x50, 0x01}};
+const AVCLAN_KnownMessage_t CMD_PLAY_OK2 = {
+    UNICAST, 5, {0x00, 0x63, SW_ID, 0x52, 0x01}};
+const AVCLAN_KnownMessage_t CMD_PLAY_OK3 = {
+    BROADCAST,
+    11,
+    {0x63, 0x31, 0xF1, 0x01, 0x00, 0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80}};
+AVCLAN_KnownMessage_t CMD_PLAY_OK4 = {
+    BROADCAST,
+    11,
+    {0x63, 0x31, 0xF1, 0x01, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80}};
 
-const uint8_t CMD_STOP1[] = {0x1, 0x05, 0x00, 0x63, SW_ID, 0x53, 0x01};
-uint8_t CMD_STOP2[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x00, 0x30,
-                       0x00, 0x00, 0x00, 0x00, 0x00, 0x80};
+const AVCLAN_KnownMessage_t CMD_STOP1 = {
+    UNICAST, 5, {0x00, 0x63, SW_ID, 0x53, 0x01}};
+AVCLAN_KnownMessage_t CMD_STOP2 = {
+    BROADCAST,
+    11,
+    {0x63, 0x31, 0xF1, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80}};
 
-const uint8_t CMD_BEEP[] = {0x1, 0x05, 0x00, 0x63, 0x29, 0x60, 0x02};
+const AVCLAN_KnownMessage_t CMD_BEEP = {
+    UNICAST, 5, {0x00, 0x63, 0x29, 0x60, 0x02}};
 
 void AVC_HoldLine() {
   STOPEvent;
@@ -189,7 +240,6 @@ void AVCLan_Init() {
   EVSYS.ASYNCUSER0 = EVSYS_ASYNCUSER0_ASYNCCH0_gc;
   TCB1.CTRLA = TCB_CLKSEL_CLKDIV2_gc | TCB_ENABLE_bm;
 
-  message_len = 0;
   answerReq = cm_Null;
   check_timeout = 0;
 
@@ -351,27 +401,22 @@ void AVCLan_Send_ParityBit(uint8_t parity) {
   }
 }
 
-uint8_t CheckCmd(uint8_t *cmd) {
-  uint8_t i;
-  uint8_t *c;
-  uint8_t l;
+uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd) {
+  uint8_t l = *cmd++;
 
-  c = cmd;
-  l = *c++;
-
-  for (i = 0; i < l; i++) {
-    if (message[i] != *c)
+  for (uint8_t i = 0; i < l; i++) {
+    if (frame->data[i] != *cmd++)
       return 0;
-    c++;
   }
   return 1;
 }
 
-uint8_t AVCLan_Read_Message() {
+uint8_t AVCLAN_readframe() {
   STOPEvent; // disable timer1 interrupt
 
   uint8_t i;
   uint8_t for_me = 0;
+  AVCLAN_frame_t frame = {};
 
   // RS232_Print("$ ");
   //  TCCR1B |= (1 << CS11)|(1 << CS10); // Timer1 prescaler at 64
@@ -396,13 +441,13 @@ uint8_t AVCLan_Read_Message() {
   //  }
   uint8_t parity = 0;
   uint8_t parity_check = 0;
-  AVCLan_Read_Byte(1, &parity);
+  AVCLan_Read_Byte(1, &parity); // Start bit
 
-  broadcast = AVCLan_Read_Byte(1, &parity);
+  frame.broadcast = AVCLan_Read_Byte(1, &parity);
 
   parity = 0;
-  uint8_t *sender_hi = ((uint8_t *)&sender) + 1;
-  uint8_t *sender_lo = ((uint8_t *)&sender) + 0;
+  uint8_t *sender_hi = ((uint8_t *)&frame.sender_addr) + 1;
+  uint8_t *sender_lo = ((uint8_t *)&frame.sender_addr) + 0;
   *sender_hi = AVCLan_Read_Byte(4, &parity);
   *sender_lo = AVCLan_Read_Byte(8, &parity);
   if ((parity & 1) != AVCLan_Read_Byte(1, &parity_check)) {
@@ -411,18 +456,17 @@ uint8_t AVCLan_Read_Message() {
   }
 
   parity = 0;
-  uint8_t *responder_hi = ((uint8_t *)&responder) + 1;
-  uint8_t *responder_lo = ((uint8_t *)&responder) + 0;
+  uint8_t *responder_hi = ((uint8_t *)&frame.responder_addr) + 1;
+  uint8_t *responder_lo = ((uint8_t *)&frame.responder_addr) + 0;
   *responder_hi = AVCLan_Read_Byte(4, &parity);
   *responder_lo = AVCLan_Read_Byte(8, &parity);
   if ((parity & 1) != AVCLan_Read_Byte(1, &parity_check)) {
     STARTEvent;
     return 0;
   }
+
   // is this command for me ?
-  if (responder == CD_ID) {
-    for_me = 1;
-  }
+  for_me = (frame.responder_addr == CD_ID);
 
   if (for_me)
     AVCLan_Send_ACK();
@@ -430,41 +474,40 @@ uint8_t AVCLan_Read_Message() {
     AVCLan_Read_Byte(1, &parity);
 
   parity = 0;
-  AVCLan_Read_Byte(4, &parity); // control - always 0xF
+  frame.control = AVCLan_Read_Byte(4, &parity);
   if ((parity & 1) != AVCLan_Read_Byte(1, &parity_check)) {
     STARTEvent;
     return 0;
-  }
-  if (for_me)
+  } else if (for_me) {
     AVCLan_Send_ACK();
-  else
+  } else {
     AVCLan_Read_Byte(1, &parity);
+  }
 
   parity = 0;
-  message_len = AVCLan_Read_Byte(8, &parity);
+  frame.length = AVCLan_Read_Byte(8, &parity);
   if ((parity & 1) != AVCLan_Read_Byte(1, &parity_check)) {
     STARTEvent;
     return 0;
-  }
-  if (for_me)
+  } else if (for_me) {
     AVCLan_Send_ACK();
-  else
+  } else {
     AVCLan_Read_Byte(1, &parity);
+  }
 
-  if (message_len > MAXMSGLEN) {
+  if (frame.length > MAXMSGLEN) {
     //	RS232_Print("LAN> Command error");
     STARTEvent;
     return 0;
   }
 
-  for (i = 0; i < message_len; i++) {
+  for (i = 0; i < frame.length; i++) {
     parity = 0;
-    message[i] = AVCLan_Read_Byte(8, &parity);
+    frame.data[i] = AVCLan_Read_Byte(8, &parity);
     if ((parity & 1) != AVCLan_Read_Byte(1, &parity_check)) {
       STARTEvent;
       return 0;
-    }
-    if (for_me) {
+    } else if (for_me) {
       AVCLan_Send_ACK();
     } else {
       AVCLan_Read_Byte(1, &parity);
@@ -474,69 +517,69 @@ uint8_t AVCLan_Read_Message() {
   STARTEvent;
 
   if (showLog)
-    ShowInMessage();
+    AVCLAN_printframe(&frame);
 
   if (for_me) {
 
-    if (CheckCmd((uint8_t *)stat1)) {
+    if (CheckCmd(&frame, stat1)) {
       answerReq = cm_Status1;
       return 1;
     }
-    if (CheckCmd((uint8_t *)stat2)) {
+    if (CheckCmd(&frame, stat2)) {
       answerReq = cm_Status2;
       return 1;
     }
-    if (CheckCmd((uint8_t *)stat3)) {
+    if (CheckCmd(&frame, stat3)) {
       answerReq = cm_Status3;
       return 1;
     }
-    if (CheckCmd((uint8_t *)stat4)) {
+    if (CheckCmd(&frame, stat4)) {
       answerReq = cm_Status4;
       return 1;
     }
     //	if (CheckCmd((uint8_t*)stat5)) { answerReq = cm_Status5; return 1; }
 
-    if (CheckCmd((uint8_t *)play_req1)) {
+    if (CheckCmd(&frame, play_req1)) {
       answerReq = cm_PlayReq1;
       return 1;
     }
-    if (CheckCmd((uint8_t *)play_req2)) {
+    if (CheckCmd(&frame, play_req2)) {
       answerReq = cm_PlayReq2;
       return 1;
     }
-    if (CheckCmd((uint8_t *)play_req3)) {
+    if (CheckCmd(&frame, play_req3)) {
       answerReq = cm_PlayReq3;
       return 1;
     }
-    if (CheckCmd((uint8_t *)stop_req)) {
+    if (CheckCmd(&frame, stop_req)) {
       answerReq = cm_StopReq;
       return 1;
     }
-    if (CheckCmd((uint8_t *)stop_req2)) {
+    if (CheckCmd(&frame, stop_req2)) {
       answerReq = cm_StopReq2;
       return 1;
     }
 
   } else { // broadcast check
 
-    if (CheckCmd((uint8_t *)lan_playit)) {
+    if (CheckCmd(&frame, lan_playit)) {
       answerReq = cm_PlayIt;
       return 1;
     }
-    if (CheckCmd((uint8_t *)lan_check)) {
+    if (CheckCmd(&frame, lan_check)) {
       answerReq = cm_Check;
-      CMD_CHECK[6] = message[3];
+      CMD_CHECK.data[4] = frame.data[3];
       return 1;
     }
-    if (CheckCmd((uint8_t *)lan_reg)) {
+    if (CheckCmd(&frame, lan_reg)) {
       answerReq = cm_Register;
       return 1;
     }
-    if (CheckCmd((uint8_t *)lan_init)) {
+    if (CheckCmd(&frame, lan_init)) {
       answerReq = cm_Init;
       return 1;
     }
-    if (CheckCmd((uint8_t *)lan_stat1)) {
+    if (CheckCmd(&frame, lan_stat1)) {
       answerReq = cm_Status1;
       return 1;
     }
@@ -545,13 +588,12 @@ uint8_t AVCLan_Read_Message() {
   return 1;
 }
 
-uint8_t AVCLan_SendData() {
-  uint8_t i;
-
+uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   STOPEvent;
 
   // wait for free line
   uint8_t line_busy = 1;
+  uint8_t parity = 0;
 
   TCB1.CNT = 0;
   do {
@@ -567,46 +609,48 @@ uint8_t AVCLan_SendData() {
   AVC_OUT_EN();
 
   AVCLan_Send_StartBit();
-  uint8_t broadcast_control = 0x1;
-  AVCLAN_sendbits(&broadcast_control, 1); // regular communication
+  AVCLAN_sendbits((uint8_t *)&frame->broadcast, 1);
 
-  parity = AVCLAN_sendbits(&CD_ID, 12);
+  parity = AVCLAN_sendbits(&frame->sender_addr, 12);
   AVCLan_Send_ParityBit(parity);
 
-  parity = AVCLAN_sendbits(&HU_ID, 12);
+  parity = AVCLAN_sendbits(&frame->responder_addr, 12);
   AVCLan_Send_ParityBit(parity);
 
-  if (AVCLan_Read_ACK()) {
+  if (!frame->broadcast && AVCLan_Read_ACK()) {
     AVC_OUT_DIS();
     STARTEvent;
-    RS232_Print("Error ACK 1 (Transmission ACK)\n");
+    RS232_Print("Error NAK: Responder\n");
     return 1;
   }
 
-  // AVCLan_Send_Byte(0xF, 4); // 0xf - control -> COMMAND WRITE
-  broadcast_control = 0xF;
-  AVCLAN_sendbits(&broadcast_control, 4);
+  parity = AVCLAN_sendbits(&frame->control, 4);
   AVCLan_Send_ParityBit(parity);
-  if (AVCLan_Read_ACK()) {
+
+  if (!frame->broadcast && AVCLan_Read_ACK()) {
     AVC_OUT_DIS();
     STARTEvent;
-    RS232_Print("Error ACK 2 (COMMMAND WRITE)\n");
+    RS232_Print("Error NAK: Control\n");
     return 2;
   }
 
-  AVCLAN_sendbyte(&data_len); // data length
+  parity = AVCLAN_sendbyte(&frame->length); // data length
   AVCLan_Send_ParityBit(parity);
-  if (AVCLan_Read_ACK()) {
+
+  if (!frame->broadcast && AVCLan_Read_ACK()) {
     AVC_OUT_DIS();
     STARTEvent;
-    RS232_Print("Error ACK 3 (Data Length)\n");
+    RS232_Print("Error NAK: Message length\n");
     return 3;
   }
 
-  for (i = 0; i < data_len; i++) {
-    AVCLAN_sendbyte(&data[i]); // data uint8_t
+  for (uint8_t i = 0; i < frame->length; i++) {
+    parity = AVCLAN_sendbyte(&frame->data[i]);
     AVCLan_Send_ParityBit(parity);
-    if (AVCLan_Read_ACK()) {
+    // Based on the µPD6708 datasheet, ACK bit for broadcast doesn't seem
+    // necessary (i.e. This deviates from the previous broadcast specific
+    // function that sent an extra `1` bit after each byte/parity)
+    if (!frame->broadcast && AVCLan_Read_ACK()) {
       AVC_OUT_DIS();
       STARTEvent;
       RS232_Print("Error ACK 4 (Data uint8_t: ");
@@ -618,159 +662,168 @@ uint8_t AVCLan_SendData() {
 
   // back to read mode
   AVC_OUT_DIS();
-
   STARTEvent;
+
   if (showLog)
-    ShowOutMessage();
+    AVCLAN_printframe(frame);
+
   return 0;
 }
 
-uint8_t AVCLan_SendDataBroadcast() {
-  uint8_t i;
+// uint8_t AVCLan_SendDataBroadcast() {
+//   uint8_t i;
 
-  STOPEvent;
+//   STOPEvent;
 
-  // wait for free line
-  uint8_t line_busy = 1;
+//   // wait for free line
+//   uint8_t line_busy = 1;
 
-  TCB1.CNT = 0;
-  do {
-    while (INPUT_IS_CLEAR) {
-      if (TCB1.CNT >= 900)
-        break;
-    }
-    if (TCB1.CNT > 864)
-      line_busy = 0;
-  } while (line_busy);
+//   TCB1.CNT = 0;
+//   do {
+//     while (INPUT_IS_CLEAR) {
+//       if (TCB1.CNT >= 900)
+//         break;
+//     }
+//     if (TCB1.CNT > 864)
+//       line_busy = 0;
+//   } while (line_busy);
 
-  AVC_OUT_EN();
+//   AVC_OUT_EN();
 
-  AVCLan_Send_StartBit();
-  uint8_t broadcast_control = 0x0;
-  AVCLAN_sendbits(&broadcast_control, 1); // broadcast
+//   AVCLan_Send_StartBit();
+//   uint8_t broadcast_control = 0x0;
+//   AVCLAN_sendbits(&broadcast_control, 1); // broadcast
 
-  uint8_t parity = 0;
-  AVCLAN_sendbits(&CD_ID, 12); // CD Changer ID as sender
-  AVCLan_Send_ParityBit(parity);
+//   uint8_t parity = 0;
+//   AVCLAN_sendbits(&CD_ID, 12); // CD Changer ID as sender
+//   AVCLan_Send_ParityBit(parity);
 
-  uint16_t audio_addr = 0x1FF;
-  AVCLAN_sendbits(&audio_addr, 12); // all audio devices
-  AVCLan_Send_ParityBit(parity);
-  AVCLan_Send_Bit1();
+//   uint16_t audio_addr = 0x1FF;
+//   AVCLAN_sendbits(&audio_addr, 12); // all audio devices
+//   AVCLan_Send_ParityBit(parity);
+//   AVCLan_Send_Bit1();
 
-  broadcast_control = 0xF;
-  AVCLAN_sendbits(&broadcast_control, 4); // 0xf - control -> COMMAND WRITE
-  AVCLan_Send_ParityBit(parity);
-  AVCLan_Send_Bit1();
+//   broadcast_control = 0xF;
+//   AVCLAN_sendbits(&broadcast_control, 4); // 0xf - control -> COMMAND WRITE
+//   AVCLan_Send_ParityBit(parity);
+//   AVCLan_Send_Bit1();
 
-  AVCLAN_sendbyte(&data_len); // data lenght
-  AVCLan_Send_ParityBit(parity);
-  AVCLan_Send_Bit1();
+//   AVCLAN_sendbyte(&data_len); // data lenght
+//   AVCLan_Send_ParityBit(parity);
+//   AVCLan_Send_Bit1();
 
-  for (i = 0; i < data_len; i++) {
-    AVCLAN_sendbyte(&data[i]); // data uint8_t
-    AVCLan_Send_ParityBit(parity);
-    AVCLan_Send_Bit1();
-  }
+//   for (i = 0; i < data_len; i++) {
+//     AVCLAN_sendbyte(&data[i]); // data uint8_t
+//     AVCLan_Send_ParityBit(parity);
+//     AVCLan_Send_Bit1();
+//   }
 
-  AVC_OUT_DIS();
-  STARTEvent;
-  if (showLog)
-    ShowOutMessage();
-  return 0;
-}
+//   AVC_OUT_DIS();
+//   STARTEvent;
+//   if (showLog)
+//     ShowOutMessage();
+//   return 0;
+// }
 
-uint8_t AVCLan_SendAnswerFrame(uint8_t *cmd) {
-  uint8_t i;
-  uint8_t *c;
-  uint8_t b;
+// uint8_t AVCLan_SendAnswerFrame(const uint8_t *cmd) {
+//   uint8_t i;
+//   uint8_t b;
 
-  c = cmd;
+//   b = *cmd++;
+//   data_control = 0xF;
+//   data_len = *cmd++;
+//   for (i = 0; i < data_len; i++) {
+//     data[i] = *cmd++;
+//   }
+//   if (b)
+//     return AVCLan_SendData();
+//   else
+//     return AVCLan_SendDataBroadcast();
+// }
 
-  b = *c++;
-  data_control = 0xF;
-  data_len = *c++;
-  for (i = 0; i < data_len; i++) {
-    data[i] = *c++;
-  }
-  if (b)
-    return AVCLan_SendData();
-  else
-    return AVCLan_SendDataBroadcast();
-}
+// uint8_t AVCLan_SendMyData(uint8_t *data_tmp, uint8_t s_len) {
+//   uint8_t i;
+//   uint8_t *c;
 
-uint8_t AVCLan_SendMyData(uint8_t *data_tmp, uint8_t s_len) {
-  uint8_t i;
-  uint8_t *c;
+//   c = data_tmp;
 
-  c = data_tmp;
+//   data_control = 0xF;
+//   data_len = s_len;
+//   for (i = 0; i < data_len; i++) {
+//     data[i] = *c++;
+//   }
+//   return AVCLan_SendData();
+// }
 
-  data_control = 0xF;
-  data_len = s_len;
-  for (i = 0; i < data_len; i++) {
-    data[i] = *c++;
-  }
-  return AVCLan_SendData();
-}
+// uint8_t AVCLan_SendMyDataBroadcast(uint8_t *data_tmp, uint8_t s_len) {
+//   uint8_t i;
+//   uint8_t *c;
 
-uint8_t AVCLan_SendMyDataBroadcast(uint8_t *data_tmp, uint8_t s_len) {
-  uint8_t i;
-  uint8_t *c;
+//   c = data_tmp;
 
-  c = data_tmp;
-
-  data_control = 0xF;
-  data_len = s_len;
-  for (i = 0; i < data_len; i++) {
-    data[i] = *c++;
-  }
-  return AVCLan_SendDataBroadcast();
-}
+//   data_control = 0xF;
+//   data_len = s_len;
+//   for (i = 0; i < data_len; i++) {
+//     data[i] = *c++;
+//   }
+//   return AVCLan_SendDataBroadcast();
+// }
 
 uint8_t AVCLan_SendInitCommands() {
   uint8_t r;
+  AVCLAN_frame_t frame = {.broadcast = BROADCAST,
+                          .sender_addr = CD_ID,
+                          .responder_addr = HU_ID,
+                          .control = 0xF,
+                          .length = c1.length};
+  frame.data = (uint8_t *)&c1.data[0];
 
-  const uint8_t c1[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x00, 0x80,
-                        0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x80};
-  const uint8_t c2[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                        0x3F, 0x00, 0x00, 0x00, 0x00, 0x02};
-  const uint8_t c3[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                        0x3F, 0x00, 0x01, 0x00, 0x01, 0x02};
-  const uint8_t c4[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                        0x3D, 0x00, 0x01, 0x00, 0x01, 0x02};
-  const uint8_t c5[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                        0x39, 0x00, 0x01, 0x00, 0x01, 0x02};
-  const uint8_t c6[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                        0x31, 0x00, 0x01, 0x00, 0x01, 0x02};
-  const uint8_t c7[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                        0x21, 0x00, 0x01, 0x00, 0x01, 0x02};
-  const uint8_t c8[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x00, 0x90,
-                        0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80};
-  const uint8_t c9[] = {0x0,  0x0A, 0x63, 0x31, 0xF3, 0x00,
-                        0x01, 0x00, 0x01, 0x00, 0x01, 0x02};
-  const uint8_t cA[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x00, 0x30,
-                        0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80};
-
-  r = AVCLan_SendAnswerFrame((uint8_t *)c1);
-  if (!r)
-    r = AVCLan_SendAnswerFrame((uint8_t *)c2);
-  if (!r)
-    r = AVCLan_SendAnswerFrame((uint8_t *)c3);
-  if (!r)
-    r = AVCLan_SendAnswerFrame((uint8_t *)c4);
-  if (!r)
-    r = AVCLan_SendAnswerFrame((uint8_t *)c5);
-  if (!r)
-    r = AVCLan_SendAnswerFrame((uint8_t *)c6);
-  if (!r)
-    r = AVCLan_SendAnswerFrame((uint8_t *)c7);
-  if (!r)
-    r = AVCLan_SendAnswerFrame((uint8_t *)c8);
-  if (!r)
-    r = AVCLan_SendAnswerFrame((uint8_t *)c9);
-  if (!r)
-    r = AVCLan_SendAnswerFrame((uint8_t *)cA);
-
+  r = AVCLAN_sendframe(&frame);
+  if (!r) {
+    frame.length = c2.length;
+    frame.data = (uint8_t *)&c2.data[0];
+    r = AVCLAN_sendframe(&frame); // c2
+  }
+  if (!r) {
+    frame.length = c3.length;
+    frame.data = (uint8_t *)&c3.data[0];
+    r = AVCLAN_sendframe(&frame); // c3
+  }
+  if (!r) {
+    frame.length = c4.length;
+    frame.data = (uint8_t *)&c4.data[0];
+    r = AVCLAN_sendframe(&frame); // c4
+  }
+  if (!r) {
+    frame.length = c5.length;
+    frame.data = (uint8_t *)&c5.data[0];
+    r = AVCLAN_sendframe(&frame); // c5
+  }
+  if (!r) {
+    frame.length = c6.length;
+    frame.data = (uint8_t *)&c6.data[0];
+    r = AVCLAN_sendframe(&frame); // c6
+  }
+  if (!r) {
+    frame.length = c7.length;
+    frame.data = (uint8_t *)&c7.data[0];
+    r = AVCLAN_sendframe(&frame); // c7
+  }
+  if (!r) {
+    frame.length = c8.length;
+    frame.data = (uint8_t *)&c8.data[0];
+    r = AVCLAN_sendframe(&frame); // c8
+  }
+  if (!r) {
+    frame.length = c9.length;
+    frame.data = (uint8_t *)&c9.data[0];
+    r = AVCLAN_sendframe(&frame); // c9
+  }
+  if (!r) {
+    frame.length = cA.length;
+    frame.data = (uint8_t *)&cA.data[0];
+    r = AVCLAN_sendframe(&frame); // cA
+  }
   // const uint8_t c1[] = { 0x0, 0x0B,		0x63, 0x31, 0xF1, 0x00, 0x80,
   // 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x80 }; r =
   // AVCLan_SendAnswerFrame((uint8_t*)c1);
@@ -778,69 +831,109 @@ uint8_t AVCLan_SendInitCommands() {
 }
 
 void AVCLan_Send_Status() {
-  //                                                        disc  track t_min
-  //                                                        t_sec
-  uint8_t STATUS[] = {0x0,  0x0B, 0x63, 0x31, 0xF1, 0x01, 0x10,
-                      0x01, 0x01, 0x00, 0x00, 0x00, 0x80};
+  uint8_t STATUS[] = {0x63, 0x31, 0xF1, 0x01, 0x10, 0x01,
+                      0x01, 0x00, 0x00, 0x00, 0x80};
+  STATUS[5] = cd_Disc;
+  STATUS[6] = cd_Track;
+  STATUS[7] = cd_Time_Min;
+  STATUS[8] = cd_Time_Sec;
+  STATUS[9] = 0;
 
-  STATUS[7] = cd_Disc;
-  STATUS[8] = cd_Track;
-  STATUS[9] = cd_Time_Min;
-  STATUS[10] = cd_Time_Sec;
+  AVCLAN_frame_t status = {.broadcast = UNICAST,
+                           .sender_addr = CD_ID,
+                           .responder_addr = HU_ID,
+                           .control = 0xF,
+                           .length = 11,
+                           .data = &STATUS[0]};
 
-  STATUS[11] = 0;
-
-  AVCLan_SendAnswerFrame((uint8_t *)STATUS);
+  AVCLAN_sendframe(&status);
 }
 
 uint8_t AVCLan_SendAnswer() {
   uint8_t r = 0;
+  AVCLAN_frame_t frame = {.broadcast = UNICAST,
+                          .sender_addr = CD_ID,
+                          .responder_addr = HU_ID,
+                          .control = 0xF,
+                          .length = 0};
 
   switch (answerReq) {
     case cm_Status1:
-      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STATUS1);
+      frame.broadcast = CMD_STATUS1.broadcast;
+      frame.length = CMD_STATUS1.length;
+      frame.data = (uint8_t *)&CMD_STATUS1.data[0];
+      r = AVCLAN_sendframe(&frame);
       break;
     case cm_Status2:
-      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STATUS2);
+      frame.broadcast = CMD_STATUS2.broadcast;
+      frame.length = CMD_STATUS2.length;
+      frame.data = (uint8_t *)&CMD_STATUS2.data[0];
+      r = AVCLAN_sendframe(&frame);
       break;
     case cm_Status3:
-      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STATUS3);
+      frame.broadcast = CMD_STATUS3.broadcast;
+      frame.length = CMD_STATUS3.length;
+      frame.data = (uint8_t *)&CMD_STATUS3.data[0];
+      r = AVCLAN_sendframe(&frame);
       break;
     case cm_Status4:
-      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STATUS4);
+      frame.broadcast = CMD_STATUS4.broadcast;
+      frame.length = CMD_STATUS4.length;
+      frame.data = (uint8_t *)&CMD_STATUS4.data[0];
+      r = AVCLAN_sendframe(&frame);
       break;
     case cm_Register:
-      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_REGISTER);
+      frame.broadcast = CMD_REGISTER.broadcast;
+      frame.length = CMD_REGISTER.length;
+      frame.data = (uint8_t *)&CMD_REGISTER.data[0];
+      r = AVCLAN_sendframe(&frame);
       break;
     case cm_Init: // RS232_Print("INIT\n");
       r = AVCLan_SendInitCommands();
       break;
     case cm_Check:
-      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_CHECK);
+      frame.broadcast = CMD_CHECK.broadcast;
+      frame.length = CMD_CHECK.length;
+      frame.data = &CMD_CHECK.data[0];
+      r = AVCLAN_sendframe(&frame);
       check_timeout = 0;
-      CMD_CHECK[6]++;
+      CMD_CHECK.data[6]++;
       RS232_Print("AVCCHK\n");
       break;
     case cm_PlayReq1:
       playMode = 0;
-      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_PLAY_OK1);
+      frame.broadcast = CMD_PLAY_OK1.broadcast;
+      frame.length = CMD_PLAY_OK1.length;
+      frame.data = (uint8_t *)&CMD_PLAY_OK1.data[0];
+      r = AVCLAN_sendframe(&frame);
       break;
     case cm_PlayReq2:
     case cm_PlayReq3:
       playMode = 0;
-      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_PLAY_OK2);
-      if (!r)
-        r = AVCLan_SendAnswerFrame((uint8_t *)CMD_PLAY_OK3);
+      frame.broadcast = CMD_PLAY_OK2.broadcast;
+      frame.length = CMD_PLAY_OK2.length;
+      frame.data = (uint8_t *)&CMD_PLAY_OK2.data[0];
+      r = AVCLAN_sendframe(&frame);
+      if (!r) {
+        frame.broadcast = CMD_PLAY_OK3.broadcast;
+        frame.length = CMD_PLAY_OK3.length;
+        frame.data = (uint8_t *)&CMD_PLAY_OK3.data[0];
+        r = AVCLAN_sendframe(&frame);
+      }
       CD_Mode = stPlay;
       break;
     case cm_PlayIt:
       playMode = 1;
       RS232_Print("PLAY\n");
-      CMD_PLAY_OK4[7] = cd_Disc;
-      CMD_PLAY_OK4[8] = cd_Track;
-      CMD_PLAY_OK4[9] = cd_Time_Min;
-      CMD_PLAY_OK4[10] = cd_Time_Sec;
-      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_PLAY_OK4);
+      frame.broadcast = CMD_PLAY_OK4.broadcast;
+      frame.length = CMD_PLAY_OK4.length;
+      frame.data = (uint8_t *)&CMD_PLAY_OK4.data[0];
+      CMD_PLAY_OK4.data[7] = cd_Disc;
+      CMD_PLAY_OK4.data[8] = cd_Track;
+      CMD_PLAY_OK4.data[9] = cd_Time_Min;
+      CMD_PLAY_OK4.data[10] = cd_Time_Sec;
+      r = AVCLAN_sendframe(&frame);
+
       if (!r)
         AVCLan_Send_Status();
       CD_Mode = stPlay;
@@ -849,16 +942,25 @@ uint8_t AVCLan_SendAnswer() {
     case cm_StopReq2:
       CD_Mode = stStop;
       playMode = 0;
+      frame.broadcast = CMD_STOP1.broadcast;
+      frame.length = CMD_STOP1.length;
+      frame.data = (uint8_t *)&CMD_STOP1.data[0];
+      r = AVCLAN_sendframe(&frame);
 
-      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STOP1);
-      CMD_STOP2[7] = cd_Disc;
-      CMD_STOP2[8] = cd_Track;
-      CMD_STOP2[9] = cd_Time_Min;
-      CMD_STOP2[10] = cd_Time_Sec;
-      r = AVCLan_SendAnswerFrame((uint8_t *)CMD_STOP2);
+      CMD_STOP2.data[7] = cd_Disc;
+      CMD_STOP2.data[8] = cd_Track;
+      CMD_STOP2.data[9] = cd_Time_Min;
+      CMD_STOP2.data[10] = cd_Time_Sec;
+      frame.broadcast = CMD_STOP2.broadcast;
+      frame.length = CMD_STOP2.length;
+      frame.data = (uint8_t *)&CMD_STOP2.data[0];
+      r = AVCLAN_sendframe(&frame);
       break;
     case cm_Beep:
-      AVCLan_SendAnswerFrame((uint8_t *)CMD_BEEP);
+      frame.broadcast = CMD_BEEP.broadcast;
+      frame.length = CMD_BEEP.length;
+      frame.data = (uint8_t *)&CMD_BEEP.data[0];
+      r = AVCLAN_sendframe(&frame);
       break;
   }
 
@@ -867,24 +969,18 @@ uint8_t AVCLan_SendAnswer() {
 }
 
 void AVCLan_Register() {
+  AVCLAN_frame_t register_frame = {.broadcast = CMD_REGISTER.broadcast,
+                                   .sender_addr = CD_ID,
+                                   .responder_addr = HU_ID,
+                                   .control = 0xF,
+                                   .length = CMD_REGISTER.length,
+                                   .data = (uint8_t *)&CMD_REGISTER.data[0]};
   RS232_Print("REG_ST\n");
-  AVCLan_SendAnswerFrame((uint8_t *)CMD_REGISTER);
+  AVCLAN_sendframe(&register_frame);
   RS232_Print("REG_END\n");
   // AVCLan_Command( cm_Register );
-  AVCLan_Command(cm_Init);
-}
-
-uint8_t AVCLan_Command(uint8_t command) {
-  uint8_t r;
-
-  answerReq = command;
-  r = AVCLan_SendAnswer();
-  /*
-  RS232_Print("ret=");
-  RS232_PrintHex8(r);
-  RS232_Print("\n");
-  */
-  return r;
+  answerReq = cm_Init;
+  AVCLan_SendAnswer();
 }
 
 /* Increment packed 2-digit BCD number.
@@ -896,49 +992,33 @@ uint8_t incBCD(uint8_t data) {
   return (data + 1);
 }
 
-void ShowInMessage() {
-  if (message_len == 0)
-    return;
-
-  AVC_HoldLine();
-
-  RS232_Print("HU < (");
-
-  if (broadcast == 0)
-    RS232_Print("bro) ");
+void AVCLAN_printframe(const AVCLAN_frame_t *frame) {
+  if (frame->responder_addr == CD_ID ||
+      (frame->broadcast && frame->responder_addr == 0x1FF))
+    RS232_Print(" < ");
   else
-    RS232_Print("dir) ");
+    RS232_Print(">< ");
 
-  RS232_PrintHex4(*(((uint8_t *)&sender) + 1));
-  RS232_PrintHex8(*(((uint8_t *)&sender) + 0));
-  RS232_Print("| ");
-  RS232_PrintHex4(*(((uint8_t *)&responder) + 1));
-  RS232_PrintHex8(*(((uint8_t *)&responder) + 0));
-  RS232_Print("| ");
+  RS232_PrintHex4(frame->broadcast);
 
-  uint8_t i;
-  for (i = 0; i < message_len; i++) {
-    RS232_PrintHex8(message[i]);
-    RS232_Print(" ");
+  RS232_Print(" 0x");
+  RS232_PrintHex4(*(((uint8_t *)&frame->sender_addr) + 1));
+  RS232_PrintHex8(*(((uint8_t *)&frame->sender_addr) + 0));
+  RS232_Print(" 0x");
+  RS232_PrintHex4(*(((uint8_t *)&frame->responder_addr) + 1));
+  RS232_PrintHex8(*(((uint8_t *)&frame->responder_addr) + 0));
+
+  RS232_Print(" 0x");
+  RS232_PrintHex4(frame->control);
+
+  RS232_Print(" 0x");
+  RS232_PrintHex4(frame->length);
+
+  for (uint8_t i = 0; i < frame->length; i++) {
+    RS232_Print(" 0x");
+    RS232_PrintHex8(frame->data[i]);
   }
   RS232_Print("\n");
-
-  AVC_ReleaseLine();
-}
-
-void ShowOutMessage() {
-  uint8_t i;
-
-  AVC_HoldLine();
-
-  RS232_Print("           out > ");
-  for (i = 0; i < data_len; i++) {
-    RS232_PrintHex8(data[i]);
-    RS232_SendByte(' ');
-  }
-  RS232_Print("\n");
-
-  AVC_ReleaseLine();
 }
 
 #ifdef SOFTWARE_DEBUG

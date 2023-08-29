@@ -40,6 +40,12 @@ int main() {
   uint8_t s_c[2];
   uint8_t i;
   uint8_t data_tmp[32];
+  AVCLAN_frame_t msg = {
+      .broadcast = UNICAST,
+      .sender_addr = CD_ID,
+      .control = 0xF,
+      .data = data_tmp,
+  };
 
   Setup();
 
@@ -57,7 +63,7 @@ int main() {
   while (1) {
 
     if (INPUT_IS_SET) { // if message from some device on AVCLan begin
-      AVCLan_Read_Message();
+      AVCLAN_readframe();
       // show message
     } else {
       // check command from HU
@@ -94,16 +100,20 @@ int main() {
         case 'W':
           showLog = 1;
           readSeq = 0;
-          AVCLan_SendMyData(data_tmp, s_len);
+          msg.broadcast = UNICAST;
+          msg.length = s_len;
+          AVCLAN_sendframe(&msg);
           break;
         case 'Q':
           showLog = 1;
           readSeq = 0;
-          AVCLan_SendMyDataBroadcast(data_tmp, s_len);
+          msg.broadcast = BROADCAST;
+          msg.length = s_len;
+          AVCLAN_sendframe(&msg);
           break;
         case 'R':
           RS232_Print("REGIST:\n");
-          AVCLan_Command(cm_Register);
+          AVCLan_Register();
           TCB1.CNT = 0;
           while (TCB1.CNT < 540) {}
           CHECK_AVC_LINE;
@@ -134,7 +144,9 @@ int main() {
           data_tmp[3] = 0x60;
           data_tmp[4] = 0x01;
           s_len = 5;
-          AVCLan_SendMyData(data_tmp, s_len);
+          msg.length = s_len;
+          msg.broadcast = UNICAST;
+          AVCLAN_sendframe(&msg);
           break;
 
 #ifdef HARDWARE_DEBUG

@@ -41,7 +41,7 @@
 
 #define CHECK_AVC_LINE                                                         \
   if (INPUT_IS_SET)                                                            \
-    AVCLan_Read_Message();
+    AVCLAN_readframe();
 
 void AVC_HoldLine();
 void AVC_ReleaseLine();
@@ -78,25 +78,33 @@ typedef enum {
 typedef enum { stStop = 0, stPlay = 1 } cd_modes;
 extern cd_modes CD_Mode;
 
-extern uint8_t broadcast;
-extern uint16_t sender;
-extern uint16_t responder;
-extern uint8_t message_len;
-extern uint8_t message[MAXMSGLEN];
+typedef enum MSG_TYPE { BROADCAST = 0, UNICAST = 1 } MSG_TYPE_t;
 
-extern uint8_t data_control;
-extern uint8_t data_len;
-extern uint8_t data[MAXMSGLEN];
+typedef struct AVCLAN_KnownMessage_struct {
+  MSG_TYPE_t broadcast;
+  uint8_t length;
+  uint8_t data[11];
+} AVCLAN_KnownMessage_t;
 
-uint8_t AVCLan_Read_Message();
+typedef struct AVCLAN_frame_struct {
+  uint8_t valid;
+  MSG_TYPE_t broadcast;
+  uint16_t sender_addr;    // formerly "master"
+  uint16_t responder_addr; // formerly "slave"
+  uint8_t control;
+  uint8_t length;
+  uint8_t *data;
+} AVCLAN_frame_t;
+
+uint8_t AVCLAN_readframe();
 void AVCLan_Send_Status();
 
 void AVCLan_Init();
 void AVCLan_Register();
-uint8_t AVCLan_SendData();
 uint8_t AVCLan_SendAnswer();
-uint8_t AVCLan_SendDataBroadcast();
-uint8_t AVCLan_Command(uint8_t command);
+uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame);
+
+void AVCLAN_printframe(const AVCLAN_frame_t *frame);
 
 uint8_t incBCD(uint8_t data);
 
@@ -108,12 +116,6 @@ extern uint8_t cd_Time_Min;
 extern uint8_t cd_Time_Sec;
 
 extern uint8_t playMode;
-
-uint8_t AVCLan_SendMyData(uint8_t *data_tmp, uint8_t s_len);
-uint8_t AVCLan_SendMyDataBroadcast(uint8_t *data_tmp, uint8_t s_len);
-
-void ShowInMessage();
-void ShowOutMessage();
 
 #ifdef SOFTWARE_DEBUG
 void AVCLan_Measure();
