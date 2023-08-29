@@ -1,3 +1,10 @@
 {
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
+        "clang-analyzer-core.NullDereference"
+    ],
+    "C_Cpp.files.exclude": {
+        "build/**": true
+    },
+    "cmake.configureOnOpen": true,
 }
