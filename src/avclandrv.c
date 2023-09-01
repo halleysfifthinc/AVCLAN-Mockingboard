@@ -59,12 +59,8 @@
 uint16_t CD_ID;
 uint16_t HU_ID;
 
-uint8_t repeatMode;
-uint8_t randomMode;
-
 uint8_t playMode;
 
-uint8_t cd_Disc;
 uint8_t cd_Track;
 uint8_t cd_Time_Min;
 uint8_t cd_Time_Sec;
@@ -72,10 +68,6 @@ uint8_t cd_Time_Sec;
 uint8_t answerReq;
 
 cd_modes CD_Mode;
-
-// we need check answer (to avclan check) timeout
-// when is more then 1 min, FORCE answer.
-uint8_t check_timeout;
 
 #define SW_ID 0x11 // 11 For my stereo
 
@@ -179,14 +171,14 @@ const AVCLAN_KnownMessage_t CMD_PLAY_OK3 = {
 AVCLAN_KnownMessage_t CMD_PLAY_OK4 = {
     BROADCAST,
     11,
-    {0x63, 0x31, 0xF1, 0x01, 0x28, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80}};
+    {0x63, 0x31, 0xF1, 0x01, 0x28, 0x00, 0x00, 0x01, 0x00, 0x00, 0x80}};
 
 const AVCLAN_KnownMessage_t CMD_STOP1 = {
     UNICAST, 5, {0x00, 0x63, SW_ID, 0x53, 0x01}};
 AVCLAN_KnownMessage_t CMD_STOP2 = {
     BROADCAST,
     11,
-    {0x63, 0x31, 0xF1, 0x00, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80}};
+    {0x63, 0x31, 0xF1, 0x00, 0x30, 0x00, 0x00, 0x01, 0x00, 0x00, 0x80}};
 
 const AVCLAN_KnownMessage_t CMD_BEEP = {
     UNICAST, 5, {0x00, 0x63, 0x29, 0x60, 0x02}};
@@ -241,14 +233,10 @@ void AVCLan_Init() {
   TCB1.CTRLA = TCB_CLKSEL_CLKDIV2_gc | TCB_ENABLE_bm;
 
   answerReq = cm_Null;
-  check_timeout = 0;
 
-  cd_Disc = 1;
   cd_Track = 1;
   cd_Time_Min = 0;
   cd_Time_Sec = 0;
-  repeatMode = 0;
-  randomMode = 0;
   playMode = 0;
   CD_Mode = stStop;
 }
@@ -833,7 +821,6 @@ uint8_t AVCLan_SendInitCommands() {
 void AVCLan_Send_Status() {
   uint8_t STATUS[] = {0x63, 0x31, 0xF1, 0x01, 0x10, 0x01,
                       0x01, 0x00, 0x00, 0x00, 0x80};
-  STATUS[5] = cd_Disc;
   STATUS[6] = cd_Track;
   STATUS[7] = cd_Time_Min;
   STATUS[8] = cd_Time_Sec;
@@ -896,7 +883,6 @@ uint8_t AVCLan_SendAnswer() {
       frame.length = CMD_CHECK.length;
       frame.data = &CMD_CHECK.data[0];
       r = AVCLAN_sendframe(&frame);
-      check_timeout = 0;
       CMD_CHECK.data[6]++;
       RS232_Print("AVCCHK\n");
       break;
@@ -928,7 +914,6 @@ uint8_t AVCLan_SendAnswer() {
       frame.broadcast = CMD_PLAY_OK4.broadcast;
       frame.length = CMD_PLAY_OK4.length;
       frame.data = (uint8_t *)&CMD_PLAY_OK4.data[0];
-      CMD_PLAY_OK4.data[7] = cd_Disc;
       CMD_PLAY_OK4.data[8] = cd_Track;
       CMD_PLAY_OK4.data[9] = cd_Time_Min;
       CMD_PLAY_OK4.data[10] = cd_Time_Sec;
@@ -947,7 +932,6 @@ uint8_t AVCLan_SendAnswer() {
       frame.data = (uint8_t *)&CMD_STOP1.data[0];
       r = AVCLAN_sendframe(&frame);
 
-      CMD_STOP2.data[7] = cd_Disc;
       CMD_STOP2.data[8] = cd_Track;
       CMD_STOP2.data[9] = cd_Time_Min;
       CMD_STOP2.data[10] = cd_Time_Sec;

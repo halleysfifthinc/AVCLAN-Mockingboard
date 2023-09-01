@@ -108,9 +108,6 @@ void AVCLAN_printframe(const AVCLAN_frame_t *frame);
 
 uint8_t incBCD(uint8_t data);
 
-extern uint8_t check_timeout;
-
-extern uint8_t cd_Disc;
 extern uint8_t cd_Track;
 extern uint8_t cd_Time_Min;
 extern uint8_t cd_Time_Sec;
