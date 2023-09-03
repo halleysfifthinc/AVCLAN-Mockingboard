@@ -28,13 +28,13 @@ extern uint8_t RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
 extern uint8_t readkey;
 
 void RS232_Init(void);
-extern void RS232_Print_P(const char *str_addr);
-extern void RS232_SendByte(uint8_t Data);
-extern void RS232_Print(const char *pBuf);
-extern void RS232_PrintHex4(uint8_t Data);
-extern void RS232_PrintHex8(uint8_t Data);
-extern void RS232_PrintDec(uint8_t Data);
-extern void RS232_PrintDec2(uint8_t Data);
-extern char *itoa(int i, char b[]);
+void RS232_Print_P(const char *str_addr);
+void RS232_SendByte(uint8_t Data);
+void RS232_Print(const char *pBuf);
+void RS232_PrintHex4(uint8_t Data);
+void RS232_PrintHex8(uint8_t Data);
+void RS232_PrintDec(uint8_t Data);
+void RS232_PrintDec2(uint8_t Data);
+char *itoa(int i, char b[]);
 
 #endif // __COM232_H
