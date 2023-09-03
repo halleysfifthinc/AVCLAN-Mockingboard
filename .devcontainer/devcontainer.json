@@ -15,7 +15,9 @@
 		"vscode": {
 			"extensions": [
 				"ms-vscode.cpptools",
-				"ms-vscode.cmake-tools"
+				"ms-vscode.cmake-tools",
+				"rockcat.avr-support",
+				"harikrishnan94.cxx-compiler-explorer"
 			]
 		}
 	}

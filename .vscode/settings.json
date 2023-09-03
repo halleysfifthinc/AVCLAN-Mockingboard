@@ -6,5 +6,9 @@
     "C_Cpp.files.exclude": {
         "build/**": true
     },
+    "files.associations": {
+        "*.S": "avr"
+    },
     "cmake.configureOnOpen": true,
+    "compilerexplorer.compilationDirectory": "${workspaceFolder}/build",
 }
