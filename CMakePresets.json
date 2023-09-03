@@ -2,13 +2,23 @@
     "version": 2,
     "configurePresets": [
         {
-            "name": "main",
-            "displayName": "Default",
-            "description": "Use Unix Makefiles generator; set build directory",
+            "name": "default",
+            "displayName": "Debug",
+            "description": "Configure with Debug build settings",
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "relwithdebinfo",
+            "displayName": "RelWithDebInfo",
+            "description": "Configure with RelWithDebInfo build settings",
+            "generator": "Unix Makefiles",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
         }
     ]
