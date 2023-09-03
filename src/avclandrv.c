@@ -178,37 +178,6 @@ AVCLAN_KnownMessage_t CMD_STOP2 = {
 const AVCLAN_KnownMessage_t CMD_BEEP = {
     UNICAST, 5, {0x00, 0x63, 0x29, 0x60, 0x02}};
 
-void AVC_HoldLine() {
-  STOPEvent;
-
-  // wait for free line
-  uint8_t line_busy = 1;
-
-  TCB1.CNT = 0;
-  do {
-    while (INPUT_IS_CLEAR) {
-      /*	The comparison value was originally 25 with CK64 (tick period
-         of 4.34 us) at a clock frequency 14.7456MHz. For a more accurate tick
-         period of .5 us at 16MHz, the value should be approximately 225*/
-      if (TCB1.CNT >= 900)
-        break;
-    }
-    if (TCB1.CNT > 864)
-      line_busy = 0;
-  } while (line_busy);
-
-  // switch to out mode
-  AVC_OUT_EN();
-  AVC_SET_LOGICAL_1();
-
-  STARTEvent;
-}
-
-void AVC_ReleaseLine() {
-  AVC_SET_LOGICAL_0();
-  AVC_OUT_DIS();
-}
-
 void AVCLAN_init() {
   // Pull-ups are disabled by default
   // Set pin 6 and 7 as input

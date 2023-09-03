@@ -43,9 +43,6 @@
   if (INPUT_IS_SET)                                                            \
     AVCLAN_readframe();
 
-void AVC_HoldLine();
-void AVC_ReleaseLine();
-
 #define MAXMSGLEN 32
 
 extern uint16_t CD_ID; // CD Changer ID
