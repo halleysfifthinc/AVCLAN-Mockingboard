@@ -21,7 +21,6 @@ try_compile(LIBC_VERSION_TEST
 
 if(NOT LIBC_VERSION_TEST)
     include(FetchContent)
-    # attiny_atpack_SOURCE_DIR is downloaded/extracted location
     FetchContent_Declare(
         attiny_atpack
         URL http://packs.download.atmel.com/Atmel.ATtiny_DFP.2.0.368.atpack
@@ -65,8 +64,7 @@ endif(CMAKE_BUILD_TYPE MATCHES Debug)
 add_avr_executable(sniffer
     src/sniffer.c
     src/com232.c
-    src/avclandrv.c
-    src/GlobalDef.c)
+    src/avclandrv.c)
 
 target_link_options(sniffer PUBLIC
     -B "${attiny_atpack_SOURCE_DIR}/gcc/dev/${AVR_MCU}"

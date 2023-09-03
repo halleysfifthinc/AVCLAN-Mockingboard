@@ -27,8 +27,9 @@
 
 */
 
-#include <avr/interrupt.h>
 #include <avr/io.h>
+#include <avr/sfr_defs.h>
+#include <stdint.h>
 
 #include "avclandrv.h"
 #include "com232.h"
@@ -341,7 +342,7 @@ uint8_t AVCLAN_sendbitsi(const uint8_t *byte, int8_t len) {
   int8_t len_mod8 = 8;
 
   if (len & 0x7) {
-    len_mod8 = len & 0x7;
+    len_mod8 = (int8_t)(len & 0x7);
     b <<= (uint8_t)(8 - len_mod8);
   }
 

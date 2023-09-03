@@ -26,6 +26,8 @@
 
 #include <avr/interrupt.h>
 #include <avr/io.h>
+#include <avr/sfr_defs.h>
+#include <stdint.h>
 
 #include "avclandrv.h"
 #include "com232.h"

@@ -24,9 +24,12 @@
 
 */
 
-#include "com232.h"
 #include <avr/interrupt.h>
 #include <avr/io.h>
+#include <avr/sfr_defs.h>
+#include <stdint.h>
+
+#include "com232.h"
 
 uint8_t RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
 uint8_t readkey;
