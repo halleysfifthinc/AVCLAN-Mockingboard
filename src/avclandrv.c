@@ -205,24 +205,6 @@ void AVCLAN_init() {
   CD_Mode = stStop;
 }
 
-uint8_t AVCLan_Read_Byte(uint8_t length, uint8_t *parity) {
-  uint8_t byte = 0;
-
-  while (1) {
-    while (INPUT_IS_CLEAR) {}
-    TCB1.CNT = 0;
-    while (INPUT_IS_SET) {} // If input was set for less than 26 us
-    if (TCB1.CNT < 208) {   // (a generous half period), bit was a 1
-      byte++;
-      (*parity)++;
-    }
-    length--;
-    if (!length)
-      return byte;
-    byte = byte << 1;
-  }
-}
-
 void set_AVC_logic_for(uint8_t val, uint16_t period) {
   TCB1.CNT = 0;
   if (val) {
@@ -235,48 +217,28 @@ void set_AVC_logic_for(uint8_t val, uint16_t period) {
   return;
 }
 
-uint8_t AVCLan_Send_StartBit() {
+uint8_t AVCLAN_sendbit_start() {
   set_AVC_logic_for(1, 1328); // 166 us @ 125 ns tick (for F_CPU = 16MHz)
   set_AVC_logic_for(0, 152);  // 19 us @ 125 ns tick (for F_CPU = 16MHz)
 
   return 1;
 }
 
-void AVCLan_Send_Bit1() {
+void AVCLAN_sendbit_1() {
   set_AVC_logic_for(1, 164); // 20.5 us @ 125 ns tick (for F_CPU = 16MHz)
   set_AVC_logic_for(0, 152); // 19 us @ 125 ns tick (for F_CPU = 16MHz)
 }
 
-void AVCLan_Send_Bit0() {
+void AVCLAN_sendbit_0() {
   set_AVC_logic_for(1, 272); // 34 us @ 125 ns tick (for F_CPU = 16MHz)
   set_AVC_logic_for(0, 44);  // 5.5 us @ 125 ns tick (for F_CPU = 16MHz)
 }
 
-uint8_t AVCLan_Read_ACK() {
-  set_AVC_logic_for(1, 152); // 34 us @ 125 ns tick (for F_CPU = 16MHz)
-  AVC_SET_LOGICAL_0();       // Replace with AVC_ReleaseLine?
-  AVC_OUT_DIS();             // switch to read mode
-
-  TCB1.CNT = 0;
-  while (1) {
-    if (INPUT_IS_SET && (TCB1.CNT > 208))
-      break; // Make sure INPUT is not still set from us
-    // Line of experimentation: Try changing TCNT0 comparison value or remove
-    // check entirely
-    if (TCB1.CNT > 300)
-      return 1; // Not sure if this fix is intent correct
-  }
-
-  while (INPUT_IS_SET) {}
-  AVC_OUT_EN(); // back to write mode
-  return 0;
-}
-
-uint8_t AVCLan_Send_ACK() {
+void AVCLAN_sendbit_ACK() {
   TCB1.CNT = 0;
   while (INPUT_IS_CLEAR) {
     if (TCB1.CNT >= 900)
-      return 0; // max wait time
+      return; // max wait time
   }
 
   AVC_OUT_EN();
@@ -285,8 +247,14 @@ uint8_t AVCLan_Send_ACK() {
   set_AVC_logic_for(0, 44);  // 5.5 us @ 125 ns tick (for F_CPU = 16MHz)
 
   AVC_OUT_DIS();
+}
 
-  return 1;
+void AVCLAN_sendbit_parity(uint8_t parity) {
+  if (parity) {
+    AVCLAN_sendbit_1();
+  } else {
+    AVCLAN_sendbit_0();
+  }
 }
 
 #define AVCLAN_sendbits(bits, len)                                             \
@@ -311,10 +279,10 @@ uint8_t AVCLAN_sendbitsi(const uint8_t *byte, int8_t len) {
     len -= len_mod8;
     for (; len_mod8 > 0; len_mod8--) {
       if (b & 0x80) {
-        AVCLan_Send_Bit1();
+        AVCLAN_sendbit_1();
         parity++;
       } else {
-        AVCLan_Send_Bit0();
+        AVCLAN_sendbit_0();
       }
       b <<= 1;
     }
@@ -335,22 +303,52 @@ uint8_t AVCLAN_sendbyte(const uint8_t *byte) {
 
   for (uint8_t nbits = 8; nbits > 0; nbits--) {
     if (b & 0x80) {
-      AVCLan_Send_Bit1();
+      AVCLAN_sendbit_1();
       parity++;
     } else {
-      AVCLan_Send_Bit0();
+      AVCLAN_sendbit_0();
     }
     b <<= 1;
   }
   return (parity & 1);
 }
 
-void AVCLan_Send_ParityBit(uint8_t parity) {
-  if (parity) {
-    AVCLan_Send_Bit1();
-  } else {
-    AVCLan_Send_Bit0();
+uint8_t AVCLAN_readbyte(uint8_t length, uint8_t *parity) {
+  uint8_t byte = 0;
+
+  while (1) {
+    while (INPUT_IS_CLEAR) {};
+    TCB1.CNT = 0;
+    while (INPUT_IS_SET) {}; // If input was set for less than 26 us
+    if (TCB1.CNT < 208) {    // (a generous half period), bit was a 1
+      byte++;
+      (*parity)++;
+    }
+    length--;
+    if (!length)
+      return byte;
+    byte = byte << 1;
   }
+}
+
+uint8_t AVCLAN_readbit_ACK() {
+  set_AVC_logic_for(1, 152); // 34 us @ 125 ns tick (for F_CPU = 16MHz)
+  AVC_SET_LOGICAL_0();       // Replace with AVC_ReleaseLine?
+  AVC_OUT_DIS();             // switch to read mode
+
+  TCB1.CNT = 0;
+  while (1) {
+    if (INPUT_IS_SET && (TCB1.CNT > 208))
+      break; // Make sure INPUT is not still set from us
+    // Line of experimentation: Try changing TCNT0 comparison value or remove
+    // check entirely
+    if (TCB1.CNT > 300)
+      return 1; // Not sure if this fix is intent correct
+  }
+
+  while (INPUT_IS_SET) {}
+  AVC_OUT_EN(); // back to write mode
+  return 0;
 }
 
 uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd) {
@@ -393,16 +391,16 @@ uint8_t AVCLAN_readframe() {
   //  }
   uint8_t parity = 0;
   uint8_t parity_check = 0;
-  AVCLan_Read_Byte(1, &parity); // Start bit
+  AVCLAN_readbyte(1, &parity); // Start bit
 
-  frame.broadcast = AVCLan_Read_Byte(1, &parity);
+  frame.broadcast = AVCLAN_readbyte(1, &parity);
 
   parity = 0;
   uint8_t *controller_hi = ((uint8_t *)&frame.controller_addr) + 1;
   uint8_t *controller_lo = ((uint8_t *)&frame.controller_addr) + 0;
-  *controller_hi = AVCLan_Read_Byte(4, &parity);
-  *controller_lo = AVCLan_Read_Byte(8, &parity);
-  if ((parity & 1) != AVCLan_Read_Byte(1, &parity_check)) {
+  *controller_hi = AVCLAN_readbyte(4, &parity);
+  *controller_lo = AVCLAN_readbyte(8, &parity);
+  if ((parity & 1) != AVCLAN_readbyte(1, &parity_check)) {
     STARTEvent;
     return 0;
   }
@@ -410,9 +408,9 @@ uint8_t AVCLAN_readframe() {
   parity = 0;
   uint8_t *peripheral_hi = ((uint8_t *)&frame.peripheral_addr) + 1;
   uint8_t *peripheral_lo = ((uint8_t *)&frame.peripheral_addr) + 0;
-  *peripheral_hi = AVCLan_Read_Byte(4, &parity);
-  *peripheral_lo = AVCLan_Read_Byte(8, &parity);
-  if ((parity & 1) != AVCLan_Read_Byte(1, &parity_check)) {
+  *peripheral_hi = AVCLAN_readbyte(4, &parity);
+  *peripheral_lo = AVCLAN_readbyte(8, &parity);
+  if ((parity & 1) != AVCLAN_readbyte(1, &parity_check)) {
     STARTEvent;
     return 0;
   }
@@ -421,30 +419,30 @@ uint8_t AVCLAN_readframe() {
   for_me = (frame.peripheral_addr == CD_ID);
 
   if (for_me)
-    AVCLan_Send_ACK();
+    AVCLAN_sendbit_ACK();
   else
-    AVCLan_Read_Byte(1, &parity);
+    AVCLAN_readbyte(1, &parity);
 
   parity = 0;
-  frame.control = AVCLan_Read_Byte(4, &parity);
-  if ((parity & 1) != AVCLan_Read_Byte(1, &parity_check)) {
+  frame.control = AVCLAN_readbyte(4, &parity);
+  if ((parity & 1) != AVCLAN_readbyte(1, &parity_check)) {
     STARTEvent;
     return 0;
   } else if (for_me) {
-    AVCLan_Send_ACK();
+    AVCLAN_sendbit_ACK();
   } else {
-    AVCLan_Read_Byte(1, &parity);
+    AVCLAN_readbyte(1, &parity);
   }
 
   parity = 0;
-  frame.length = AVCLan_Read_Byte(8, &parity);
-  if ((parity & 1) != AVCLan_Read_Byte(1, &parity_check)) {
+  frame.length = AVCLAN_readbyte(8, &parity);
+  if ((parity & 1) != AVCLAN_readbyte(1, &parity_check)) {
     STARTEvent;
     return 0;
   } else if (for_me) {
-    AVCLan_Send_ACK();
+    AVCLAN_sendbit_ACK();
   } else {
-    AVCLan_Read_Byte(1, &parity);
+    AVCLAN_readbyte(1, &parity);
   }
 
   if (frame.length > MAXMSGLEN) {
@@ -455,14 +453,14 @@ uint8_t AVCLAN_readframe() {
 
   for (i = 0; i < frame.length; i++) {
     parity = 0;
-    frame.data[i] = AVCLan_Read_Byte(8, &parity);
-    if ((parity & 1) != AVCLan_Read_Byte(1, &parity_check)) {
+    frame.data[i] = AVCLAN_readbyte(8, &parity);
+    if ((parity & 1) != AVCLAN_readbyte(1, &parity_check)) {
       STARTEvent;
       return 0;
     } else if (for_me) {
-      AVCLan_Send_ACK();
+      AVCLAN_sendbit_ACK();
     } else {
-      AVCLan_Read_Byte(1, &parity);
+      AVCLAN_readbyte(1, &parity);
     }
   }
 
@@ -560,16 +558,16 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   // switch to output mode
   AVC_OUT_EN();
 
-  AVCLan_Send_StartBit();
+  AVCLAN_sendbit_start();
   AVCLAN_sendbits((uint8_t *)&frame->broadcast, 1);
 
   parity = AVCLAN_sendbits(&frame->controller_addr, 12);
-  AVCLan_Send_ParityBit(parity);
+  AVCLAN_sendbit_parity(parity);
 
   parity = AVCLAN_sendbits(&frame->peripheral_addr, 12);
-  AVCLan_Send_ParityBit(parity);
+  AVCLAN_sendbit_parity(parity);
 
-  if (!frame->broadcast && AVCLan_Read_ACK()) {
+  if (!frame->broadcast && AVCLAN_readbit_ACK()) {
     AVC_OUT_DIS();
     STARTEvent;
     RS232_Print("Error NAK: Addresses\n");
@@ -577,9 +575,9 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   }
 
   parity = AVCLAN_sendbits(&frame->control, 4);
-  AVCLan_Send_ParityBit(parity);
+  AVCLAN_sendbit_parity(parity);
 
-  if (!frame->broadcast && AVCLan_Read_ACK()) {
+  if (!frame->broadcast && AVCLAN_readbit_ACK()) {
     AVC_OUT_DIS();
     STARTEvent;
     RS232_Print("Error NAK: Control\n");
@@ -587,9 +585,9 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   }
 
   parity = AVCLAN_sendbyte(&frame->length); // data length
-  AVCLan_Send_ParityBit(parity);
+  AVCLAN_sendbit_parity(parity);
 
-  if (!frame->broadcast && AVCLan_Read_ACK()) {
+  if (!frame->broadcast && AVCLAN_readbit_ACK()) {
     AVC_OUT_DIS();
     STARTEvent;
     RS232_Print("Error NAK: Message length\n");
@@ -598,11 +596,11 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
 
   for (uint8_t i = 0; i < frame->length; i++) {
     parity = AVCLAN_sendbyte(&frame->data[i]);
-    AVCLan_Send_ParityBit(parity);
+    AVCLAN_sendbit_parity(parity);
     // Based on the µPD6708 datasheet, ACK bit for broadcast doesn't seem
     // necessary (i.e. This deviates from the previous broadcast specific
     // function that sent an extra `1` bit after each byte/parity)
-    if (!frame->broadcast && AVCLan_Read_ACK()) {
+    if (!frame->broadcast && AVCLAN_readbit_ACK()) {
       AVC_OUT_DIS();
       STARTEvent;
       RS232_Print("Error ACK 4 (Data uint8_t: ");
