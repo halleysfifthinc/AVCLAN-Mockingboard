@@ -93,7 +93,7 @@ int main() {
         RS232_RxCharBegin = RS232_RxCharEnd = 0; // reset Buffer
       sei();
       switch (readkey) {
-        case 'S':
+        case 'S': // Read sequence
           printAllFrames = 0;
           RS232_Print("READ SEQUENCE > \n");
           readSeq = 1;
@@ -101,14 +101,14 @@ int main() {
           s_dig = 0;
           s_c[0] = s_c[1] = 0;
           break;
-        case 'W':
+        case 'W': // Send command
           printAllFrames = 1;
           readSeq = 0;
           msg.broadcast = UNICAST;
           msg.length = s_len;
           AVCLAN_sendframe(&msg);
           break;
-        case 'Q':
+        case 'Q': // Send broadcast
           printAllFrames = 1;
           readSeq = 0;
           msg.broadcast = BROADCAST;
@@ -117,17 +117,17 @@ int main() {
           AVCLAN_sendframe(&msg);
           msg.peripheral_addr = HU_ID;
           break;
-        case 'R':
+        case 'R': // Register and wait for a response
           RS232_Print("REGIST:\n");
           AVCLan_Register();
           TCB1.CNT = 0;
           while (TCB1.CNT < 540) {}
           CHECK_AVC_LINE;
           break;
-        case 'r':
+        case 'r': // Register into the abyss
           AVCLan_Register();
           break;
-        case 'l':
+        case 'l': // Print received messages
           RS232_Print("Log OFF\n");
           printAllFrames = 0;
           break;
@@ -135,7 +135,7 @@ int main() {
           RS232_Print("Log ON\n");
           printAllFrames = 1;
           break;
-        case 'k':
+        case 'k': // Echo input
           RS232_Print("str OFF\n");
           echoCharacters = 0;
           break;
@@ -143,7 +143,7 @@ int main() {
           RS232_Print("str ON\n");
           echoCharacters = 1;
           break;
-        case 'B':
+        case 'B': // Beep
           data_tmp[0] = 0x00;
           data_tmp[1] = 0x5E;
           data_tmp[2] = 0x29;
