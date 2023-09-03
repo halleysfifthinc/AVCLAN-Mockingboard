@@ -30,7 +30,14 @@
 #ifndef __AVCLANDRV_H
 #define __AVCLANDRV_H
 
-#include "GlobalDef.h"
+// AVC LAN bus on AC2 (PA6/7)
+// PA6 AINP0 +
+// PA7 AINN1 -
+#define INPUT_IS_SET (bit_is_set(AC2_STATUS, AC_STATE_bp))
+#define INPUT_IS_CLEAR (bit_is_clear(AC2_STATUS, AC_STATE_bp))
+
+#define sbi(port, bit) (port) |= (1 << (bit))  // Set bit (i.e. to 1)
+#define cbi(port, bit) (port) &= ~(1 << (bit)) // Clear bit (i.e. set bit to 0)
 
 #define STOPEvent                                                              \
   cbi(RTC.PITINTCTRL, RTC_PI_bp);                                              \
@@ -50,6 +57,8 @@ void AVC_ReleaseLine();
 
 extern uint16_t CD_ID; // CD Changer ID
 extern uint16_t HU_ID; // Head-unit ID
+
+extern uint8_t printAllFrames;
 
 typedef enum {
   cm_Null = 0,
@@ -114,13 +123,13 @@ extern uint8_t cd_Time_Sec;
 
 extern uint8_t playMode;
 
+extern uint8_t answerReq;
+
 #ifdef SOFTWARE_DEBUG
 void AVCLan_Measure();
 #endif
 #ifdef HARDWARE_DEBUG
 void SetHighLow();
 #endif
-
-extern uint8_t answerReq;
 
 #endif // __AVCLANDRV_H

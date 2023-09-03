@@ -27,7 +27,7 @@
 #ifndef __COM232_H
 #define __COM232_H
 
-#include "GlobalDef.h"
+#include <stdint.h>
 
 extern uint8_t RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
 extern uint8_t readkey;

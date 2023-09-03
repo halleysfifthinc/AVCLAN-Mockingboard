@@ -27,9 +27,13 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
-#include "GlobalDef.h"
 #include "avclandrv.h"
 #include "com232.h"
+
+#define EV_NOTHING 0
+#define EV_STATUS 4
+
+uint8_t Event;
 
 void Setup();
 
@@ -81,16 +85,16 @@ int main() {
 
     // Key handler
     if (RS232_RxCharEnd) {
-      cbi(USART0.CTRLA, USART_RXCIE_bp); // disable RX complete interrupt
+      cli();
       readkey = RS232_RxCharBuffer[RS232_RxCharBegin]; // read begin of received
                                                        // Buffer
       RS232_RxCharBegin++;
       if (RS232_RxCharBegin == RS232_RxCharEnd)  // if Buffer is empty
         RS232_RxCharBegin = RS232_RxCharEnd = 0; // reset Buffer
-      sbi(USART0.CTRLA, USART_RXCIE_bp);         // enable RX complete interrupt
+      sei();
       switch (readkey) {
         case 'S':
-          showLog = 0;
+          printAllFrames = 0;
           RS232_Print("READ SEQUENCE > \n");
           readSeq = 1;
           s_len = 0;
@@ -98,14 +102,14 @@ int main() {
           s_c[0] = s_c[1] = 0;
           break;
         case 'W':
-          showLog = 1;
+          printAllFrames = 1;
           readSeq = 0;
           msg.broadcast = UNICAST;
           msg.length = s_len;
           AVCLAN_sendframe(&msg);
           break;
         case 'Q':
-          showLog = 1;
+          printAllFrames = 1;
           readSeq = 0;
           msg.broadcast = BROADCAST;
           msg.length = s_len;
@@ -123,19 +127,19 @@ int main() {
           break;
         case 'l':
           RS232_Print("Log OFF\n");
-          showLog = 0;
+          printAllFrames = 0;
           break;
         case 'L':
           RS232_Print("Log ON\n");
-          showLog = 1;
+          printAllFrames = 1;
           break;
         case 'k':
           RS232_Print("str OFF\n");
-          showLog2 = 0;
+          echoCharacters = 0;
           break;
         case 'K':
           RS232_Print("str ON\n");
-          showLog2 = 1;
+          echoCharacters = 1;
           break;
         case 'B':
           data_tmp[0] = 0x00;
@@ -189,7 +193,7 @@ int main() {
               s_dig = 0;
               s_c[0] = s_c[1] = 0;
             }
-            if (showLog2) {
+            if (echoCharacters) {
               RS232_Print("CURRENT SEQUENCE > ");
               for (i = 0; i < s_len; i++) {
                 RS232_PrintHex8(data_tmp[i]);
@@ -208,8 +212,8 @@ void Setup() {
   CD_ID = 0x360;
   HU_ID = 0x190;
 
-  showLog = 1;
-  showLog2 = 1;
+  printAllFrames = 1;
+  echoCharacters = 1;
 
   // Handle unconnected pins PA3, PB3-5
   // Set as inputs

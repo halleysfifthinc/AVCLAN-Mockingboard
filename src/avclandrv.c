@@ -30,7 +30,6 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 
-#include "GlobalDef.h"
 #include "avclandrv.h"
 #include "com232.h"
 
@@ -58,6 +57,8 @@
 
 uint16_t CD_ID;
 uint16_t HU_ID;
+
+uint8_t printAllFrames;
 
 uint8_t playMode;
 
@@ -504,7 +505,7 @@ uint8_t AVCLAN_readframe() {
 
   STARTEvent;
 
-  if (showLog)
+  if (printAllFrames)
     AVCLAN_printframe(&frame);
 
   if (for_me) {
