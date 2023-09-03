@@ -191,10 +191,9 @@ void AVCLAN_init() {
   PORTB.DIRSET = PIN2_bm;                     // Enable AC2 OUT for LED
   PORTB.PIN2CTRL = PORT_ISC_INPUT_DISABLE_gc; // Output only
 
-  TCB1.CTRLB = TCB_ASYNC_bm | TCB_CNTMODE_SINGLE_gc;
-  TCB1.EVCTRL = TCB_CAPTEI_bm;
-  TCB1.INTCTRL = TCB_CAPT_bm;
-  EVSYS.ASYNCUSER0 = EVSYS_ASYNCUSER0_ASYNCCH0_gc;
+  // TCB1 for send bit timing
+  TCB1.CTRLB = TCB_CNTMODE_INT_gc;
+  TCB1.CCMP = 0xFFFF;
   TCB1.CTRLA = TCB_CLKSEL_CLKDIV2_gc | TCB_ENABLE_bm;
 
   answerReq = cm_Null;
@@ -225,15 +224,15 @@ uint8_t AVCLan_Read_Byte(uint8_t length, uint8_t *parity) {
 }
 
 void set_AVC_logic_for(uint8_t val, uint16_t period) {
-  if (val == 1) {
+  TCB1.CNT = 0;
+  if (val) {
     AVC_SET_LOGICAL_1();
   } else {
     AVC_SET_LOGICAL_0();
   }
-  TCB1.CCMP = period;
-  EVSYS.ASYNCSTROBE = EVSYS_ASYNCCH0_0_bm;
-  loop_until_bit_is_set(TCB1_INTFLAGS, 0);
-  TCB1_INTFLAGS = 1;
+  while (TCB1.CNT <= period) {};
+
+  return;
 }
 
 uint8_t AVCLan_Send_StartBit() {
