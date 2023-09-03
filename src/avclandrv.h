@@ -4,6 +4,7 @@
 
     Portions of the following source code are based on code that is
     copyright (C) 2006 Marcin Slonicki <marcin@softservice.com.pl>
+    copyright (C) 2007 Louis Frigon
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
