@@ -263,6 +263,15 @@ void general_GPIO_init() {
   PORTC.PIN1CTRL = PORT_ISC_INPUT_DISABLE_gc; // WOD
 }
 
+/* Increment packed 2-digit BCD number.
+   WARNING: Overflow behavior is incorrect (e.g. `incBCD(0x99) != 0x00`) */
+uint8_t incBCD(uint8_t data) {
+  if ((data & 0x9) == 0x9)
+    return (data + 7);
+
+  return (data + 1);
+}
+
 // Periodic interrupt with a 1 sec period
 ISR(RTC_PIT_vect) {
   if (CD_Mode == stPlay) {

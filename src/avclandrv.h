@@ -104,8 +104,6 @@ void AVCLan_Send_Status();
 void AVCLan_Register();
 uint8_t AVCLan_SendAnswer();
 
-uint8_t incBCD(uint8_t data);
-
 extern uint8_t cd_Track;
 extern uint8_t cd_Time_Min;
 extern uint8_t cd_Time_Sec;

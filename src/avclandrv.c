@@ -833,15 +833,6 @@ void AVCLan_Register() {
   AVCLan_SendAnswer();
 }
 
-/* Increment packed 2-digit BCD number.
-   WARNING: Overflow behavior is incorrect (e.g. `incBCD(0x99) != 0x00`) */
-uint8_t incBCD(uint8_t data) {
-  if ((data & 0x9) == 0x9)
-    return (data + 7);
-
-  return (data + 1);
-}
-
 void AVCLAN_printframe(const AVCLAN_frame_t *frame) {
   if (frame->peripheral_addr == CD_ID ||
       (frame->broadcast && frame->peripheral_addr == 0x1FF))
