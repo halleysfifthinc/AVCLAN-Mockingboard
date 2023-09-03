@@ -437,27 +437,27 @@ uint8_t AVCLAN_readframe() {
   frame.broadcast = AVCLan_Read_Byte(1, &parity);
 
   parity = 0;
-  uint8_t *sender_hi = ((uint8_t *)&frame.sender_addr) + 1;
-  uint8_t *sender_lo = ((uint8_t *)&frame.sender_addr) + 0;
-  *sender_hi = AVCLan_Read_Byte(4, &parity);
-  *sender_lo = AVCLan_Read_Byte(8, &parity);
+  uint8_t *controller_hi = ((uint8_t *)&frame.controller_addr) + 1;
+  uint8_t *controller_lo = ((uint8_t *)&frame.controller_addr) + 0;
+  *controller_hi = AVCLan_Read_Byte(4, &parity);
+  *controller_lo = AVCLan_Read_Byte(8, &parity);
   if ((parity & 1) != AVCLan_Read_Byte(1, &parity_check)) {
     STARTEvent;
     return 0;
   }
 
   parity = 0;
-  uint8_t *responder_hi = ((uint8_t *)&frame.responder_addr) + 1;
-  uint8_t *responder_lo = ((uint8_t *)&frame.responder_addr) + 0;
-  *responder_hi = AVCLan_Read_Byte(4, &parity);
-  *responder_lo = AVCLan_Read_Byte(8, &parity);
+  uint8_t *peripheral_hi = ((uint8_t *)&frame.peripheral_addr) + 1;
+  uint8_t *peripheral_lo = ((uint8_t *)&frame.peripheral_addr) + 0;
+  *peripheral_hi = AVCLan_Read_Byte(4, &parity);
+  *peripheral_lo = AVCLan_Read_Byte(8, &parity);
   if ((parity & 1) != AVCLan_Read_Byte(1, &parity_check)) {
     STARTEvent;
     return 0;
   }
 
   // is this command for me ?
-  for_me = (frame.responder_addr == CD_ID);
+  for_me = (frame.peripheral_addr == CD_ID);
 
   if (for_me)
     AVCLan_Send_ACK();
@@ -602,16 +602,16 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   AVCLan_Send_StartBit();
   AVCLAN_sendbits((uint8_t *)&frame->broadcast, 1);
 
-  parity = AVCLAN_sendbits(&frame->sender_addr, 12);
+  parity = AVCLAN_sendbits(&frame->controller_addr, 12);
   AVCLan_Send_ParityBit(parity);
 
-  parity = AVCLAN_sendbits(&frame->responder_addr, 12);
+  parity = AVCLAN_sendbits(&frame->peripheral_addr, 12);
   AVCLan_Send_ParityBit(parity);
 
   if (!frame->broadcast && AVCLan_Read_ACK()) {
     AVC_OUT_DIS();
     STARTEvent;
-    RS232_Print("Error NAK: Responder\n");
+    RS232_Print("Error NAK: Addresses\n");
     return 1;
   }
 
@@ -664,8 +664,8 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
 uint8_t AVCLan_SendInitCommands() {
   uint8_t r;
   AVCLAN_frame_t frame = {.broadcast = BROADCAST,
-                          .sender_addr = CD_ID,
-                          .responder_addr = HU_ID,
+                          .controller_addr = CD_ID,
+                          .peripheral_addr = HU_ID,
                           .control = 0xF,
                           .length = c1.length};
   frame.data = (uint8_t *)&c1.data[0];
@@ -731,8 +731,8 @@ void AVCLan_Send_Status() {
   STATUS[9] = 0;
 
   AVCLAN_frame_t status = {.broadcast = UNICAST,
-                           .sender_addr = CD_ID,
-                           .responder_addr = HU_ID,
+                           .controller_addr = CD_ID,
+                           .peripheral_addr = HU_ID,
                            .control = 0xF,
                            .length = 11,
                            .data = &STATUS[0]};
@@ -743,8 +743,8 @@ void AVCLan_Send_Status() {
 uint8_t AVCLan_SendAnswer() {
   uint8_t r = 0;
   AVCLAN_frame_t frame = {.broadcast = UNICAST,
-                          .sender_addr = CD_ID,
-                          .responder_addr = HU_ID,
+                          .controller_addr = CD_ID,
+                          .peripheral_addr = HU_ID,
                           .control = 0xF,
                           .length = 0};
 
@@ -858,8 +858,8 @@ uint8_t AVCLan_SendAnswer() {
 
 void AVCLan_Register() {
   AVCLAN_frame_t register_frame = {.broadcast = CMD_REGISTER.broadcast,
-                                   .sender_addr = CD_ID,
-                                   .responder_addr = HU_ID,
+                                   .controller_addr = CD_ID,
+                                   .peripheral_addr = HU_ID,
                                    .control = 0xF,
                                    .length = CMD_REGISTER.length,
                                    .data = (uint8_t *)&CMD_REGISTER.data[0]};
@@ -881,8 +881,8 @@ uint8_t incBCD(uint8_t data) {
 }
 
 void AVCLAN_printframe(const AVCLAN_frame_t *frame) {
-  if (frame->responder_addr == CD_ID ||
-      (frame->broadcast && frame->responder_addr == 0x1FF))
+  if (frame->peripheral_addr == CD_ID ||
+      (frame->broadcast && frame->peripheral_addr == 0x1FF))
     RS232_Print(" < ");
   else
     RS232_Print(">< ");
@@ -890,11 +890,11 @@ void AVCLAN_printframe(const AVCLAN_frame_t *frame) {
   RS232_PrintHex4(frame->broadcast);
 
   RS232_Print(" 0x");
-  RS232_PrintHex4(*(((uint8_t *)&frame->sender_addr) + 1));
-  RS232_PrintHex8(*(((uint8_t *)&frame->sender_addr) + 0));
+  RS232_PrintHex4(*(((uint8_t *)&frame->controller_addr) + 1));
+  RS232_PrintHex8(*(((uint8_t *)&frame->controller_addr) + 0));
   RS232_Print(" 0x");
-  RS232_PrintHex4(*(((uint8_t *)&frame->responder_addr) + 1));
-  RS232_PrintHex8(*(((uint8_t *)&frame->responder_addr) + 0));
+  RS232_PrintHex4(*(((uint8_t *)&frame->peripheral_addr) + 1));
+  RS232_PrintHex8(*(((uint8_t *)&frame->peripheral_addr) + 0));
 
   RS232_Print(" 0x");
   RS232_PrintHex4(frame->control);

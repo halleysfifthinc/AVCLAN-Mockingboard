@@ -50,7 +50,7 @@ int main() {
   uint8_t data_tmp[32];
   AVCLAN_frame_t msg = {
       .broadcast = UNICAST,
-      .sender_addr = CD_ID,
+      .controller_addr = CD_ID,
       .control = 0xF,
       .data = data_tmp,
   };
@@ -116,8 +116,10 @@ int main() {
           printAllFrames = 1;
           readSeq = 0;
           msg.broadcast = BROADCAST;
+          msg.peripheral_addr = 0x1FF;
           msg.length = s_len;
           AVCLAN_sendframe(&msg);
+          msg.peripheral_addr = HU_ID;
           break;
         case 'R':
           RS232_Print("REGIST:\n");
