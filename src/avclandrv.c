@@ -215,17 +215,18 @@ void AVC_ReleaseLine() {
   AVC_OUT_DIS();
 }
 
-void AVCLan_Init() {
-  PORTA.PIN6CTRL = PORT_ISC_INPUT_DISABLE_gc; // Disable input buffer;
-  PORTA.PIN7CTRL = PORT_ISC_INPUT_DISABLE_gc; // recommended when using AC
-
+void AVCLAN_init() {
   // Pull-ups are disabled by default
   // Set pin 6 and 7 as input
   PORTA.DIRCLR = (PIN6_bm | PIN7_bm);
+  PORTA.PIN6CTRL = PORT_ISC_INPUT_DISABLE_gc; // Disable input buffer;
+  PORTA.PIN7CTRL = PORT_ISC_INPUT_DISABLE_gc; // recommended when using AC
 
-  // Analog comparator
+  // Analog comparator config
   AC2.CTRLA = AC_OUTEN_bm | AC_HYSMODE_25mV_gc | AC_ENABLE_bm;
-  PORTB.DIRSET = PIN2_bm; // Enable AC2 OUT for LED
+
+  PORTB.DIRSET = PIN2_bm;                     // Enable AC2 OUT for LED
+  PORTB.PIN2CTRL = PORT_ISC_INPUT_DISABLE_gc; // Output only
 
   TCB1.CTRLB = TCB_ASYNC_bm | TCB_CNTMODE_SINGLE_gc;
   TCB1.EVCTRL = TCB_CAPTEI_bm;
@@ -653,110 +654,11 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   AVC_OUT_DIS();
   STARTEvent;
 
-  if (showLog)
+  if (printAllFrames)
     AVCLAN_printframe(frame);
 
   return 0;
 }
-
-// uint8_t AVCLan_SendDataBroadcast() {
-//   uint8_t i;
-
-//   STOPEvent;
-
-//   // wait for free line
-//   uint8_t line_busy = 1;
-
-//   TCB1.CNT = 0;
-//   do {
-//     while (INPUT_IS_CLEAR) {
-//       if (TCB1.CNT >= 900)
-//         break;
-//     }
-//     if (TCB1.CNT > 864)
-//       line_busy = 0;
-//   } while (line_busy);
-
-//   AVC_OUT_EN();
-
-//   AVCLan_Send_StartBit();
-//   uint8_t broadcast_control = 0x0;
-//   AVCLAN_sendbits(&broadcast_control, 1); // broadcast
-
-//   uint8_t parity = 0;
-//   AVCLAN_sendbits(&CD_ID, 12); // CD Changer ID as sender
-//   AVCLan_Send_ParityBit(parity);
-
-//   uint16_t audio_addr = 0x1FF;
-//   AVCLAN_sendbits(&audio_addr, 12); // all audio devices
-//   AVCLan_Send_ParityBit(parity);
-//   AVCLan_Send_Bit1();
-
-//   broadcast_control = 0xF;
-//   AVCLAN_sendbits(&broadcast_control, 4); // 0xf - control -> COMMAND WRITE
-//   AVCLan_Send_ParityBit(parity);
-//   AVCLan_Send_Bit1();
-
-//   AVCLAN_sendbyte(&data_len); // data lenght
-//   AVCLan_Send_ParityBit(parity);
-//   AVCLan_Send_Bit1();
-
-//   for (i = 0; i < data_len; i++) {
-//     AVCLAN_sendbyte(&data[i]); // data uint8_t
-//     AVCLan_Send_ParityBit(parity);
-//     AVCLan_Send_Bit1();
-//   }
-
-//   AVC_OUT_DIS();
-//   STARTEvent;
-//   if (showLog)
-//     ShowOutMessage();
-//   return 0;
-// }
-
-// uint8_t AVCLan_SendAnswerFrame(const uint8_t *cmd) {
-//   uint8_t i;
-//   uint8_t b;
-
-//   b = *cmd++;
-//   data_control = 0xF;
-//   data_len = *cmd++;
-//   for (i = 0; i < data_len; i++) {
-//     data[i] = *cmd++;
-//   }
-//   if (b)
-//     return AVCLan_SendData();
-//   else
-//     return AVCLan_SendDataBroadcast();
-// }
-
-// uint8_t AVCLan_SendMyData(uint8_t *data_tmp, uint8_t s_len) {
-//   uint8_t i;
-//   uint8_t *c;
-
-//   c = data_tmp;
-
-//   data_control = 0xF;
-//   data_len = s_len;
-//   for (i = 0; i < data_len; i++) {
-//     data[i] = *c++;
-//   }
-//   return AVCLan_SendData();
-// }
-
-// uint8_t AVCLan_SendMyDataBroadcast(uint8_t *data_tmp, uint8_t s_len) {
-//   uint8_t i;
-//   uint8_t *c;
-
-//   c = data_tmp;
-
-//   data_control = 0xF;
-//   data_len = s_len;
-//   for (i = 0; i < data_len; i++) {
-//     data[i] = *c++;
-//   }
-//   return AVCLan_SendDataBroadcast();
-// }
 
 uint8_t AVCLan_SendInitCommands() {
   uint8_t r;

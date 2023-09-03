@@ -34,8 +34,10 @@
 #define EV_STATUS 4
 
 uint8_t Event;
+uint8_t echoCharacters;
 
 void Setup();
+void general_GPIO_init();
 
 int main() {
   uint8_t readSeq = 0;
@@ -215,27 +217,7 @@ void Setup() {
   printAllFrames = 1;
   echoCharacters = 1;
 
-  // Handle unconnected pins PA3, PB3-5
-  // Set as inputs
-  PORTA.DIRCLR = PIN3_bm;
-  PORTB.DIRCLR = (PIN3_bm | PIN4_bm | PIN5_bm);
-
-  // Enable pull-up resistor and disable input buffer (reduces any EM caused pin
-  // toggling and saves power)
-  PORTA.PIN3CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
-  PORTB.PIN3CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
-  PORTB.PIN4CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
-  PORTB.PIN5CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
-
-  // Output only pins: PA4-5, PC0-1, PC3, PB2
-  // TODO: TxD (PA1), RTS (PB0) is output only, test if RxD needs the input
-  // buffer or if the UART peripheral bypasses it
-  PORTA.PIN4CTRL = PORT_ISC_INPUT_DISABLE_gc;
-  PORTA.PIN5CTRL = PORT_ISC_INPUT_DISABLE_gc;
-  PORTC.PIN0CTRL = PORT_ISC_INPUT_DISABLE_gc;
-  PORTC.PIN1CTRL = PORT_ISC_INPUT_DISABLE_gc;
-  PORTC.PIN3CTRL = PORT_ISC_INPUT_DISABLE_gc;
-  PORTB.PIN2CTRL = PORT_ISC_INPUT_DISABLE_gc;
+  general_GPIO_init();
 
   // Setup RTC as 1 sec periodic timer
   loop_until_bit_is_clear(RTC_STATUS, RTC_CTRLABUSY_bp);
@@ -247,10 +229,38 @@ void Setup() {
 
   RS232_Init();
 
-  AVCLan_Init();
+  AVCLAN_init();
 
   Event = EV_NOTHING;
   sei();
+}
+
+/* Configure pin settings which are not configured by peripherals */
+void general_GPIO_init() {
+  // Set pins PC2-3, PB0,3-5 as inputs
+  PORTC.DIRCLR = (PIN2_bm | // Unconnected
+                  PIN3_bm); // CTS
+  PORTB.DIRCLR = (PIN0_bm | // Unconnected
+                  PIN3_bm | // IGN_SENSE
+                  PIN4_bm | // Unused, but connected to WOC (PC0)
+                  PIN5_bm); // Unused, but connected to WOD (PC1)
+
+  // Enable pull-up resistor and disable input buffer (reduces any EM caused pin
+  // toggling and saves power) for unused and unconnected pins
+  PORTC.PIN2CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
+  PORTB.PIN0CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
+
+  // Output only pins: PA3-5, PB1-2,4-5; PC0-1
+  // TODO: TxD (PA1), RTS (PA3) is output only, test if RxD needs the input
+  // buffer or if the UART peripheral bypasses it
+  PORTA.PIN3CTRL = PORT_ISC_INPUT_DISABLE_gc; // RTS
+  PORTA.PIN4CTRL = PORT_ISC_INPUT_DISABLE_gc; // WOA
+  PORTA.PIN5CTRL = PORT_ISC_INPUT_DISABLE_gc; // WOB
+  PORTB.PIN1CTRL = PORT_ISC_INPUT_DISABLE_gc; // MIC_CONTROL
+  PORTB.PIN4CTRL = PORT_ISC_INPUT_DISABLE_gc; // non-driving WOC
+  PORTB.PIN5CTRL = PORT_ISC_INPUT_DISABLE_gc; // non-driving WOD
+  PORTC.PIN0CTRL = PORT_ISC_INPUT_DISABLE_gc; // WOC
+  PORTC.PIN1CTRL = PORT_ISC_INPUT_DISABLE_gc; // WOD
 }
 
 // Periodic interrupt with a 1 sec period

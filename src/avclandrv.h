@@ -106,14 +106,13 @@ typedef struct AVCLAN_frame_struct {
 } AVCLAN_frame_t;
 
 uint8_t AVCLAN_readframe();
-void AVCLan_Send_Status();
+uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame);
+void AVCLAN_printframe(const AVCLAN_frame_t *frame);
 
-void AVCLan_Init();
+void AVCLAN_init();
+void AVCLan_Send_Status();
 void AVCLan_Register();
 uint8_t AVCLan_SendAnswer();
-uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame);
-
-void AVCLAN_printframe(const AVCLAN_frame_t *frame);
 
 uint8_t incBCD(uint8_t data);
 
