@@ -85,6 +85,7 @@
 --------------------------------------------------------------------------------------
 */
 
+#include <avr/interrupt.h>
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
 #include <stdint.h>
@@ -256,6 +257,16 @@ void AVCLAN_init() {
   PORTB.DIRSET = PIN2_bm;                     // Enable AC2 OUT for LED
   PORTB.PIN2CTRL = PORT_ISC_INPUT_DISABLE_gc; // Output only
 
+  // Set AC2 to generate events on async channel 0
+  EVSYS.ASYNCCH0 = EVSYS_ASYNCCH0_AC2_OUT_gc;
+  EVSYS.ASYNCUSER0 = EVSYS_ASYNCUSER0_ASYNCCH0_gc; // USER0 is TCB0
+
+  // TCB0 for read bit timing
+  TCB0.CTRLB = TCB_CNTMODE_PW_gc;
+  TCB0.INTCTRL = TCB_CAPT_bm;
+  TCB0.EVCTRL = TCB_CAPTEI_bm;
+  TCB0.CTRLA = TCB_CLKSEL_CLKDIV2_gc | TCB_ENABLE_bm;
+
   // TCB1 for send bit timing
   TCB1.CTRLB = TCB_CNTMODE_INT_gc;
   TCB1.CCMP = 0xFFFF;
@@ -330,8 +341,8 @@ void AVCLAN_sendbit_parity(uint8_t parity) {
       uint8_t *: AVCLAN_sendbitsi)(bits, len)
 
 // Send `len` bits on the AVCLAN bus; returns the even parity
-uint8_t AVCLAN_sendbitsi(const uint8_t *byte, int8_t len) {
-  uint8_t b = *byte;
+uint8_t AVCLAN_sendbitsi(const uint8_t *bits, int8_t len) {
+  uint8_t b = *bits;
   uint8_t parity = 0;
   int8_t len_mod8 = 8;
 
@@ -352,14 +363,14 @@ uint8_t AVCLAN_sendbitsi(const uint8_t *byte, int8_t len) {
       b <<= 1;
     }
     len_mod8 = 8;
-    b = *--byte;
+    b = *--bits;
   }
   return (parity & 1);
 }
 
 // Send `len` bits on the AVCLAN bus; returns the even parity
-uint8_t AVCLAN_sendbitsl(const uint16_t *word, int8_t len) {
-  return AVCLAN_sendbitsi((const uint8_t *)word + 1, len);
+uint8_t AVCLAN_sendbitsl(const uint16_t *bits, int8_t len) {
+  return AVCLAN_sendbitsi((const uint8_t *)bits + 1, len);
 }
 
 uint8_t AVCLAN_sendbyte(const uint8_t *byte) {
@@ -378,22 +389,73 @@ uint8_t AVCLAN_sendbyte(const uint8_t *byte) {
   return (parity & 1);
 }
 
-uint8_t AVCLAN_readbyte(uint8_t length, uint8_t *parity) {
-  uint8_t byte = 0;
+#define READING_BYTE GPIOR1
+#define READING_NBITS GPIOR2
+#define READING_PARITY GPIOR3
 
-  while (1) {
-    while (INPUT_IS_CLEAR) {};
-    TCB1.CNT = 0;
-    while (INPUT_IS_SET) {}; // If input was set for less than 26 us
-    if (TCB1.CNT < 208) {    // (a generous half period), bit was a 1
-      byte++;
-      (*parity)++;
-    }
-    length--;
-    if (!length)
-      return byte;
-    byte = byte << 1;
+ISR(TCB0_INT_vect) {
+  // If input was set for less than 26 us (a generous half period), bit was a 1
+  if (TCB0.CCMP < 208) {
+    READING_BYTE++;
+    READING_PARITY++;
   }
+  READING_BYTE <<= 1;
+  READING_NBITS--;
+}
+
+#define AVCLAN_readbits(bits, len)                                             \
+  _Generic((bits),                                                             \
+      const uint16_t *: AVCLAN_readbitsl,                                      \
+      uint16_t *: AVCLAN_readbitsl,                                            \
+      const uint8_t *: AVCLAN_readbitsi,                                       \
+      uint8_t *: AVCLAN_readbitsi)(bits, len)
+
+// Send `len` bits on the AVCLAN bus; returns the even parity
+uint8_t AVCLAN_readbitsi(uint8_t *bits, uint8_t len) {
+  cli();
+  READING_BYTE = 0;
+  READING_PARITY = 0;
+  READING_NBITS = len;
+  sei();
+
+  while (READING_NBITS != 0) {};
+
+  cli();
+  *bits = READING_BYTE;
+  uint8_t parity = READING_PARITY;
+  sei();
+
+  return (parity & 1);
+}
+
+// Send `len` bits on the AVCLAN bus; returns the even parity
+uint8_t AVCLAN_readbitsl(uint16_t *bits, int8_t len) {
+  uint8_t parity = 0;
+  if (len > 8) {
+    uint8_t over = len - 8;
+    parity = AVCLAN_readbitsi((uint8_t *)bits + 0, over);
+    len -= over;
+  }
+  parity += AVCLAN_readbitsi((uint8_t *)bits + 1, len);
+
+  return (parity & 1);
+}
+
+// Read a byte on the AVCLAN bus
+uint8_t AVCLAN_readbyte(uint8_t *byte) {
+  cli();
+  READING_BYTE = 0;
+  READING_NBITS = 8;
+  sei();
+
+  while (READING_NBITS != 0) {};
+
+  cli();
+  *byte = READING_BYTE;
+  uint8_t parity = READING_PARITY;
+  sei();
+
+  return (parity & 1);
 }
 
 uint8_t AVCLAN_readbit_ACK() {
@@ -455,27 +517,21 @@ uint8_t AVCLAN_readframe() {
   //  	return 0;
   //  }
   uint8_t parity = 0;
-  uint8_t parity_check = 0;
-  AVCLAN_readbyte(1, &parity); // Start bit
+  uint8_t tmp = 0;
+  AVCLAN_readbits(&tmp, 1); // Start bit
 
-  frame.broadcast = AVCLAN_readbyte(1, &parity);
+  AVCLAN_readbits((uint8_t *)&frame.broadcast, 1);
 
-  parity = 0;
-  uint8_t *controller_hi = ((uint8_t *)&frame.controller_addr) + 1;
-  uint8_t *controller_lo = ((uint8_t *)&frame.controller_addr) + 0;
-  *controller_hi = AVCLAN_readbyte(4, &parity);
-  *controller_lo = AVCLAN_readbyte(8, &parity);
-  if ((parity & 1) != AVCLAN_readbyte(1, &parity_check)) {
+  parity = AVCLAN_readbits(&frame.controller_addr, 12);
+  AVCLAN_readbits(&tmp, 1);
+  if (parity != tmp) {
     STARTEvent;
     return 0;
   }
 
-  parity = 0;
-  uint8_t *peripheral_hi = ((uint8_t *)&frame.peripheral_addr) + 1;
-  uint8_t *peripheral_lo = ((uint8_t *)&frame.peripheral_addr) + 0;
-  *peripheral_hi = AVCLAN_readbyte(4, &parity);
-  *peripheral_lo = AVCLAN_readbyte(8, &parity);
-  if ((parity & 1) != AVCLAN_readbyte(1, &parity_check)) {
+  parity = AVCLAN_readbits(&frame.peripheral_addr, 12);
+  AVCLAN_readbits(&tmp, 1);
+  if (parity != tmp) {
     STARTEvent;
     return 0;
   }
@@ -486,28 +542,28 @@ uint8_t AVCLAN_readframe() {
   if (for_me)
     AVCLAN_sendbit_ACK();
   else
-    AVCLAN_readbyte(1, &parity);
+    AVCLAN_readbits(&tmp, 1);
 
-  parity = 0;
-  frame.control = AVCLAN_readbyte(4, &parity);
-  if ((parity & 1) != AVCLAN_readbyte(1, &parity_check)) {
+  parity = AVCLAN_readbits(&frame.control, 4);
+  AVCLAN_readbits(&tmp, 1);
+  if (parity != tmp) {
     STARTEvent;
     return 0;
   } else if (for_me) {
     AVCLAN_sendbit_ACK();
   } else {
-    AVCLAN_readbyte(1, &parity);
+    AVCLAN_readbits(&tmp, 1);
   }
 
-  parity = 0;
-  frame.length = AVCLAN_readbyte(8, &parity);
-  if ((parity & 1) != AVCLAN_readbyte(1, &parity_check)) {
+  parity = AVCLAN_readbyte(&frame.length);
+  AVCLAN_readbits(&tmp, 1);
+  if (parity != tmp) {
     STARTEvent;
     return 0;
   } else if (for_me) {
     AVCLAN_sendbit_ACK();
   } else {
-    AVCLAN_readbyte(1, &parity);
+    AVCLAN_readbits(&tmp, 1);
   }
 
   if (frame.length > MAXMSGLEN) {
@@ -517,15 +573,15 @@ uint8_t AVCLAN_readframe() {
   }
 
   for (i = 0; i < frame.length; i++) {
-    parity = 0;
-    frame.data[i] = AVCLAN_readbyte(8, &parity);
-    if ((parity & 1) != AVCLAN_readbyte(1, &parity_check)) {
+    parity = AVCLAN_readbyte(&frame.data[i]);
+    AVCLAN_readbits(&tmp, 1);
+    if (parity != tmp) {
       STARTEvent;
       return 0;
     } else if (for_me) {
       AVCLAN_sendbit_ACK();
     } else {
-      AVCLAN_readbyte(1, &parity);
+      AVCLAN_readbits(&tmp, 1);
     }
   }
 
