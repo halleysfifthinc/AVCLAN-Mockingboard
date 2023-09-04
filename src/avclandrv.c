@@ -18,6 +18,71 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+--------------------------------------------------------------------------------------
+
+                                AVC LAN Theory
+
+  The AVC LAN bus is an implementation of the IEBus (mode 1) which is a
+  differential signal.
+
+  - Logical `1`: Potential difference between bus lines (BUS+ pin and BUS– pin)
+    is 20 mV or lower (floating).
+  - Logical `0`: Potential difference between bus lines (BUS+ pin and BUS– pin)
+    is 120 mV or higher (driving).
+
+  A nominal bit length is 39 us, composed of 3 periods: preparation,
+  synchronization, data.
+
+                                Figure 1. AVCLAN Bus bit format
+
+                             │ Prep │<─ Sync ─>│<─ Data ─>│ ...
+    Driving (logical `0`)           ╭──────────╮──────────╮
+                                    │          │          │
+    Floating (logical `1`) ─────────╯          ╰──────────╰─────────
+                             │ 7 μs │── 20 μs ─│─ 12 μs ──│
+
+  The logical value during the data period signifies the bit value, e.g. a bit
+  `0` continues the logical `0` (high potential difference between bus lines) of
+  the sync period thru the data period, and a bit `1` has a logical `1`
+  (low/floating potential between bus lines) during the data period.
+
+        AVC LAN Frame Format
+    │ Bits │ Description
+    ────────────────────────────────────────
+    |  1   │ Start bit
+    |  1   │ Direct/broadcast
+    |  12  │ Controller address
+    |  1   │ Parity
+    |  12  │ Peripheral address
+    |  1   │ Parity
+    |  1   │ *Acknowledge* (read below)
+    |  4   │ Control
+    |  1   │ Parity
+    |  1   │ *Acknowledge*
+    |  8   │ Message length (n)
+    |  1   │ Parity
+    |  1   │ *Acknowledge*
+    ────────
+       | 8 │ Data
+       | 1 │ Parity
+       | 1 │ *Acknowledge*
+       *repeat `n` times*
+
+
+  A start bit is nominally 166 us high followed by 19 us low.
+
+  A bit `0` is dominant on the bus, which is a design choice that affects
+  bit/interpretation:
+    - Low addresses have priority upon transmission conflicts
+    - The broadcast bit is `1` for normal communication
+    - For acknowledge bits, the receiver extends the logical '0' of the sync
+      period to the length of a normal bit `0`. Hence, a NAK (bit `1`) is
+      equivalent to no response.
+
+  No acknowledge bits are sent for broadcast frames.
+
+--------------------------------------------------------------------------------------
 */
 
 #include <avr/io.h>
