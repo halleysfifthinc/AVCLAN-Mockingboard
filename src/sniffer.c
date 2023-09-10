@@ -23,6 +23,7 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
+#include <avr/xmega.h>
 #include <stdint.h>
 
 #include "avclandrv.h"
@@ -216,6 +217,8 @@ void Setup() {
 
   printAllFrames = 1;
   echoCharacters = 1;
+
+  _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, (CLK_PRESCALE | CLK_PRESCALE_DIV));
 
   general_GPIO_init();
 

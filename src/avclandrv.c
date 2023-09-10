@@ -92,6 +92,7 @@
 
 #include "avclandrv.h"
 #include "com232.h"
+#include "timing.h"
 
 // Enable AVC bus Tx
 #define AVC_OUT_EN()                                                           \
@@ -265,12 +266,12 @@ void AVCLAN_init() {
   TCB0.CTRLB = TCB_CNTMODE_PW_gc;
   TCB0.INTCTRL = TCB_CAPT_bm;
   TCB0.EVCTRL = TCB_CAPTEI_bm;
-  TCB0.CTRLA = TCB_CLKSEL_CLKDIV2_gc | TCB_ENABLE_bm;
+  TCB0.CTRLA = TCB_CLKSEL | TCB_ENABLE_bm;
 
   // TCB1 for send bit timing
   TCB1.CTRLB = TCB_CNTMODE_INT_gc;
   TCB1.CCMP = 0xFFFF;
-  TCB1.CTRLA = TCB_CLKSEL_CLKDIV2_gc | TCB_ENABLE_bm;
+  TCB1.CTRLA = TCB_CLKSEL | TCB_ENABLE_bm;
 
   answerReq = cm_Null;
 
@@ -293,34 +294,36 @@ void set_AVC_logic_for(uint8_t val, uint16_t period) {
   return;
 }
 
-uint8_t AVCLAN_sendbit_start() {
-  set_AVC_logic_for(1, 1328); // 166 us @ 125 ns tick (for F_CPU = 16MHz)
-  set_AVC_logic_for(0, 152);  // 19 us @ 125 ns tick (for F_CPU = 16MHz)
-
-  return 1;
+void AVCLAN_sendbit_start() {
+  set_AVC_logic_for(0, AVCLAN_STARTBIT_LOGIC_0); // 166 us
+  set_AVC_logic_for(1, AVCLAN_STARTBIT_LOGIC_1); // 19 us
 }
 
 void AVCLAN_sendbit_1() {
-  set_AVC_logic_for(1, 164); // 20.5 us @ 125 ns tick (for F_CPU = 16MHz)
-  set_AVC_logic_for(0, 152); // 19 us @ 125 ns tick (for F_CPU = 16MHz)
+  set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0); // 20.5 us
+  set_AVC_logic_for(1, AVCLAN_BIT1_LOGIC_1); // 19 us
 }
 
 void AVCLAN_sendbit_0() {
-  set_AVC_logic_for(1, 272); // 34 us @ 125 ns tick (for F_CPU = 16MHz)
-  set_AVC_logic_for(0, 44);  // 5.5 us @ 125 ns tick (for F_CPU = 16MHz)
+  set_AVC_logic_for(0, AVCLAN_BIT0_LOGIC_0); // 34 us
+  set_AVC_logic_for(1, AVCLAN_BIT0_LOGIC_1); // 5.5 us
 }
 
 void AVCLAN_sendbit_ACK() {
   TCB1.CNT = 0;
+
+  // Wait for controller to begin ACK bit
   while (INPUT_IS_CLEAR) {
-    if (TCB1.CNT >= 900)
-      return; // max wait time
+    // Wait for approx the length of a bit; any longer and something has clearly
+    // gone wrong
+    if (TCB1.CNT >= AVCLAN_BIT_LENGTH)
+      return;
   }
 
   AVC_OUT_EN();
 
-  set_AVC_logic_for(1, 272); // 34 us @ 125 ns tick (for F_CPU = 16MHz)
-  set_AVC_logic_for(0, 44);  // 5.5 us @ 125 ns tick (for F_CPU = 16MHz)
+  set_AVC_logic_for(0, AVCLAN_BIT0_LOGIC_0); // 34 us
+  set_AVC_logic_for(1, AVCLAN_BIT0_LOGIC_1); // 5.5 us
 
   AVC_OUT_DIS();
 }
@@ -395,7 +398,7 @@ uint8_t AVCLAN_sendbyte(const uint8_t *byte) {
 
 ISR(TCB0_INT_vect) {
   // If input was set for less than 26 us (a generous half period), bit was a 1
-  if (TCB0.CCMP < 208) {
+  if (TCB0.CCMP < (uint16_t)AVCLAN_READBIT_THRESHOLD) {
     READING_BYTE++;
     READING_PARITY++;
   }
@@ -418,7 +421,15 @@ uint8_t AVCLAN_readbitsi(uint8_t *bits, uint8_t len) {
   READING_NBITS = len;
   sei();
 
-  while (READING_NBITS != 0) {};
+  TCB1.CNT = 0;
+  while (READING_NBITS != 0) {
+    // Duration of `len` bits + 10%
+    if (TCB1.CNT > (((uint16_t)AVCLAN_BIT_LENGTH * 11 * len) / 10)) {
+      READING_BYTE = 0;
+      READING_PARITY = 0;
+      break; // Should have finished by now; something's wrong
+    }
+  };
 
   cli();
   *bits = READING_BYTE;
@@ -448,7 +459,15 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
   READING_NBITS = 8;
   sei();
 
-  while (READING_NBITS != 0) {};
+  TCB1.CNT = 0;
+  while (READING_NBITS != 0) {
+    // Duration of byte + 10%
+    if (TCB1.CNT > (((uint16_t)AVCLAN_BIT_LENGTH * 11 * 8) / 10)) {
+      READING_BYTE = 0;
+      READING_PARITY = 0;
+      break; // Should have finished by now; something's wrong
+    }
+  };
 
   cli();
   *byte = READING_BYTE;
@@ -459,20 +478,19 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
 }
 
 uint8_t AVCLAN_readbit_ACK() {
-  set_AVC_logic_for(1, 152); // 34 us @ 125 ns tick (for F_CPU = 16MHz)
-  AVC_SET_LOGICAL_0();       // Replace with AVC_ReleaseLine?
-  AVC_OUT_DIS();             // switch to read mode
-
   TCB1.CNT = 0;
+  set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0); // 20.5 us
+  AVC_SET_LOGICAL_1();
+  AVC_OUT_DIS();
+
   while (1) {
-    if (INPUT_IS_SET && (TCB1.CNT > 208))
-      break; // Make sure INPUT is not still set from us
-    // Line of experimentation: Try changing TCNT0 comparison value or remove
-    // check entirely
-    if (TCB1.CNT > 300)
-      return 1; // Not sure if this fix is intent correct
+    if (INPUT_IS_SET && (TCB1.CNT > AVCLAN_READBIT_THRESHOLD))
+      break; // ACK
+    if (TCB1.CNT > AVCLAN_BIT_LENGTH)
+      return 1; // NAK
   }
 
+  // Check/wait in case we get here before peripheral finishes ACK bit
   while (INPUT_IS_SET) {}
   AVC_OUT_EN(); // back to write mode
   return 0;
@@ -669,7 +687,8 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   TCB1.CNT = 0;
   do {
     while (INPUT_IS_CLEAR) {
-      if (TCB1.CNT >= 900)
+      // Wait for 120% of a bit length
+      if (TCB1.CNT >= (uint16_t)(AVCLAN_BIT_LENGTH * 12 / 10))
         break;
     }
     if (TCB1.CNT > 864)

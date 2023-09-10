@@ -1,11 +1,50 @@
 cmake_minimum_required(VERSION 3.24)
+include(CMakeDependentOption)
 
 set(WITH_MCU OFF)
 set(AVR_MCU "attiny3216")
 
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/avr-gcc-toolchain.cmake")
 
-project(avr-avc-lan VERSION 1 LANGUAGES C CXX ASM)
+project(avclan-mockingboard VERSION 1 LANGUAGES C CXX ASM)
+
+set(FREQSEL 16MHz CACHE STRING "Select the operating frequency")
+set_property(CACHE FREQSEL PROPERTY STRINGS "20MHz" "16MHz")
+
+if(FREQSEL MATCHES "20MHz")
+set(F_CPU 20000000L)
+set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -U osccfg:w:0x2:m)
+else()
+set(F_CPU 16000000L)
+set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -U osccfg:w:0x1:m)
+endif()
+
+option(CLK_PRESCALE "Enable the main clock prescaler")
+cmake_dependent_option(CLK_PRESCALE_DIV "Prescaler divisor" CLKCTRL_PDIV_2X_gc STRING "CLK_PRESCALE")
+if(DEFINED CACHE{CLK_PRESCALE_DIV})
+    set_property(CACHE CLK_PRESCALE_DIV PROPERTY STRINGS
+        CLKCTRL_PDIV_2X_gc
+        CLKCTRL_PDIV_4X_gc
+        CLKCTRL_PDIV_8X_gc
+        CLKCTRL_PDIV_16X_gc
+        CLKCTRL_PDIV_32X_gc
+        CLKCTRL_PDIV_64X_gc
+        CLKCTRL_PDIV_6X_gc
+        CLKCTRL_PDIV_10X_gc
+        CLKCTRL_PDIV_12X_gc
+        CLKCTRL_PDIV_24X_gc
+        CLKCTRL_PDIV_48X_gc
+    )
+else()
+set(CLK_PRESCALE_DIV CLKCTRL_PDIV_2X_gc)
+endif()
+
+set(TCB_CLKSEL "TCB_CLKSEL_CLKDIV2_gc" CACHE STRING "Choose the clock for TCB")
+set_property(CACHE TCB_CLKSEL PROPERTY STRINGS
+    TCB_CLKSEL_CLKDIV1_gc
+    TCB_CLKSEL_CLKDIV2_gc
+    TCB_CLKSEL_CLKTCA_gc
+)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "8.3")
@@ -61,18 +100,24 @@ if(CMAKE_BUILD_TYPE MATCHES Debug)
    set(CMAKE_C_FLAGS_DEBUG "-O0 -save-temps -g -gdwarf-3 -gstrict-dwarf")
 endif(CMAKE_BUILD_TYPE MATCHES Debug)
 
-add_avr_executable(sniffer
+# Set startup time to 8 ms (0x4)
+set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -U syscfg1:w:0x4:m)
+
+add_avr_executable(mockingboard
     src/sniffer.c
     src/com232.c
     src/avclandrv.c)
 
-target_link_options(sniffer PUBLIC
+target_link_options(mockingboard PUBLIC
     -B "${attiny_atpack_SOURCE_DIR}/gcc/dev/${AVR_MCU}"
 )
-target_compile_definitions(sniffer PRIVATE 
-    F_CPU=16000000L
+target_compile_definitions(mockingboard PRIVATE
+    F_CPU=${F_CPU}
+    CLK_PRESCALE=$<IF:$<BOOL:${CLK_PRESCALE}>,0x01,0x00>
+    CLK_PRESCALE_DIV=${CLK_PRESCALE_DIV}
+    TCB_CLKSEL=${TCB_CLKSEL}
 )
-target_compile_options(sniffer PRIVATE
+target_compile_options(mockingboard PRIVATE
     --param=min-pagesize=0
     -ffunction-sections
     -fdata-sections
