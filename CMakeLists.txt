@@ -15,10 +15,10 @@ set(FREQSEL 16MHz CACHE STRING "Select the operating frequency")
 set_property(CACHE FREQSEL PROPERTY STRINGS "20MHz" "16MHz")
 
 if(FREQSEL MATCHES "20MHz")
-set(F_CPU 20000000L)
+set(FREQSEL 20000000L)
 set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -U osccfg:w:0x2:m)
 else()
-set(F_CPU 16000000L)
+set(FREQSEL 16000000L)
 set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -U osccfg:w:0x1:m)
 endif()
 
@@ -115,9 +115,10 @@ target_link_options(mockingboard PUBLIC
     -B "${attiny_atpack_SOURCE_DIR}/gcc/dev/${AVR_MCU}"
 )
 target_compile_definitions(mockingboard PRIVATE
-    F_CPU=${F_CPU}
+    FREQSEL=${FREQSEL}
     CLK_PRESCALE=$<IF:$<BOOL:${CLK_PRESCALE}>,0x01,0x00>
     CLK_PRESCALE_DIV=${CLK_PRESCALE_DIV}
+    __CLK_PRESCALE_DIV=__${CLK_PRESCALE_DIV}
     TCB_CLKSEL=${TCB_CLKSEL}
 )
 target_compile_options(mockingboard PRIVATE

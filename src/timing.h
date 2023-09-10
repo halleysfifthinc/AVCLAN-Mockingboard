@@ -1,14 +1,30 @@
 #ifndef _TIMING_HPP_
 #define _TIMING_HPP_
 
-#if CLK_PRESCALE == 0x01
-#error "Not implemented"
-#else
+#define __CLKCTRL_PDIV_2X_gc 2
+#define __CLKCTRL_PDIV_4X_gc 4
+#define __CLKCTRL_PDIV_8X_gc 8
+#define __CLKCTRL_PDIV_16X_gc 16
+#define __CLKCTRL_PDIV_32X_gc 32
+#define __CLKCTRL_PDIV_64X_gc 64
+#define __CLKCTRL_PDIV_6X_gc 6
+#define __CLKCTRL_PDIV_10X_gc 10
+#define __CLKCTRL_PDIV_12X_gc 12
+#define __CLKCTRL_PDIV_24X_gc 24
+#define __CLKCTRL_PDIV_48X_gc 48
 
-#if F_CPU == 20000000L
-#define CPU_CYCLE 50
-#elif F_CPU == 16000000L
-#define CPU_CYCLE 62.5
+#if CLK_PRESCALE == 0x01
+#define F_CPU (FREQSEL / __CLK_PRESCALE_DIV)
+#define CYCLE_MUL __CLK_PRESCALE_DIV
+#else
+#define F_CPU (FREQSEL)
+#define CYCLE_MUL 1
+#endif
+
+#if FREQSEL == 20000000L
+#define CPU_CYCLE (50 * CYCLE_MUL)
+#elif FREQSEL == 16000000L
+#define CPU_CYCLE (62.5 * CYCLE_MUL)
 #else
 #error "Not implemented"
 #endif
@@ -45,7 +61,5 @@
 #define AVCLAN_READBIT_THRESHOLD (26e3 / TCB_TICK)
 
 #define AVCLAN_BIT_LENGTH (39.5e3 / TCB_TICK)
-
-#endif
 
 #endif

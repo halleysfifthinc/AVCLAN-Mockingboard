@@ -20,12 +20,16 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#define USART_BAUD_RATE(BAUD_RATE)                                             \
+  (uint16_t)((float)(F_CPU * 64 / (16 * (float)BAUD_RATE)) + 0.5)
+
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
 #include <stdint.h>
 
 #include "com232.h"
+#include "timing.h"
 
 uint8_t RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
 uint8_t readkey;
@@ -35,13 +39,16 @@ void RS232_Init(void) {
 
   PORTMUX.CTRLB = PORTMUX_USART0_ALTERNATE_gc; // Use PA1/PA2 for TxD/RxD
 
+  PORTA.DIRSET = PIN1_bm;
+  PORTA.DIRCLR = PIN2_bm;
+
   USART0.CTRLA = USART_RXCIE_bm;                 // Enable receive interrupts
   USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm | // Enable Rx/Tx and set receive
                  USART_RXMODE_NORMAL_gc;         //  mode normal
   USART0.CTRLC = USART_CMODE_ASYNCHRONOUS_gc | USART_PMODE_DISABLED_gc |
                  USART_CHSIZE_8BIT_gc |
                  USART_SBMODE_1BIT_gc; // Async UART with 8N1 config
-  USART0.BAUD = 256; // 250k baud rate (64*F_CPU/(16*250k)) for F_CPU = 16MHz
+  USART0.BAUD = USART_BAUD_RATE(250000);
 }
 
 ISR(USART0_RXC_vect) {
