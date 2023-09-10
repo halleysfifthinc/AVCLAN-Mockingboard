@@ -96,20 +96,28 @@
 
 // Enable AVC bus Tx
 #define AVC_OUT_EN()                                                           \
-  cbi(AC2_CTRLA, AC_ENABLE_bp);                                                \
-  sbi(VPORTA_DIR, 6);
+  // cbi(AC2_CTRLA, AC_ENABLE_bp);                                                \
+  // sbi(VPORTA_DIR, 6);
 
 // Disable AVC bus Tx
 #define AVC_OUT_DIS()                                                          \
-  cbi(VPORTA_DIR, 6);                                                          \
-  sbi(AC2_CTRLA, AC_ENABLE_bp);
+  // cbi(VPORTA_DIR, 6);                                                          \
+  // sbi(AC2_CTRLA, AC_ENABLE_bp);
 
+// clang-format off
 #define AVC_SET_LOGICAL_1()                                                    \
   __asm__ __volatile__(                                                        \
-      "sbi %[vporta_out], 6;" ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)));
+      "cbi %[vporta_out], 4; \n\t"                                             \
+      "sbi %[vportc_out], 0; \n\t"                                             \
+      ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)),                            \
+        [vportc_out] "I"(_SFR_IO_ADDR(VPORTC_OUT)));
 #define AVC_SET_LOGICAL_0()                                                    \
   __asm__ __volatile__(                                                        \
-      "cbi %[vporta_out], 6;" ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)));
+      "sbi %[vporta_out], 4; \n\t"                                             \
+      "cbi %[vportc_out], 0; \n\t"                                             \
+      ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)),                            \
+        [vportc_out] "I"(_SFR_IO_ADDR(VPORTC_OUT)));
+// clang-format on
 
 // Name difference between avr-libc and Microchip pack
 #if defined(EVSYS_ASYNCCH00_bm)
