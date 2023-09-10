@@ -103,7 +103,7 @@ if(NOT AVR_SIZE_ARGS)
     if(APPLE)
         set(AVR_SIZE_ARGS -B)
     else(APPLE)
-        set(AVR_SIZE_ARGS -C;--mcu=${AVR_MCU})
+        set(AVR_SIZE_ARGS -G)
     endif(APPLE)
 endif(NOT AVR_SIZE_ARGS)
 
@@ -167,13 +167,12 @@ function(add_avr_executable EXECUTABLE_NAME)
    endif(NOT ARGN)
 
    # set file names
-   set(elf_file ${EXECUTABLE_NAME}${MCU_TYPE_FOR_FILENAME}.elf)
    set(hex_file ${EXECUTABLE_NAME}${MCU_TYPE_FOR_FILENAME}.hex)
    set(lst_file ${EXECUTABLE_NAME}${MCU_TYPE_FOR_FILENAME}.lst)
    set(map_file ${EXECUTABLE_NAME}${MCU_TYPE_FOR_FILENAME}.map)
    set(eeprom_image ${EXECUTABLE_NAME}${MCU_TYPE_FOR_FILENAME}-eeprom.hex)
 
-   set (${EXECUTABLE_NAME}_ELF_TARGET ${elf_file} PARENT_SCOPE)
+   set (${EXECUTABLE_NAME}_ELF_TARGET ${EXECUTABLE_NAME} PARENT_SCOPE)
    set (${EXECUTABLE_NAME}_HEX_TARGET ${hex_file} PARENT_SCOPE)
    set (${EXECUTABLE_NAME}_LST_TARGET ${lst_file} PARENT_SCOPE)
    set (${EXECUTABLE_NAME}_MAP_TARGET ${map_file} PARENT_SCOPE)
@@ -189,18 +188,9 @@ function(add_avr_executable EXECUTABLE_NAME)
    )
 
    add_custom_command(
-      OUTPUT ${hex_file}
-      COMMAND
-         ${AVR_OBJCOPY} -j .text -j .data -O ihex ${elf_file} ${hex_file}
-      COMMAND
-         ${AVR_SIZE_TOOL} ${AVR_SIZE_ARGS} ${elf_file}
-      DEPENDS ${EXECUTABLE_NAME}
-   )
-
-   add_custom_command(
       OUTPUT ${lst_file}
       COMMAND
-         ${AVR_OBJDUMP} -d ${elf_file} > ${lst_file}
+         ${AVR_OBJDUMP} -d ${EXECUTABLE_NAME} > ${lst_file}
       DEPENDS ${EXECUTABLE_NAME}
    )
 
@@ -210,7 +200,7 @@ function(add_avr_executable EXECUTABLE_NAME)
       COMMAND
          ${AVR_OBJCOPY} -j .eeprom --set-section-flags=.eeprom=alloc,load
             --change-section-lma .eeprom=0 --no-change-warnings
-            -O ihex ${elf_file} ${eeprom_image}
+            -O ihex ${EXECUTABLE_NAME} ${eeprom_image}
       DEPENDS ${EXECUTABLE_NAME}
    )
 
@@ -225,9 +215,9 @@ function(add_avr_executable EXECUTABLE_NAME)
    add_custom_target(
       upload_${EXECUTABLE_NAME}
       ${AVR_UPLOADTOOL} ${AVR_UPLOADTOOL_BASE_OPTIONS} ${AVR_UPLOADTOOL_OPTIONS}
-         -U flash:w:${hex_file}
+         -U flash:w:${EXECUTABLE_NAME}:e
          -P ${AVR_UPLOADTOOL_PORT}
-      DEPENDS ${hex_file}
+      DEPENDS ${EXECUTABLE_NAME}
       COMMENT "Uploading ${hex_file} to ${AVR_MCU} using ${AVR_PROGRAMMER}"
    )
 
@@ -245,7 +235,7 @@ function(add_avr_executable EXECUTABLE_NAME)
    # disassemble
    add_custom_target(
       disassemble_${EXECUTABLE_NAME}
-      ${AVR_OBJDUMP} -h -S ${elf_file} > ${EXECUTABLE_NAME}.lst
+      ${AVR_OBJDUMP} -h -S ${EXECUTABLE_NAME} > ${EXECUTABLE_NAME}.lst
       DEPENDS ${EXECUTABLE_NAME}
    )
 endfunction(add_avr_executable)

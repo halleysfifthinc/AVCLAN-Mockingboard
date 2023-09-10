@@ -3,6 +3,9 @@ include(CMakeDependentOption)
 
 set(WITH_MCU OFF)
 set(AVR_MCU "attiny3216")
+set(AVR_UPLOADTOOL_PORT /dev/ttyUSB1)
+set(AVR_PROGRAMMER serialupdi)
+set(AVR_UPLOADTOOL_BAUDRATE 230400)
 
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_SOURCE_DIR}/cmake/avr-gcc-toolchain.cmake")
 
