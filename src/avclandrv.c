@@ -270,8 +270,14 @@ void AVCLAN_init() {
   EVSYS.ASYNCCH0 = EVSYS_ASYNCCH0_AC2_OUT_gc;
   EVSYS.ASYNCUSER0 = EVSYS_ASYNCUSER0_ASYNCCH0_gc; // USER0 is TCB0
 
-  // TCB0 for read bit timing
-  TCB0.CTRLB = TCB_CNTMODE_PW_gc;
+// TCB0 for read bit timing
+#ifdef SOFTWARE_DEBUG
+#define TCB_CNTMODE TCB_CNTMODE_FRQPW_gc
+#else
+#define TCB_CNTMODE TCB_CNTMODE_PW_gc
+#endif
+
+  TCB0.CTRLB = TCB_CNTMODE;
   TCB0.INTCTRL = TCB_CAPT_bm;
   TCB0.EVCTRL = TCB_CAPTEI_bm;
   TCB0.CTRLA = TCB_CLKSEL | TCB_ENABLE_bm;
@@ -324,7 +330,7 @@ void AVCLAN_sendbit_ACK() {
   while (INPUT_IS_CLEAR) {
     // Wait for approx the length of a bit; any longer and something has clearly
     // gone wrong
-    if (TCB1.CNT >= AVCLAN_BIT_LENGTH)
+    if (TCB1.CNT >= AVCLAN_BIT_LENGTH_MAX)
       return;
   }
 
@@ -404,9 +410,22 @@ uint8_t AVCLAN_sendbyte(const uint8_t *byte) {
 #define READING_NBITS GPIOR2
 #define READING_PARITY GPIOR3
 
+#ifdef SOFTWARE_DEBUG
+uint8_t pulse_count = 0;
+uint16_t period = 0;
+#endif
+
+uint16_t pulsewidth = 0;
+
 ISR(TCB0_INT_vect) {
+#ifdef SOFTWARE_DEBUG
+  pulse_count++;
+  period = TCB0.CNT;
+#endif
+
   // If input was set for less than 26 us (a generous half period), bit was a 1
-  if (TCB0.CCMP < (uint16_t)AVCLAN_READBIT_THRESHOLD) {
+  pulsewidth = TCB0.CCMP;
+  if (pulsewidth < (uint16_t)AVCLAN_READBIT_THRESHOLD) {
     READING_BYTE++;
     READING_PARITY++;
   }
@@ -431,8 +450,8 @@ uint8_t AVCLAN_readbitsi(uint8_t *bits, uint8_t len) {
 
   TCB1.CNT = 0;
   while (READING_NBITS != 0) {
-    // Duration of `len` bits + 10%
-    if (TCB1.CNT > (((uint16_t)AVCLAN_BIT_LENGTH * 11 * len) / 10)) {
+    // 200% the duration of `len` bits
+    if (TCB1.CNT > ((uint16_t)AVCLAN_BIT_LENGTH_MAX * 2 * len)) {
       READING_BYTE = 0;
       READING_PARITY = 0;
       break; // Should have finished by now; something's wrong
@@ -469,8 +488,8 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
 
   TCB1.CNT = 0;
   while (READING_NBITS != 0) {
-    // Duration of byte + 10%
-    if (TCB1.CNT > (((uint16_t)AVCLAN_BIT_LENGTH * 11 * 8) / 10)) {
+    // 200% the length of a byte
+    if (TCB1.CNT > ((uint16_t)AVCLAN_BIT_LENGTH_MAX * 2 * 8)) {
       READING_BYTE = 0;
       READING_PARITY = 0;
       break; // Should have finished by now; something's wrong
@@ -494,7 +513,7 @@ uint8_t AVCLAN_readbit_ACK() {
   while (1) {
     if (INPUT_IS_SET && (TCB1.CNT > AVCLAN_READBIT_THRESHOLD))
       break; // ACK
-    if (TCB1.CNT > AVCLAN_BIT_LENGTH)
+    if (TCB1.CNT > AVCLAN_BIT_LENGTH_MAX)
       return 1; // NAK
   }
 
@@ -696,7 +715,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   do {
     while (INPUT_IS_CLEAR) {
       // Wait for 120% of a bit length
-      if (TCB1.CNT >= (uint16_t)(AVCLAN_BIT_LENGTH * 12 / 10))
+      if (TCB1.CNT >= (uint16_t)(AVCLAN_BIT_LENGTH_MAX * 12 / 10))
         break;
     }
     if (TCB1.CNT > 864)
@@ -1008,94 +1027,40 @@ void AVCLAN_printframe(const AVCLAN_frame_t *frame) {
 }
 
 #ifdef SOFTWARE_DEBUG
-uint16_t temp_b[100];
+uint16_t pulses[100];
+uint16_t periods[100];
 
 void AVCLan_Measure() {
   STOPEvent;
 
-  // uint16_t tmp, tmp1, tmp2, bit0, bit1;
-  uint8_t n = 0;
+  uint8_t tmp = 0;
 
-  cbi(TCCR1B, CS12);
-  TCCR1B = _BV(CS10);
-  TCNT1 = 0;
+  RS232_Print(
+      "Timing config: F_CPU=" STR(F_CPU) ", TCB_CLKSEL=" STR(TCB_CLKSEL) "\n");
+  RS232_Print("Sampling bit (pulse-width and period) timing...\n");
 
-  char str[5];
-
-  while (n < 100) {
-    temp_b[n] = TCNT1;
-    while (INPUT_IS_CLEAR) {}
-    temp_b[n + 1] = TCNT1;
-    while (INPUT_IS_SET) {}
-    temp_b[n + 2] = TCNT1;
-    while (INPUT_IS_CLEAR) {}
-    temp_b[n + 3] = TCNT1;
-    while (INPUT_IS_SET) {}
-    temp_b[n + 4] = TCNT1;
-    while (INPUT_IS_CLEAR) {}
-    temp_b[n + 5] = TCNT1;
-    while (INPUT_IS_SET) {}
-    temp_b[n + 6] = TCNT1;
-    while (INPUT_IS_CLEAR) {}
-    temp_b[n + 7] = TCNT1;
-    while (INPUT_IS_SET) {}
-    temp_b[n + 8] = TCNT1;
-    while (INPUT_IS_CLEAR) {}
-    temp_b[n + 9] = TCNT1;
-    while (INPUT_IS_SET) {}
-    //
-    // while (INPUT_IS_CLEAR) {}
-    //
-    // tmp1 = TCNT1;
-    //
-    // while (INPUT_IS_SET) {}
-    //
-    // tmp2 = TCNT1;
-    //
-    // bit0 = tmp1-tmp;
-    // bit1 = tmp2-tmp1;
-    //
-    // RS232_Print("1,");
-    // RS232_PrintDec(bit1);
-    // RS232_Print("\n");
-    //
-    // RS232_Print("0,");
-    // RS232_PrintDec(bit0);
-    // RS232_Print("\n");
-    n += 10;
+  for (uint8_t n = 0; n < 100; n++) {
+    while (pulse_count == tmp) {}
+    pulses[n] = pulsewidth;
+    periods[n] = period;
+    tmp = pulse_count;
   }
 
+  RS232_Print("Pulses:\n");
   for (uint8_t i = 0; i < 100; i++) {
-    itoa(temp_b[i], str);
-    if (i & 1) {
-      RS232_Print("High,");
-    } else {
-      RS232_Print("Low,");
-    }
-    RS232_Print(str);
+    RS232_PrintHex8(*(((uint8_t *)&pulses[i]) + 1));
+    RS232_PrintHex8(*(((uint8_t *)&pulses[i]) + 0));
+    RS232_Print("\n");
+  }
+
+  RS232_Print("Periods:\n");
+  for (uint8_t i = 0; i < 100; i++) {
+    RS232_PrintHex8(*(((uint8_t *)&periods[i]) + 1));
+    RS232_PrintHex8(*(((uint8_t *)&periods[i]) + 0));
     RS232_Print("\n");
   }
   RS232_Print("\nDone.\n");
 
-  cbi(TCCR1B, CS10);
-  TCCR1B = _BV(CS12);
-
   STARTEvent;
-}
-#endif
-
-#ifdef HARDWARE_DEBUG
-void SetHighLow() {
-  AVC_OUT_EN();
-  sbi(TCCR1B, CS10);
-  uint16_t n = 60000;
-  TCNT1 = 0;
-  AVC_SET_LOGICAL_1();
-  while (TCNT1 < n) {}
-  TCNT1 = 0;
-  AVC_SET_LOGICAL_0();
-  while (TCNT1 < n) {}
-  cbi(TCCR1B, CS10);
-  AVC_OUT_DIS();
 }
 #endif

@@ -8,7 +8,9 @@
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+                "CMAKE_BUILD_TYPE": "Debug",
+                "FREQSEL": "20MHz",
+                "TCB_CLKSEL": "TCB_CLKSEL_CLKDIV1_gc"
             }
         },
         {
@@ -17,8 +19,11 @@
             "description": "Configure with RelWithDebInfo build settings",
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build",
+            "inherits": "default",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+                "FREQSEL": "20MHz",
+                "TCB_CLKSEL": "TCB_CLKSEL_CLKDIV1_gc"
             }
         }
     ]
