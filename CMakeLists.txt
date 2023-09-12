@@ -3,7 +3,7 @@ include(CMakeDependentOption)
 
 set(WITH_MCU OFF)
 set(AVR_MCU "attiny3216")
-set(AVR_UPLOADTOOL_PORT /dev/ttyUSB1)
+set(AVR_UPLOADTOOL_PORT /dev/ttyUSB0)
 set(AVR_PROGRAMMER serialupdi)
 set(AVR_UPLOADTOOL_BAUDRATE 230400)
 
@@ -80,7 +80,7 @@ if(NOT LIBC_VERSION_TEST)
     if(NOT LIBC_VERSION_TEST)
         message(FATAL_ERROR "Insufficient AVR-LIBC/Microchip pack for chosen MCU '${AVR_MCU}'")
     else()
-        include_directories(SYSTEM PUBLIC "${attiny_atpack_SOURCE_DIR}/include")
+        include_directories(SYSTEM "${attiny_atpack_SOURCE_DIR}/include")
         add_compile_options(
             -B "${attiny_atpack_SOURCE_DIR}/gcc/dev/${AVR_MCU}"
         )
