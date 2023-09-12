@@ -1007,11 +1007,9 @@ void AVCLAN_printframe(const AVCLAN_frame_t *frame) {
   RS232_PrintHex4(frame->broadcast);
 
   RS232_Print(" 0x");
-  RS232_PrintHex4(*(((uint8_t *)&frame->controller_addr) + 1));
-  RS232_PrintHex8(*(((uint8_t *)&frame->controller_addr) + 0));
+  RS232_PrintHex12(frame->controller_addr);
   RS232_Print(" 0x");
-  RS232_PrintHex4(*(((uint8_t *)&frame->peripheral_addr) + 1));
-  RS232_PrintHex8(*(((uint8_t *)&frame->peripheral_addr) + 0));
+  RS232_PrintHex12(frame->peripheral_addr);
 
   RS232_Print(" 0x");
   RS232_PrintHex4(frame->control);

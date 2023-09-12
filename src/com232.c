@@ -85,6 +85,11 @@ void RS232_PrintHex8(uint8_t Data) {
   RS232_PrintHex4(Data);
 }
 
+void RS232_PrintHex12(uint16_t x) {
+  RS232_PrintHex4(*(((uint8_t *)&x) + 1));
+  RS232_PrintHex8(*(((uint8_t *)&x) + 0));
+}
+
 void RS232_PrintDec(uint8_t Data) {
   if (Data > 99) {
     RS232_SendByte('*');

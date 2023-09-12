@@ -34,6 +34,7 @@ void RS232_SendByte(uint8_t Data);
 void RS232_Print(const char *pBuf);
 void RS232_PrintHex4(uint8_t Data);
 void RS232_PrintHex8(uint8_t Data);
+void RS232_PrintHex12(uint16_t x);
 void RS232_PrintDec(uint8_t Data);
 void RS232_PrintDec2(uint8_t Data);
 char *itoa(int i, char b[]);
