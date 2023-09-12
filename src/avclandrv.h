@@ -49,6 +49,7 @@ extern uint16_t CD_ID; // CD Changer ID
 extern uint16_t HU_ID; // Head-unit ID
 
 extern uint8_t printAllFrames;
+extern uint8_t verbose;
 
 typedef enum {
   cm_Null = 0,

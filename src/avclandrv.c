@@ -128,6 +128,7 @@ uint16_t CD_ID;
 uint16_t HU_ID;
 
 uint8_t printAllFrames;
+uint8_t verbose;
 
 uint8_t playMode;
 
@@ -538,45 +539,58 @@ uint8_t AVCLAN_readframe() {
 
   uint8_t i;
   uint8_t for_me = 0;
-  AVCLAN_frame_t frame = {};
+  AVCLAN_frame_t frame = {0};
 
-  // RS232_Print("$ ");
-  //  TCCR1B |= (1 << CS11)|(1 << CS10); // Timer1 prescaler at 64
-  //  TCNT1 = 0;
-  //  TCNT0 = 0;
-  //  while (INPUT_IS_SET) {
-  //  if ( TCNT0 > 255 ) { // 170 us
-  //  	// TCCR1B = 0;
-  //  	// TCCR1B |= (1 << WGM12)|(1 << CS12); // Set CTC, prescaler at 256
-  //  	STARTEvent;
-  //  	RS232_Print("LAN>T1\n");
-  //  	return 0;
-  //  }
-  //  }
-  //
-  //  if ( TCNT0 < 20 ) {		// 20 us
-  //  	// TCCR1B = 0;
-  //  	// TCCR1B |= (1 << WGM12)|(1 << CS12);
-  //  	STARTEvent;
-  //  	RS232_Print("LAN>T2\n");
-  //  	return 0;
-  //  }
   uint8_t parity = 0;
   uint8_t tmp = 0;
-  AVCLAN_readbits(&tmp, 1); // Start bit
+
+  TCB1.CNT = 0;
+  while (INPUT_IS_SET) {
+    if (TCB1.CNT > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
+      STARTEvent;
+      return 0;
+    }
+  }
+  uint16_t startbitlen = TCB1.CNT;
+  if (startbitlen < (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8)) {
+    RS232_Print("ERR: Short start bit.\n");
+    STARTEvent;
+    return 0;
+  }
+  // Otherwise that was a start bit
 
   AVCLAN_readbits((uint8_t *)&frame.broadcast, 1);
 
   parity = AVCLAN_readbits(&frame.controller_addr, 12);
   AVCLAN_readbits(&tmp, 1);
-  if (parity != tmp) {
+  if (parity != (tmp & 1)) {
+    RS232_Print("ERR: Bad controller addr. parity");
+    if (verbose) {
+      RS232_Print("; read 0x");
+      RS232_PrintHex12(frame.controller_addr);
+      RS232_Print(" and calculated parity=");
+      RS232_PrintHex4(parity);
+      RS232_Print(" but got ");
+      RS232_PrintHex4(tmp & 1);
+    }
+    RS232_Print(".\n");
     STARTEvent;
     return 0;
   }
 
   parity = AVCLAN_readbits(&frame.peripheral_addr, 12);
   AVCLAN_readbits(&tmp, 1);
-  if (parity != tmp) {
+  if (parity != (tmp & 1)) {
+    RS232_Print("Bad peripheral addr. parity");
+    if (verbose) {
+      RS232_Print("; read 0x");
+      RS232_PrintHex12(frame.peripheral_addr);
+      RS232_Print(" and calculated parity=");
+      RS232_PrintHex4(parity);
+      RS232_Print(" but got ");
+      RS232_PrintHex4(tmp & 1);
+    }
+    RS232_Print(".\n");
     STARTEvent;
     return 0;
   }
@@ -591,7 +605,17 @@ uint8_t AVCLAN_readframe() {
 
   parity = AVCLAN_readbits(&frame.control, 4);
   AVCLAN_readbits(&tmp, 1);
-  if (parity != tmp) {
+  if (parity != (tmp & 1)) {
+    RS232_Print("Bad control parity");
+    if (verbose) {
+      RS232_Print("; read 0x");
+      RS232_PrintHex4(frame.control);
+      RS232_Print(" and calculated parity=");
+      RS232_PrintHex4(parity);
+      RS232_Print(" but got ");
+      RS232_PrintHex4(tmp & 1);
+    }
+    RS232_Print(".\n");
     STARTEvent;
     return 0;
   } else if (for_me) {
@@ -602,7 +626,17 @@ uint8_t AVCLAN_readframe() {
 
   parity = AVCLAN_readbyte(&frame.length);
   AVCLAN_readbits(&tmp, 1);
-  if (parity != tmp) {
+  if (parity != (tmp & 1)) {
+    RS232_Print("Bad length parity");
+    if (verbose) {
+      RS232_Print("; read 0x");
+      RS232_PrintHex4(frame.length);
+      RS232_Print(" and calculated parity=");
+      RS232_PrintHex4(parity);
+      RS232_Print(" but got ");
+      RS232_PrintHex4(tmp & 1);
+    }
+    RS232_Print(".\n");
     STARTEvent;
     return 0;
   } else if (for_me) {
@@ -611,8 +645,10 @@ uint8_t AVCLAN_readframe() {
     AVCLAN_readbits(&tmp, 1);
   }
 
-  if (frame.length > MAXMSGLEN) {
-    //	RS232_Print("LAN> Command error");
+  if (frame.length == 0 || frame.length > MAXMSGLEN) {
+    RS232_Print("Bad length; got 0x");
+    RS232_PrintHex4(frame.length);
+    RS232_Print(".\n");
     STARTEvent;
     return 0;
   }
@@ -620,7 +656,17 @@ uint8_t AVCLAN_readframe() {
   for (i = 0; i < frame.length; i++) {
     parity = AVCLAN_readbyte(&frame.data[i]);
     AVCLAN_readbits(&tmp, 1);
-    if (parity != tmp) {
+    if (parity != (tmp & 1)) {
+      RS232_Print("Bad data parity");
+      if (verbose) {
+        RS232_Print("; read 0x");
+        RS232_PrintHex4(frame.data[i]);
+        RS232_Print(" and calculated parity=");
+        RS232_PrintHex4(parity);
+        RS232_Print(" but got ");
+        RS232_PrintHex4(tmp & 1);
+      }
+      RS232_Print(".\n");
       STARTEvent;
       return 0;
     } else if (for_me) {

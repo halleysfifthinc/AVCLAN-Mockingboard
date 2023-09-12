@@ -35,8 +35,11 @@
 uint8_t Event;
 uint8_t echoCharacters;
 
+const char const *offon[] = {"OFF", "ON"};
+
 void Setup();
 void general_GPIO_init();
+void print_help();
 
 int main() {
   uint8_t readSeq = 0;
@@ -53,17 +56,7 @@ int main() {
   };
 
   Setup();
-
-  RS232_Print("AVCLan reader 1.00\nReady\n\n");
-  RS232_Print("\nS - read sequence\nW - send command\nQ - send "
-              "broadcast\nL/l - log on/off\nK/k - seq. echo on/off\n");
-  RS232_Print("R/r - register device\nB - Beep\n");
-#ifdef HARDWARE_DEBUG
-  RS232_Print("1 - Hold High/low\nE - Print line status\n");
-#endif
-#ifdef SOFTWARE_DEBUG
-  RS232_Print("M - Measure high and low lengths\n");
-#endif
+  print_help();
 
   while (1) {
 
@@ -87,13 +80,15 @@ int main() {
     // Key handler
     if (RS232_RxCharEnd) {
       cli();
-      readkey = RS232_RxCharBuffer[RS232_RxCharBegin]; // read begin of received
-                                                       // Buffer
+      readkey = RS232_RxCharBuffer[RS232_RxCharBegin];
       RS232_RxCharBegin++;
-      if (RS232_RxCharBegin == RS232_RxCharEnd)  // if Buffer is empty
-        RS232_RxCharBegin = RS232_RxCharEnd = 0; // reset Buffer
+      if (RS232_RxCharBegin == RS232_RxCharEnd)  // if buffer is consumed
+        RS232_RxCharBegin = RS232_RxCharEnd = 0; // reset buffer
       sei();
       switch (readkey) {
+        case '?':
+          print_help();
+          break;
         case 'S': // Read sequence
           printAllFrames = 0;
           RS232_Print("READ SEQUENCE > \n");
@@ -128,21 +123,23 @@ int main() {
         case 'r': // Register into the abyss
           AVCLan_Register();
           break;
-        case 'l': // Print received messages
-          RS232_Print("Log OFF\n");
-          printAllFrames = 0;
+        case 'v':
+          verbose ^= 1;
+          RS232_Print("Verbose: ");
+          RS232_Print(offon[verbose]);
+          RS232_Print("\n");
           break;
-        case 'L':
-          RS232_Print("Log ON\n");
-          printAllFrames = 1;
+        case 'l': // Print received messages
+          printAllFrames ^= 1;
+          RS232_Print("Logging:");
+          RS232_Print(offon[printAllFrames]);
+          RS232_Print("\n");
           break;
         case 'k': // Echo input
-          RS232_Print("str OFF\n");
-          echoCharacters = 0;
-          break;
-        case 'K':
-          RS232_Print("str ON\n");
-          echoCharacters = 1;
+          echoCharacters ^= 1;
+          RS232_Print("Echo characters:");
+          RS232_Print(offon[echoCharacters]);
+          RS232_Print("\n");
           break;
         case 'B': // Beep
           data_tmp[0] = 0x00;
@@ -264,6 +261,26 @@ void general_GPIO_init() {
   PORTB.PIN5CTRL = PORT_ISC_INPUT_DISABLE_gc; // non-driving WOD
   PORTC.PIN0CTRL = PORT_ISC_INPUT_DISABLE_gc; // WOC
   PORTC.PIN1CTRL = PORT_ISC_INPUT_DISABLE_gc; // WOD
+}
+
+void print_help() {
+  RS232_Print("AVCLAN Mockingboard v1\n");
+  RS232_Print("S - read sequence\n"
+              "W - send command\n"
+              "Q - send broadcast\n"
+              "l - Toggle message logging\n"
+              "k - Toggle character echo\n"
+              "R/r - register device\n"
+              "B - Beep\n"
+              "v - Toggle verbose logging\n"
+#ifdef SOFTWARE_DEBUG
+              "M - Measure bit-timing (pulse-widths and periods)\n"
+#endif
+#ifdef HARDWARE_DEBUG
+              "1 - Hold High/low\n"
+              "E - Print line status\n"
+#endif
+              "? - Print this message\n");
 }
 
 /* Increment packed 2-digit BCD number.
