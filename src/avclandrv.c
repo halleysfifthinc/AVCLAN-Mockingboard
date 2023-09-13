@@ -96,6 +96,8 @@
 
 #include "avclandrv.h"
 #include "com232.h"
+
+// F_CPU defined in timing.h and potentially needed by avr-libc (e.g. delay.h)
 #include "timing.h"
 
 // Enable AVC bus Tx
@@ -429,12 +431,12 @@ ISR(TCB0_INT_vect) {
 #endif
 
   // If input was set for less than 26 us (a generous half period), bit was a 1
+  READING_BYTE <<= 1;
   pulsewidth = TCB0.CCMP;
   if (pulsewidth < (uint16_t)AVCLAN_READBIT_THRESHOLD) {
     READING_BYTE++;
     READING_PARITY++;
   }
-  READING_BYTE <<= 1;
   READING_NBITS--;
 }
 
@@ -476,10 +478,10 @@ uint8_t AVCLAN_readbitsl(uint16_t *bits, int8_t len) {
   uint8_t parity = 0;
   if (len > 8) {
     uint8_t over = len - 8;
-    parity = AVCLAN_readbitsi((uint8_t *)bits + 0, over);
+    parity = AVCLAN_readbitsi((uint8_t *)bits + 1, over);
     len -= over;
   }
-  parity += AVCLAN_readbitsi((uint8_t *)bits + 1, len);
+  parity += AVCLAN_readbitsi((uint8_t *)bits + 0, len);
 
   return (parity & 1);
 }
@@ -488,6 +490,7 @@ uint8_t AVCLAN_readbitsl(uint16_t *bits, int8_t len) {
 uint8_t AVCLAN_readbyte(uint8_t *byte) {
   cli();
   READING_BYTE = 0;
+  READING_PARITY = 0;
   READING_NBITS = 8;
   sei();
 
@@ -541,9 +544,12 @@ uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd) {
 uint8_t AVCLAN_readframe() {
   STOPEvent; // disable timer1 interrupt
 
+  uint8_t data[MAXMSGLEN];
   uint8_t i;
   uint8_t for_me = 0;
-  AVCLAN_frame_t frame = {0};
+  AVCLAN_frame_t frame = {
+      .data = data,
+  };
 
   uint8_t parity = 0;
   uint8_t tmp = 0;
