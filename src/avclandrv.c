@@ -24,7 +24,8 @@
                                 AVC LAN Theory
 
   The AVC LAN bus is an implementation of the IEBus (mode 1) which is a
-  differential signal.
+  differential signal; IEBus is electrically (but not logically) compatible with
+  CAN bus.
 
   - Logical `1`: Potential difference between bus lines (BUS+ pin and BUS– pin)
     is 20 mV or lower (floating).
@@ -40,12 +41,15 @@
     Driving (logical `0`)           ╭──────────╮──────────╮
                                     │          │          │
     Floating (logical `1`) ─────────╯          ╰──────────╰─────────
-                             │ 7 μs │── 20 μs ─│─ 12 μs ──│
+                             │ 6 μs │── 19 μs ─│─ 13 μs ──│
 
   The logical value during the data period signifies the bit value, e.g. a bit
   `0` continues the logical `0` (high potential difference between bus lines) of
   the sync period thru the data period, and a bit `1` has a logical `1`
-  (low/floating potential between bus lines) during the data period.
+  (low/floating potential between bus lines) during the data period. Using the
+  TCB pulse-width and frequency measure mode, the total bit length differs for
+  bit `1` and `0`; detailed bit timing can be found in "timing.h". The bus
+  idles at low potential (floating).
 
         AVC LAN Frame Format
     │ Bits │ Description
@@ -70,7 +74,7 @@
        *repeat `n` times*
 
 
-  A start bit is nominally 166 us high followed by 19 us low.
+  A start bit is nominally 169 us high followed by 20 us low.
 
   A bit `0` is dominant on the bus, which is a design choice that affects
   bit/interpretation:
