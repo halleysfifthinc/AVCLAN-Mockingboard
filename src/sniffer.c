@@ -60,9 +60,8 @@ int main() {
 
   while (1) {
 
-    if (INPUT_IS_SET) { // if message from some device on AVCLan begin
+    if (!BUS_IS_IDLE) {
       AVCLAN_readframe();
-      // show message
     } else {
       // check command from HU
       if (answerReq != 0)

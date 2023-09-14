@@ -26,8 +26,7 @@
 // AVC LAN bus on AC2 (PA6/7)
 // PA6 AINP0 +
 // PA7 AINN1 -
-#define INPUT_IS_SET (bit_is_set(AC2_STATUS, AC_STATE_bp))
-#define INPUT_IS_CLEAR (bit_is_clear(AC2_STATUS, AC_STATE_bp))
+#define BUS_IS_IDLE (bit_is_clear(AC2_STATUS, AC_STATE_bp))
 
 #define sbi(port, bit) (port) |= (1 << (bit))  // Set bit (i.e. to 1)
 #define cbi(port, bit) (port) &= ~(1 << (bit)) // Clear bit (i.e. set bit to 0)
@@ -40,7 +39,7 @@
   sbi(USART0.CTRLA, USART_RXCIE_bp);
 
 #define CHECK_AVC_LINE                                                         \
-  if (INPUT_IS_SET)                                                            \
+  if (!BUS_IS_IDLE)                                                            \
     AVCLAN_readframe();
 
 #define MAXMSGLEN 32

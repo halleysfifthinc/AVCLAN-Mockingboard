@@ -100,16 +100,6 @@
 // F_CPU defined in timing.h and potentially needed by avr-libc (e.g. delay.h)
 #include "timing.h"
 
-// Enable AVC bus Tx
-#define AVC_OUT_EN()                                                           \
-  // cbi(AC2_CTRLA, AC_ENABLE_bp);                                                \
-  // sbi(VPORTA_DIR, 6);
-
-// Disable AVC bus Tx
-#define AVC_OUT_DIS()                                                          \
-  // cbi(VPORTA_DIR, 6);                                                          \
-  // sbi(AC2_CTRLA, AC_ENABLE_bp);
-
 // clang-format off
 #define AVC_SET_LOGICAL_1()                                                    \
   __asm__ __volatile__(                                                        \
@@ -316,25 +306,25 @@ void set_AVC_logic_for(uint8_t val, uint16_t period) {
 }
 
 void AVCLAN_sendbit_start() {
-  set_AVC_logic_for(0, AVCLAN_STARTBIT_LOGIC_0); // 166 us
-  set_AVC_logic_for(1, AVCLAN_STARTBIT_LOGIC_1); // 19 us
+  set_AVC_logic_for(0, AVCLAN_STARTBIT_LOGIC_0);
+  set_AVC_logic_for(1, AVCLAN_STARTBIT_LOGIC_1);
 }
 
 void AVCLAN_sendbit_1() {
-  set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0); // 20.5 us
-  set_AVC_logic_for(1, AVCLAN_BIT1_LOGIC_1); // 19 us
+  set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0);
+  set_AVC_logic_for(1, AVCLAN_BIT1_LOGIC_1);
 }
 
 void AVCLAN_sendbit_0() {
-  set_AVC_logic_for(0, AVCLAN_BIT0_LOGIC_0); // 34 us
-  set_AVC_logic_for(1, AVCLAN_BIT0_LOGIC_1); // 5.5 us
+  set_AVC_logic_for(0, AVCLAN_BIT0_LOGIC_0);
+  set_AVC_logic_for(1, AVCLAN_BIT0_LOGIC_1);
 }
 
 void AVCLAN_sendbit_ACK() {
   TCB1.CNT = 0;
 
   // Wait for controller to begin ACK bit
-  while (INPUT_IS_CLEAR) {
+  while (BUS_IS_IDLE) {
     // Wait for approx the length of a bit; any longer and something has clearly
     // gone wrong
     if (TCB1.CNT >= AVCLAN_BIT_LENGTH_MAX)
@@ -343,8 +333,8 @@ void AVCLAN_sendbit_ACK() {
 
   AVC_OUT_EN();
 
-  set_AVC_logic_for(0, AVCLAN_BIT0_LOGIC_0); // 34 us
-  set_AVC_logic_for(1, AVCLAN_BIT0_LOGIC_1); // 5.5 us
+  set_AVC_logic_for(0, AVCLAN_BIT0_LOGIC_0);
+  set_AVC_logic_for(1, AVCLAN_BIT0_LOGIC_1);
 
   AVC_OUT_DIS();
 }
@@ -514,19 +504,19 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
 
 uint8_t AVCLAN_readbit_ACK() {
   TCB1.CNT = 0;
-  set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0); // 20.5 us
+  set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0);
   AVC_SET_LOGICAL_1();
   AVC_OUT_DIS();
 
   while (1) {
-    if (INPUT_IS_SET && (TCB1.CNT > AVCLAN_READBIT_THRESHOLD))
+    if (!BUS_IS_IDLE && (TCB1.CNT > AVCLAN_READBIT_THRESHOLD))
       break; // ACK
     if (TCB1.CNT > AVCLAN_BIT_LENGTH_MAX)
       return 1; // NAK
   }
 
   // Check/wait in case we get here before peripheral finishes ACK bit
-  while (INPUT_IS_SET) {}
+  while (!BUS_IS_IDLE) {}
   AVC_OUT_EN(); // back to write mode
   return 0;
 }
@@ -555,7 +545,7 @@ uint8_t AVCLAN_readframe() {
   uint8_t tmp = 0;
 
   TCB1.CNT = 0;
-  while (INPUT_IS_SET) {
+  while (!BUS_IS_IDLE) {
     if (TCB1.CNT > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
       STARTEvent;
       return 0;
@@ -731,7 +721,6 @@ uint8_t AVCLAN_readframe() {
       answerReq = cm_StopReq2;
       return 1;
     }
-
   } else { // broadcast check
 
     if (CheckCmd(&frame, lan_playit)) {
@@ -769,7 +758,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
 
   TCB1.CNT = 0;
   do {
-    while (INPUT_IS_CLEAR) {
+    while (BUS_IS_IDLE) {
       // Wait for 120% of a bit length
       if (TCB1.CNT >= (uint16_t)(AVCLAN_BIT_LENGTH_MAX * 12 / 10))
         break;
