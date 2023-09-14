@@ -284,6 +284,13 @@ void AVCLAN_init() {
   TCB1.CCMP = 0xFFFF;
   TCB1.CTRLA = TCB_CLKSEL | TCB_ENABLE_bm;
 
+  // Set PA4 and PC0 as outputs
+  PORTA.DIRSET = PIN4_bm;
+  PORTC.DIRSET = PIN0_bm;
+
+  // Set bus output pins to idle
+  AVC_SET_LOGICAL_1();
+
   answerReq = cm_Null;
 
   cd_Track = 1;
@@ -331,12 +338,8 @@ void AVCLAN_sendbit_ACK() {
       return;
   }
 
-  AVC_OUT_EN();
-
   set_AVC_logic_for(0, AVCLAN_BIT0_LOGIC_0);
   set_AVC_logic_for(1, AVCLAN_BIT0_LOGIC_1);
-
-  AVC_OUT_DIS();
 }
 
 void AVCLAN_sendbit_parity(uint8_t parity) {
@@ -420,8 +423,9 @@ ISR(TCB0_INT_vect) {
   period = TCB0.CNT;
 #endif
 
-  // If input was set for less than 26 us (a generous half period), bit was a 1
   READING_BYTE <<= 1;
+  // If the logical `0` pulse was less than the sync + data period threshold,
+  // bit was a 1
   pulsewidth = TCB0.CCMP;
   if (pulsewidth < (uint16_t)AVCLAN_READBIT_THRESHOLD) {
     READING_BYTE++;
@@ -502,23 +506,22 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
   return (parity & 1);
 }
 
+// Returns true if an ACK bit was sent by the peripheral
 uint8_t AVCLAN_readbit_ACK() {
   TCB1.CNT = 0;
   set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0);
   AVC_SET_LOGICAL_1();
-  AVC_OUT_DIS();
 
   while (1) {
     if (!BUS_IS_IDLE && (TCB1.CNT > AVCLAN_READBIT_THRESHOLD))
       break; // ACK
     if (TCB1.CNT > AVCLAN_BIT_LENGTH_MAX)
-      return 1; // NAK
+      return 0; // NAK
   }
 
   // Check/wait in case we get here before peripheral finishes ACK bit
   while (!BUS_IS_IDLE) {}
-  AVC_OUT_EN(); // back to write mode
-  return 0;
+  return 1;
 }
 
 uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd) {
@@ -682,7 +685,6 @@ uint8_t AVCLAN_readframe() {
     AVCLAN_printframe(&frame);
 
   if (for_me) {
-
     if (CheckCmd(&frame, stat1)) {
       answerReq = cm_Status1;
       return 1;
@@ -699,7 +701,10 @@ uint8_t AVCLAN_readframe() {
       answerReq = cm_Status4;
       return 1;
     }
-    //	if (CheckCmd((uint8_t*)stat5)) { answerReq = cm_Status5; return 1; }
+    // if (CheckCmd((uint8_t*)stat5)) {
+    //   answerReq = cm_Status5;
+    //   return 1;
+    // }
 
     if (CheckCmd(&frame, play_req1)) {
       answerReq = cm_PlayReq1;
@@ -757,20 +762,33 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   uint8_t parity = 0;
 
   TCB1.CNT = 0;
-  do {
-    while (BUS_IS_IDLE) {
-      // Wait for 120% of a bit length
-      if (TCB1.CNT >= (uint16_t)(AVCLAN_BIT_LENGTH_MAX * 12 / 10))
-        break;
-    }
-    if (TCB1.CNT > 864)
-      line_busy = 0;
-  } while (line_busy);
+  while (BUS_IS_IDLE) {
+    // Wait for 120% of a bit length
+    if (TCB1.CNT >= (uint16_t)(AVCLAN_BIT_LENGTH_MAX * 2))
+      break;
+  }
 
-  // switch to output mode
-  AVC_OUT_EN();
+  // End of first loop could be due to bus being driven
+  TCB1.CNT = 0;
+  if (!BUS_IS_IDLE) {
+    // Some other device started sending
+    // Can't yet simultaneously send and recieve to do proper CSMA/CD
+    return 1;
 
-  AVCLAN_sendbit_start();
+    // Beginnings of CSMA/CD
+    // do {
+    //   if (TCB1.CNT >= (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 1.2))
+    //     return 1; // Something's hinky; nothing is longer than the start bit
+    // } while (!BUS_IS_IDLE);
+    // if (TCB1.CNT <= (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8))
+    //   return 1; // Shouldn't be possible (waiting 2 bit lengths with idle
+    //   bus,
+    //             // then next bit should be a long one ie start)
+    // set_AVC_logic_for(1, AVCLAN_STARTBIT_LOGIC_1); // wait for end of start
+    // bit
+  } else {
+    AVCLAN_sendbit_start();
+  }
   AVCLAN_sendbits((uint8_t *)&frame->broadcast, 1);
 
   parity = AVCLAN_sendbits(&frame->controller_addr, 12);
@@ -779,8 +797,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   parity = AVCLAN_sendbits(&frame->peripheral_addr, 12);
   AVCLAN_sendbit_parity(parity);
 
-  if (!frame->broadcast && AVCLAN_readbit_ACK()) {
-    AVC_OUT_DIS();
+  if (frame->broadcast && !AVCLAN_readbit_ACK()) {
     STARTEvent;
     RS232_Print("Error NAK: Addresses\n");
     return 1;
@@ -789,8 +806,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   parity = AVCLAN_sendbits(&frame->control, 4);
   AVCLAN_sendbit_parity(parity);
 
-  if (!frame->broadcast && AVCLAN_readbit_ACK()) {
-    AVC_OUT_DIS();
+  if (frame->broadcast && !AVCLAN_readbit_ACK()) {
     STARTEvent;
     RS232_Print("Error NAK: Control\n");
     return 2;
@@ -799,8 +815,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   parity = AVCLAN_sendbyte(&frame->length); // data length
   AVCLAN_sendbit_parity(parity);
 
-  if (!frame->broadcast && AVCLAN_readbit_ACK()) {
-    AVC_OUT_DIS();
+  if (frame->broadcast && !AVCLAN_readbit_ACK()) {
     STARTEvent;
     RS232_Print("Error NAK: Message length\n");
     return 3;
@@ -812,18 +827,18 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
     // Based on the µPD6708 datasheet, ACK bit for broadcast doesn't seem
     // necessary (i.e. This deviates from the previous broadcast specific
     // function that sent an extra `1` bit after each byte/parity)
-    if (!frame->broadcast && AVCLAN_readbit_ACK()) {
-      AVC_OUT_DIS();
+    if (frame->broadcast && !AVCLAN_readbit_ACK()) {
       STARTEvent;
-      RS232_Print("Error ACK 4 (Data uint8_t: ");
-      RS232_PrintDec(i);
+      RS232_Print("Error NAK (Data: ");
+      RS232_PrintHex8(i);
       RS232_Print(")\n");
       return 4;
     }
+    // else
+    //   AVCLAN_sendbit_1();
   }
 
   // back to read mode
-  AVC_OUT_DIS();
   STARTEvent;
 
   if (printAllFrames)

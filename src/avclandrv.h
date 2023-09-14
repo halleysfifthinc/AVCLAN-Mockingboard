@@ -87,7 +87,7 @@ typedef struct AVCLAN_KnownMessage_struct {
 
 typedef struct AVCLAN_frame_struct {
   uint8_t valid;
-  MSG_TYPE_t broadcast;
+  MSG_TYPE_t broadcast;     // 0 for broadcast messages
   uint16_t controller_addr; // formerly "master"
   uint16_t peripheral_addr; // formerly "slave"
   uint8_t control;
