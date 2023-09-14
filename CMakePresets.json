@@ -23,7 +23,8 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
                 "FREQSEL": "20MHz",
-                "TCB_CLKSEL": "TCB_CLKSEL_CLKDIV1_gc"
+                "TCB_CLKSEL": "TCB_CLKSEL_CLKDIV1_gc",
+                "USART_RXMODE": "USART_RXMODE_CLK2X_gc"
             }
         }
     ]

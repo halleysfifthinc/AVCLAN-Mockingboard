@@ -49,6 +49,12 @@ set_property(CACHE TCB_CLKSEL PROPERTY STRINGS
     TCB_CLKSEL_CLKTCA_gc
 )
 
+set(USART_RXMODE "USART_RXMODE_CLK2X_gc" CACHE STRING "USART at normal or double speed operation")
+set_property(CACHE USART_RXMODE PROPERTY STRINGS
+    USART_RXMODE_CLK2X_gc
+    USART_RXMODE_NORMAL_gc
+)
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "8.3")
     message(FATAL_ERROR "Insufficient AVR-GCC version; Support for ATtiny3216 was added in GCC v8")
@@ -120,6 +126,7 @@ target_compile_definitions(mockingboard PRIVATE
     CLK_PRESCALE_DIV=${CLK_PRESCALE_DIV}
     __CLK_PRESCALE_DIV=__${CLK_PRESCALE_DIV}
     TCB_CLKSEL=${TCB_CLKSEL}
+    USART_RXMODE=${USART_RXMODE}
 )
 target_compile_options(mockingboard PRIVATE
     --param=min-pagesize=0
