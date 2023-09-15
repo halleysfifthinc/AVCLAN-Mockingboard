@@ -93,6 +93,7 @@
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "avclandrv.h"
 #include "com232.h"
@@ -674,7 +675,7 @@ uint8_t AVCLAN_readframe() {
   STARTEvent;
 
   if (printAllFrames)
-    AVCLAN_printframe(&frame);
+    AVCLAN_printframe(&frame, printBinary);
 
   if (for_me) {
     if (CheckCmd(&frame, stat1)) {
@@ -744,6 +745,43 @@ uint8_t AVCLAN_readframe() {
   }
   answerReq = cm_Null;
   return 1;
+}
+
+AVCLAN_frame_t *AVCLAN_parseframe(const uint8_t *bytes, uint8_t len) {
+  if (len < sizeof(AVCLAN_frame_t))
+    return NULL;
+
+  AVCLAN_frame_t *frame = malloc(sizeof(AVCLAN_frame_t) + 1);
+
+  if (!frame)
+    return NULL;
+
+  frame->broadcast = *bytes++;
+  frame->controller_addr = *(uint16_t *)bytes++;
+  bytes++;
+  frame->peripheral_addr = *(uint16_t *)bytes++;
+  bytes++;
+  frame->control = *bytes++;
+  frame->length = *bytes++;
+
+  if (frame->length <= (len - 8)) {
+    free(frame);
+    return NULL;
+  } else {
+    AVCLAN_frame_t *framedata =
+        realloc(frame, sizeof(AVCLAN_frame_t) + frame->length);
+    if (!framedata) {
+      free(frame);
+      return NULL;
+    }
+    frame = framedata;
+    frame->data = (uint8_t *)frame + sizeof(AVCLAN_frame_t);
+    for (uint8_t i = 0; i < frame->length; i++) {
+      frame->data[i] = *bytes++;
+    }
+  }
+
+  return frame;
 }
 
 uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
@@ -834,36 +872,39 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   STARTEvent;
 
   if (printAllFrames)
-    AVCLAN_printframe(frame);
+    AVCLAN_printframe(frame, printBinary);
 
   return 0;
 }
 
-void AVCLAN_printframe(const AVCLAN_frame_t *frame) {
-  if (frame->peripheral_addr == CD_ID ||
-      (frame->broadcast && frame->peripheral_addr == 0x1FF))
-    RS232_Print(" < ");
-  else
-    RS232_Print(">< ");
+void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary) {
+  if (binary) {
+    RS232_SendByte(0x10); // Data Link Escape, signaling binary data forthcoming
+    RS232_sendbytes((uint8_t *)frame,
+                    sizeof(AVCLAN_frame_t) - sizeof(uint8_t *));
+    RS232_sendbytes(frame->data, frame->length);
+    RS232_SendByte(0x17); // End of transmission block
+    RS232_Print("\n");
+  } else {
+    RS232_PrintHex4(frame->broadcast);
 
-  RS232_PrintHex4(frame->broadcast);
-
-  RS232_Print(" 0x");
-  RS232_PrintHex12(frame->controller_addr);
-  RS232_Print(" 0x");
-  RS232_PrintHex12(frame->peripheral_addr);
-
-  RS232_Print(" 0x");
-  RS232_PrintHex4(frame->control);
-
-  RS232_Print(" 0x");
-  RS232_PrintHex4(frame->length);
-
-  for (uint8_t i = 0; i < frame->length; i++) {
     RS232_Print(" 0x");
-    RS232_PrintHex8(frame->data[i]);
+    RS232_PrintHex12(frame->controller_addr);
+    RS232_Print(" 0x");
+    RS232_PrintHex12(frame->peripheral_addr);
+
+    RS232_Print(" 0x");
+    RS232_PrintHex4(frame->control);
+
+    RS232_Print(" 0x");
+    RS232_PrintHex4(frame->length);
+
+    for (uint8_t i = 0; i < frame->length; i++) {
+      RS232_Print(" 0x");
+      RS232_PrintHex8(frame->data[i]);
+    }
+    RS232_Print("\n");
   }
-  RS232_Print("\n");
 }
 
 uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd) {

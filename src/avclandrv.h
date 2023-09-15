@@ -49,6 +49,7 @@ extern uint16_t HU_ID; // Head-unit ID
 
 extern uint8_t printAllFrames;
 extern uint8_t verbose;
+extern uint8_t printBinary;
 
 typedef enum {
   cm_Null = 0,
@@ -97,7 +98,8 @@ typedef struct AVCLAN_frame_struct {
 
 uint8_t AVCLAN_readframe();
 uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame);
-void AVCLAN_printframe(const AVCLAN_frame_t *frame);
+void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary);
+AVCLAN_frame_t *AVCLAN_parseframe(const uint8_t *bytes, uint8_t len);
 
 void AVCLAN_init();
 void AVCLan_Send_Status();

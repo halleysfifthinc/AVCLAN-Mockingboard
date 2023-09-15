@@ -69,6 +69,13 @@ void RS232_SendByte(uint8_t Data) {
   USART0_TXDATAL = Data;                 // send character
 }
 
+void RS232_sendbytes(const uint8_t *bytes, uint8_t len) {
+  const uint8_t *end = bytes + len;
+  while (bytes < end) {
+    RS232_SendByte(*bytes++);
+  }
+}
+
 void RS232_Print(const char *pBuf) {
   register uint8_t c;
   while ((c = *pBuf++)) {

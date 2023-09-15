@@ -34,6 +34,7 @@
 
 uint8_t Event;
 uint8_t echoCharacters;
+uint8_t readBinary;
 
 const char const *offon[] = {"OFF", "ON"};
 
@@ -88,6 +89,24 @@ int main() {
         case '?':
           print_help();
           break;
+        case 'v':
+          verbose ^= 1;
+          RS232_Print("Verbose: ");
+          RS232_Print(offon[verbose]);
+          RS232_Print("\n");
+          break;
+        case 'X':
+          printBinary = 1;
+          RS232_Print("Binary: ");
+          RS232_Print(offon[1]);
+          RS232_Print("\n");
+          break;
+        case 'x':
+          printBinary = 0;
+          RS232_Print("Binary: ");
+          RS232_Print(offon[0]);
+          RS232_Print("\n");
+          break;
         case 'S': // Read sequence
           printAllFrames = 0;
           RS232_Print("READ SEQUENCE > \n");
@@ -122,24 +141,19 @@ int main() {
         case 'r': // Register into the abyss
           AVCLan_Register();
           break;
-        case 'v':
-          verbose ^= 1;
-          RS232_Print("Verbose: ");
-          RS232_Print(offon[verbose]);
-          RS232_Print("\n");
-          break;
         case 'l': // Print received messages
           printAllFrames ^= 1;
-          RS232_Print("Logging:");
+          RS232_Print("Logging: ");
           RS232_Print(offon[printAllFrames]);
           RS232_Print("\n");
           break;
         case 'k': // Echo input
           echoCharacters ^= 1;
-          RS232_Print("Echo characters:");
+          RS232_Print("Echo characters: ");
           RS232_Print(offon[echoCharacters]);
           RS232_Print("\n");
           break;
+        case 'b':
         case 'B': // Beep
           data_tmp[0] = 0x00;
           data_tmp[1] = 0x5E;
@@ -149,56 +163,81 @@ int main() {
           s_len = 5;
           msg.length = s_len;
           msg.broadcast = UNICAST;
+          msg.controller_addr = 0x110;
+          msg.peripheral_addr = 0x440;
+          AVCLAN_sendframe(&msg);
+          break;
+        case 'e': // Beep
+          data_tmp[0] = 0x00;
+          data_tmp[1] = 0x01;
+          data_tmp[2] = 0x11;
+          data_tmp[3] = 0x45;
+          data_tmp[4] = 0x63;
+          s_len = 5;
+          msg.length = s_len;
+          msg.broadcast = UNICAST;
+          msg.controller_addr = CD_ID;
+          msg.peripheral_addr = HU_ID;
           AVCLAN_sendframe(&msg);
           break;
 
-#ifdef HARDWARE_DEBUG
-        case '1':
-          SetHighLow();
-          break;
-        case 'E':
-          if (INPUT_IS_SET) {
-            RS232_Print("Set/High/1\n");
-          } else if (INPUT_IS_CLEAR) {
-            RS232_Print("Unset/Low/0\n");
-          } else {
-            RS232_Print("WTF?\n");
-          }
-          break;
-#endif
 #ifdef SOFTWARE_DEBUG
         case 'M':
           AVCLan_Measure();
           break;
 #endif
 
-        default:
-          if (readSeq == 1) {
-            s_c[s_dig] = readkey;
-
-            s_dig++;
-            if (s_dig == 2) {
-              if (s_c[0] < ':')
-                s_c[0] -= 48;
-              else
-                s_c[0] -= 55;
-              data_tmp[s_len] = 16 * s_c[0];
-              if (s_c[1] < ':')
-                s_c[1] -= 48;
-              else
-                s_c[1] -= 55;
-              data_tmp[s_len] += s_c[1];
-              s_len++;
-              s_dig = 0;
-              s_c[0] = s_c[1] = 0;
+        case 0x10: // Signals binary sequence incoming
+          if (!readSeq && !readBinary) {
+            readSeq = 1;
+            readBinary = 1;
+            s_len = 0;
+            break;
+          } // else (readSeq || readBinary); fall through to default
+        case '\n':
+          if (readSeq && readBinary && data_tmp[s_len] == 0x17) {
+            s_len--;
+            AVCLAN_frame_t *frame = AVCLAN_parseframe(data_tmp, s_len);
+            if (frame) {
+              AVCLAN_sendframe(frame);
+              free(frame);
+              readSeq = 0;
+              readBinary = 0;
             }
-            if (echoCharacters) {
-              RS232_Print("CURRENT SEQUENCE > ");
-              for (i = 0; i < s_len; i++) {
-                RS232_PrintHex8(data_tmp[i]);
-                RS232_SendByte(' ');
+            break;
+          } // else (readSeq || readBinary || most recent char != 0x17);
+            // fall through to default
+        default:
+          if (readSeq) {
+            if (readBinary) {
+              data_tmp[s_len++] = readkey;
+            } else {
+              s_c[s_dig] = readkey;
+
+              s_dig++;
+              if (s_dig == 2) {
+                if (s_c[0] < ':')
+                  s_c[0] -= 48;
+                else
+                  s_c[0] -= 55;
+                data_tmp[s_len] = 16 * s_c[0];
+                if (s_c[1] < ':')
+                  s_c[1] -= 48;
+                else
+                  s_c[1] -= 55;
+                data_tmp[s_len] += s_c[1];
+                s_len++;
+                s_dig = 0;
+                s_c[0] = s_c[1] = 0;
               }
-              RS232_Print("\n");
+              if (echoCharacters) {
+                RS232_Print("CURRENT SEQUENCE > ");
+                for (i = 0; i < s_len; i++) {
+                  RS232_PrintHex8(data_tmp[i]);
+                  RS232_SendByte(' ');
+                }
+                RS232_Print("\n");
+              }
             }
           }
       } // switch (readkey)
@@ -213,6 +252,7 @@ void Setup() {
 
   printAllFrames = 1;
   echoCharacters = 1;
+  readBinary = 0;
 
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, (CLK_PRESCALE | CLK_PRESCALE_DIV));
 
