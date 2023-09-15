@@ -120,6 +120,10 @@
 #define EVSYS_ASYNCCH0_0_bm EVSYS_ASYNCCH00_bm
 #endif
 
+#define READING_BYTE GPIOR1
+#define READING_NBITS GPIOR2
+#define READING_PARITY GPIOR3
+
 uint16_t CD_ID;
 uint16_t HU_ID;
 
@@ -135,6 +139,13 @@ uint8_t cd_Time_Sec;
 uint8_t answerReq;
 
 cd_modes CD_Mode;
+
+#ifdef SOFTWARE_DEBUG
+uint8_t pulse_count = 0;
+uint16_t period = 0;
+#endif
+
+uint16_t pulsewidth;
 
 #define SW_ID 0x11 // 11 For my stereo
 
@@ -250,6 +261,8 @@ AVCLAN_KnownMessage_t CMD_STOP2 = {
 const AVCLAN_KnownMessage_t CMD_BEEP = {
     UNICAST, 5, {0x00, 0x63, 0x29, 0x60, 0x02}};
 
+uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd);
+
 void AVCLAN_init() {
   // Pull-ups are disabled by default
   // Set pin 6 and 7 as input
@@ -342,6 +355,24 @@ void AVCLAN_sendbit_ACK() {
   set_AVC_logic_for(1, AVCLAN_BIT0_LOGIC_1);
 }
 
+// Returns true if an ACK bit was sent by the peripheral
+uint8_t AVCLAN_readbit_ACK() {
+  TCB1.CNT = 0;
+  set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0);
+  AVC_SET_LOGICAL_1();
+
+  while (1) {
+    if (!BUS_IS_IDLE && (TCB1.CNT > AVCLAN_READBIT_THRESHOLD))
+      break; // ACK
+    if (TCB1.CNT > AVCLAN_BIT_LENGTH_MAX)
+      return 0; // NAK
+  }
+
+  // Check/wait in case we get here before peripheral finishes ACK bit
+  while (!BUS_IS_IDLE) {}
+  return 1;
+}
+
 void AVCLAN_sendbit_parity(uint8_t parity) {
   if (parity) {
     AVCLAN_sendbit_1();
@@ -405,17 +436,6 @@ uint8_t AVCLAN_sendbyte(const uint8_t *byte) {
   }
   return (parity & 1);
 }
-
-#define READING_BYTE GPIOR1
-#define READING_NBITS GPIOR2
-#define READING_PARITY GPIOR3
-
-#ifdef SOFTWARE_DEBUG
-uint8_t pulse_count = 0;
-uint16_t period = 0;
-#endif
-
-uint16_t pulsewidth = 0;
 
 ISR(TCB0_INT_vect) {
 #ifdef SOFTWARE_DEBUG
@@ -504,34 +524,6 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
   sei();
 
   return (parity & 1);
-}
-
-// Returns true if an ACK bit was sent by the peripheral
-uint8_t AVCLAN_readbit_ACK() {
-  TCB1.CNT = 0;
-  set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0);
-  AVC_SET_LOGICAL_1();
-
-  while (1) {
-    if (!BUS_IS_IDLE && (TCB1.CNT > AVCLAN_READBIT_THRESHOLD))
-      break; // ACK
-    if (TCB1.CNT > AVCLAN_BIT_LENGTH_MAX)
-      return 0; // NAK
-  }
-
-  // Check/wait in case we get here before peripheral finishes ACK bit
-  while (!BUS_IS_IDLE) {}
-  return 1;
-}
-
-uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd) {
-  uint8_t l = *cmd++;
-
-  for (uint8_t i = 0; i < l; i++) {
-    if (frame->data[i] != *cmd++)
-      return 0;
-  }
-  return 1;
 }
 
 uint8_t AVCLAN_readframe() {
@@ -847,6 +839,43 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   return 0;
 }
 
+void AVCLAN_printframe(const AVCLAN_frame_t *frame) {
+  if (frame->peripheral_addr == CD_ID ||
+      (frame->broadcast && frame->peripheral_addr == 0x1FF))
+    RS232_Print(" < ");
+  else
+    RS232_Print(">< ");
+
+  RS232_PrintHex4(frame->broadcast);
+
+  RS232_Print(" 0x");
+  RS232_PrintHex12(frame->controller_addr);
+  RS232_Print(" 0x");
+  RS232_PrintHex12(frame->peripheral_addr);
+
+  RS232_Print(" 0x");
+  RS232_PrintHex4(frame->control);
+
+  RS232_Print(" 0x");
+  RS232_PrintHex4(frame->length);
+
+  for (uint8_t i = 0; i < frame->length; i++) {
+    RS232_Print(" 0x");
+    RS232_PrintHex8(frame->data[i]);
+  }
+  RS232_Print("\n");
+}
+
+uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd) {
+  uint8_t l = *cmd++;
+
+  for (uint8_t i = 0; i < l; i++) {
+    if (frame->data[i] != *cmd++)
+      return 0;
+  }
+  return 1;
+}
+
 uint8_t AVCLan_SendInitCommands() {
   uint8_t r;
   AVCLAN_frame_t frame = {.broadcast = BROADCAST,
@@ -971,7 +1000,7 @@ uint8_t AVCLan_SendAnswer() {
     case cm_Check:
       frame.broadcast = CMD_CHECK.broadcast;
       frame.length = CMD_CHECK.length;
-      frame.data = &CMD_CHECK.data[0];
+      frame.data = CMD_CHECK.data;
       r = AVCLAN_sendframe(&frame);
       CMD_CHECK.data[6]++;
       RS232_Print("AVCCHK\n");
@@ -1048,40 +1077,13 @@ void AVCLan_Register() {
                                    .peripheral_addr = HU_ID,
                                    .control = 0xF,
                                    .length = CMD_REGISTER.length,
-                                   .data = (uint8_t *)&CMD_REGISTER.data[0]};
+                                   .data = (uint8_t *)CMD_REGISTER.data};
   RS232_Print("REG_ST\n");
   AVCLAN_sendframe(&register_frame);
   RS232_Print("REG_END\n");
   // AVCLan_Command( cm_Register );
   answerReq = cm_Init;
   AVCLan_SendAnswer();
-}
-
-void AVCLAN_printframe(const AVCLAN_frame_t *frame) {
-  if (frame->peripheral_addr == CD_ID ||
-      (frame->broadcast && frame->peripheral_addr == 0x1FF))
-    RS232_Print(" < ");
-  else
-    RS232_Print(">< ");
-
-  RS232_PrintHex4(frame->broadcast);
-
-  RS232_Print(" 0x");
-  RS232_PrintHex12(frame->controller_addr);
-  RS232_Print(" 0x");
-  RS232_PrintHex12(frame->peripheral_addr);
-
-  RS232_Print(" 0x");
-  RS232_PrintHex4(frame->control);
-
-  RS232_Print(" 0x");
-  RS232_PrintHex4(frame->length);
-
-  for (uint8_t i = 0; i < frame->length; i++) {
-    RS232_Print(" 0x");
-    RS232_PrintHex8(frame->data[i]);
-  }
-  RS232_Print("\n");
 }
 
 #ifdef SOFTWARE_DEBUG
