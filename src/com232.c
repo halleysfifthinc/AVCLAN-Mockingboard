@@ -29,13 +29,13 @@
 #include "timing.h"
 
 #if USART_RXMODE == USART_RXMODE_CLK2X_gc
-#define RXMODE_S 9
+#define RXMODE_S 8
 #elif USART_RXMODE == USART_RXMODE_NORMAL_gc
 #define RXMODE_S 16
 #endif
 
 #define USART_BAUD_RATE(BAUD_RATE)                                             \
-  (uint16_t)((float)(F_CPU * 64 / (USART_RXMODE * (float)BAUD_RATE)) + 0.5)
+  (uint16_t)((float)(F_CPU * 64 / (RXMODE_S * (float)BAUD_RATE)) + 0.5)
 
 uint8_t RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
 uint8_t readkey;
@@ -50,7 +50,7 @@ void RS232_Init(void) {
 
   USART0.CTRLA = USART_RXCIE_bm;                 // Enable receive interrupts
   USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm | // Enable Rx/Tx and set receive
-                 USART_RXMODE;                   //  mode
+                 USART_RXMODE;                   // mode
   USART0.CTRLC = USART_CMODE_ASYNCHRONOUS_gc | USART_PMODE_DISABLED_gc |
                  USART_CHSIZE_8BIT_gc |
                  USART_SBMODE_1BIT_gc; // Async UART with 8N1 config
