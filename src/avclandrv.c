@@ -130,6 +130,7 @@ uint16_t HU_ID;
 
 uint8_t printAllFrames;
 uint8_t verbose;
+uint8_t printBinary;
 
 uint8_t playMode;
 

@@ -25,6 +25,7 @@
 #include <avr/sfr_defs.h>
 #include <avr/xmega.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "avclandrv.h"
 #include "com232.h"
@@ -48,7 +49,7 @@ int main() {
   uint8_t s_dig = 0;
   uint8_t s_c[2];
   uint8_t i;
-  uint8_t data_tmp[32];
+  uint8_t data_tmp[MAXMSGLEN];
   AVCLAN_frame_t msg = {
       .broadcast = UNICAST,
       .controller_addr = CD_ID,
@@ -155,26 +156,16 @@ int main() {
           break;
         case 'b':
         case 'B': // Beep
-          data_tmp[0] = 0x00;
-          data_tmp[1] = 0x5E;
-          data_tmp[2] = 0x29;
-          data_tmp[3] = 0x60;
-          data_tmp[4] = 0x01;
-          s_len = 5;
-          msg.length = s_len;
-          msg.broadcast = UNICAST;
-          msg.controller_addr = 0x110;
-          msg.peripheral_addr = 0x440;
-          AVCLAN_sendframe(&msg);
+          answerReq = cm_Beep;
+          AVCLan_SendAnswer();
           break;
         case 'e': // Beep
           data_tmp[0] = 0x00;
           data_tmp[1] = 0x01;
           data_tmp[2] = 0x11;
-          data_tmp[3] = 0x45;
+          data_tmp[3] = 0x50;
           data_tmp[4] = 0x63;
-          s_len = 5;
-          msg.length = s_len;
+          msg.length = 5;
           msg.broadcast = UNICAST;
           msg.controller_addr = CD_ID;
           msg.peripheral_addr = HU_ID;
@@ -253,6 +244,7 @@ void Setup() {
   printAllFrames = 1;
   echoCharacters = 1;
   readBinary = 0;
+  printBinary = 0;
 
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, (CLK_PRESCALE | CLK_PRESCALE_DIV));
 
