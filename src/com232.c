@@ -29,9 +29,9 @@
 #include "timing.h"
 
 #if USART_RXMODE == USART_RXMODE_CLK2X_gc
-#define RXMODE_S 8
+  #define RXMODE_S 8
 #elif USART_RXMODE == USART_RXMODE_NORMAL_gc
-#define RXMODE_S 16
+  #define RXMODE_S 16
 #endif
 
 #define USART_BAUD_RATE(BAUD_RATE)                                             \

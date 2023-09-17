@@ -4,4 +4,6 @@ UseCRLF: false
 BreakBeforeBraces: Attach
 AllowShortBlocksOnASingleLine: Empty
 IndentCaseLabels: true
+IndentPPDirectives: BeforeHash
+AlignConsecutiveMacros: Consecutive
 ...

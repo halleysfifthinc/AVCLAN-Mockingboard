@@ -31,7 +31,7 @@
 #include "com232.h"
 
 #define EV_NOTHING 0
-#define EV_STATUS 4
+#define EV_STATUS  4
 
 uint8_t Event;
 uint8_t echoCharacters;

@@ -118,11 +118,11 @@
 
 // Name difference between avr-libc and Microchip pack
 #if defined(EVSYS_ASYNCCH00_bm)
-#define EVSYS_ASYNCCH0_0_bm EVSYS_ASYNCCH00_bm
+  #define EVSYS_ASYNCCH0_0_bm EVSYS_ASYNCCH00_bm
 #endif
 
-#define READING_BYTE GPIOR1
-#define READING_NBITS GPIOR2
+#define READING_BYTE   GPIOR1
+#define READING_NBITS  GPIOR2
 #define READING_PARITY GPIOR3
 
 uint16_t CD_ID;
@@ -284,9 +284,9 @@ void AVCLAN_init() {
 
 // TCB0 for read bit timing
 #ifdef SOFTWARE_DEBUG
-#define TCB_CNTMODE TCB_CNTMODE_FRQPW_gc
+  #define TCB_CNTMODE TCB_CNTMODE_FRQPW_gc
 #else
-#define TCB_CNTMODE TCB_CNTMODE_PW_gc
+  #define TCB_CNTMODE TCB_CNTMODE_PW_gc
 #endif
 
   TCB0.CTRLB = TCB_CNTMODE;
