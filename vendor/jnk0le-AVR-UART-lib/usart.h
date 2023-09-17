@@ -15,15 +15,21 @@
   #warning F_CPU is undefined, USART may not work correctly without this
 #endif
 
-#define BAUD_CALC(x)                                                           \
-  ((F_CPU + (x) * 8UL) / (16UL * (x)) -                                        \
-   1UL) // macro calculating precise UBRR value
-#define BAUD_CALC_FAST(x)                                                      \
-  ((F_CPU) / ((x) * 16UL) -                                                    \
-   1) // for faster real time calculations ? // not recommended
-#define DOUBLE_BAUD_CALC(x)                                                    \
-  ((F_CPU + (x) * 4UL) / (8UL * (x)) -                                         \
-   1UL) // macro calculating UBRR value for double speed
+#if __AVR_ARCH__ == 103
+(uint16_t)(((F_CPU / BAUD_RATE) * 4UL) + 0.5)
+  // macro calculating precise UBRR value
+  #define BAUD_CALC(x)      (uint16_t)(((F_CPU / BAUD_RATE) * 4UL) + 0.5)
+  #define BAUD_CALC_FAST(x) BAUD_CALC(x)
+  // macro calculating UBRR value for double speed
+  #define DOUBLE_BAUD_CALC(x) (uint16_t)(((F_CPU / BAUD_RATE) * 8UL) + 0.5)
+#else
+  // macro calculating precise UBRR value
+  #define BAUD_CALC(x)        ((F_CPU + (x) * 8UL) / (16UL * (x)) - 1UL)
+  // for faster real time calculations ? // not recommended
+  #define BAUD_CALC_FAST(x)   ((F_CPU) / ((x) * 16UL) - 1)
+  // macro calculating UBRR value for double speed
+  #define DOUBLE_BAUD_CALC(x) ((F_CPU + (x) * 4UL) / (8UL * (x)) - 1UL)
+#endif
 
 #if !defined(__OPTIMIZE__) && !defined(USART_NO_ABI_BREAKING_PREMATURES)
   #warning Compiler optimizations disabled; functions from usart.h might not work as designed
@@ -82,7 +88,11 @@
 #define TX3_BUFFER_MASK (TX3_BUFFER_SIZE - 1)
 #define RX3_BUFFER_MASK (RX3_BUFFER_SIZE - 1)
 
-enum { COMPLETED = 1, BUFFER_EMPTY = 0, BUFFER_FULL = 0 };
+    enum {
+      COMPLETED = 1,
+      BUFFER_EMPTY = 0,
+      BUFFER_FULL = 0
+    };
 
 #if defined(URSEL) || defined(URSEL0) || defined(URSEL1) || defined(URSEL2) || \
     defined(URSEL3)
@@ -104,6 +114,25 @@ enum { COMPLETED = 1, BUFFER_EMPTY = 0, BUFFER_FULL = 0 };
 
   #define USART_ASYNC_MODE 0x80
   #define USART_SYNC_MODE  0xC0
+#elif __AVR_ARCH__ == 103
+  #define USART_XCK_RISING_EDGE  0x00
+  #define USART_XCK_FALLING_EDGE 0x01
+
+  #define USART_5BIT_DATA USART_CHSIZE_5BIT_gc
+  #define USART_6BIT_DATA USART_CHSIZE_6BIT_gc
+  #define USART_7BIT_DATA USART_CHSIZE_7BIT_gc
+  #define USART_8BIT_DATA USART_CHSIZE_8BIT_gc
+
+  #define USART_1STOP_BIT  USART_SBMODE_1BIT_gc
+  #define USART_2STOP_BITS USART_SBMODE_2BIT_gc
+
+  #define USART_NO_PARITY   USART_PMODE_DISABLED_gc
+  #define USART_EVEN_PARITY USART_PMODE_EVEN_gc
+  #define USART_ODD_PARITY  USART_PMODE_ODD_gc
+
+  #define USART_ASYNC_MODE USART_CMODE_ASYNCHRONOUS_gc
+  #define USART_SYNC_MODE  USART_CMODE_SYNCHRONOUS_gc
+  #define USART_MSPI_MODE  USART_CMODE_MSPI_gc
 #else
   #define USART_XCK_RISING_EDGE  0x00
   #define USART_XCK_FALLING_EDGE 0x01
@@ -1074,6 +1103,69 @@ register uint16_t USART_Z_SAVE_REG_NAME asm(
   #endif // NO_USART1
 #endif
 
+#if __AVR_ARCH__ == 103
+
+  #ifndef NO_USART0
+    #define USE_USART0
+
+    #define RX0_INTERRUPT   USART0_RXC_vect
+    #define TXC0_INTERRUPT  USART0_TXC_vect
+    #define UDRE0_INTERRUPT USART0_DRE_vect
+    #define UDR0_REGISTER   USART0_TXDATAL
+    #define UDR0H_REGISTER  USART0_TXDATAH
+    #define RX0_REGISTER    USART0_RXDATAL
+    #define RX0H_REGISTER   USART0_RXDATAH
+    #define UBRR0L_REGISTER USART0_BAUDL
+    #define UBRR0H_REGISTER USART0_BAUDH
+    #define USR0_REGISTER   USART0_STATUS
+    #define UCSR0A_REGISTER USART0_CTRLA
+    #define UCSR0B_REGISTER USART0_CTRLB
+    #define UCSR0C_REGISTER USART0_CTRLC
+    #define TXCIE0_BIT      USART_TXCIE_bp  // CTRLA
+    #define UDRIE0_BIT      USART_DREIE_bp  // CTRLA
+    #define RXCIE0_BIT      USART_RXSIE_bp  // CTRLA
+    #define TXEN0_BIT       USART_TXEN_bp   // CTRLB
+    #define RXEN0_BIT       USART_RXEN_bp   // CTRLB
+    #define UDRE0_BIT       USART_DREIF_bp  // STATUS
+    #define RXC0_BIT        USART_RXCIF_bp  // STATUS
+    #define U2X0_BIT        USART_RXMODE_gp // CTRLB
+    #define MPCM0_BIT       USART_MPCM_bp   // CTRLB
+    // #define UCSZ02_BIT      UCSZ02
+    #define TXB80_BIT USART_DATA8_bp
+
+  #endif // NO_USART0
+
+  #if !defined(NO_USART1) && defined(USART1)
+    #define USE_USART1
+
+    #define RX1_INTERRUPT   USART1_RXC_vect
+    #define TXC1_INTERRUPT  USART1_TXC_vect
+    #define UDRE1_INTERRUPT USART1_DRE_vect
+    #define UDR1_REGISTER   USART1_TXDATAL
+    #define UDR1H_REGISTER  USART1_TXDATAH
+    #define RX1_REGISTER    USART1_RXDATAL
+    #define RX1H_REGISTER   USART1_RXDATAH
+    #define UBRR1L_REGISTER USART1_BAUDL
+    #define UBRR1H_REGISTER USART1_BAUDH
+    #define USR1_REGISTER   USART1_STATUS
+    #define UCSR1A_REGISTER USART1_CTRLA
+    #define UCSR1B_REGISTER USART1_CTRLB
+    #define UCSR1C_REGISTER USART1_CTRLC
+    #define TXCIE1_BIT      USART_TXCIE_bp                        // CTRLA
+    #define UDRIE1_BIT      USART_DREIE_bp                        // CTRLA
+    #define RXCIE1_BIT      USART_RXSIE_bp                        // CTRLA
+    #define TXEN1_BIT       USART_TXEN_bp                         // CTRLB
+    #define RXEN1_BIT       USART_RXEN_bp                         // CTRLB
+    #define UDRE1_BIT       USART_DREIF_bp                        // STATUS
+    #define RXC1_BIT        USART_RXCIF_bp                        // RXDATAH
+    #define U2X1_BIT        (USART_RXMODE_gp - USART_RXMODE_0_bp) // CTRLB
+    #define MPCM1_BIT       USART_MPCM_bp                         // CTRLB
+    // #define UCSZ12_BIT      UCSZ12
+    #define TXB81_BIT USART_DATA8_bp
+
+  #endif // NO_USART1
+#endif
+
 #if defined(USART_REMAP_LAST_INTERFACE) && !defined(USE_USART0) &&             \
     defined(USE_USART1) && !defined(USE_USART2) && !defined(USE_USART3)
   #undef USE_USART1
@@ -1217,38 +1309,65 @@ register uint16_t USART_Z_SAVE_REG_NAME asm(
 
 #ifndef USART0_CONFIG_B // set config bytes for UCSR0B_REGISTER
 
-  #ifdef USART0_MPCM_MODE
+  #if __AVR_ARCH__ == 103
+    #ifdef USART0_U2X_SPEED
+      #define USART0_CONFIG_B_SPEED | (1 << U2X0_BIT)
+    #else
+      #define USART0_CONFIG_B_SPEED | (0 << U2X0_BIT)
+    #endif
+
+    #ifdef USART0_MPCM_MODE
+      #define USART0_CONFIG_B_MPCM | (1 << MPCM0_BIT)
+    #else
+      #define USART0_CONFIG_B_MPCM | (0 << MPCM0_BIT)
+    #endif
+
     #if defined(NO_RX0_INTERRUPT)
-      #define USART0_CONFIG_B (1 << TXEN0_BIT) | (1 << UCSZ02_BIT)
+      #define USART0_CONFIG_B                                                  \
+        (1 << TXEN0_BIT) USART0_CONFIG_B_MPCM USART0_CONFIG_B_SPEED
 
     #elif defined(NO_TX0_INTERRUPT)
       #define USART0_CONFIG_B                                                  \
-        (1 << RXEN0_BIT) | (1 << RXCIE0_BIT) | (1 << UCSZ02_BIT)
+        (1 << RXEN0_BIT) USART0_CONFIG_B_MPCM USART0_CONFIG_B_SPEED
     #else
-      #ifdef USART0_RS485_MODE
-        #define USART0_CONFIG_B                                                \
-          (1 << TXEN0_BIT) | (1 << TXCIE0_BIT) | (1 << RXEN0_BIT) |            \
-              (1 << RXCIE0_BIT) | (1 << UCSZ02_BIT)
-      #else
-        #define USART0_CONFIG_B                                                \
-          (1 << TXEN0_BIT) | (1 << RXEN0_BIT) | (1 << RXCIE0_BIT) |            \
-              (1 << UCSZ02_BIT)
-      #endif
+      #define USART0_CONFIG_B                                                  \
+        (1 << TXEN0_BIT) | (1 << RXEN0_BIT)                                    \
+                               USART0_CONFIG_B_MPCM USART0_CONFIG_B_SPEED
     #endif
   #else
-    #if defined(NO_RX0_INTERRUPT)
-      #define USART0_CONFIG_B (1 << TXEN0_BIT)
+    #ifdef USART0_MPCM_MODE
+      #if defined(NO_RX0_INTERRUPT)
+        #define USART0_CONFIG_B (1 << TXEN0_BIT) | (1 << UCSZ02_BIT)
 
-    #elif defined(NO_TX0_INTERRUPT)
-      #define USART0_CONFIG_B (1 << RXEN0_BIT) | (1 << RXCIE0_BIT)
-    #else
-      #ifdef USART0_RS485_MODE
+      #elif defined(NO_TX0_INTERRUPT)
         #define USART0_CONFIG_B                                                \
-          (1 << TXEN0_BIT) | (1 << TXCIE0_BIT) | (1 << RXEN0_BIT) |            \
-              (1 << RXCIE0_BIT)
+          (1 << RXEN0_BIT) | (1 << RXCIE0_BIT) | (1 << UCSZ02_BIT)
       #else
-        #define USART0_CONFIG_B                                                \
-          (1 << TXEN0_BIT) | (1 << RXEN0_BIT) | (1 << RXCIE0_BIT)
+        #ifdef USART0_RS485_MODE
+          #define USART0_CONFIG_B                                              \
+            (1 << TXEN0_BIT) | (1 << TXCIE0_BIT) | (1 << RXEN0_BIT) |          \
+                (1 << RXCIE0_BIT) | (1 << UCSZ02_BIT)
+        #else
+          #define USART0_CONFIG_B                                              \
+            (1 << TXEN0_BIT) | (1 << RXEN0_BIT) | (1 << RXCIE0_BIT) |          \
+                (1 << UCSZ02_BIT)
+        #endif
+      #endif
+    #else
+      #if defined(NO_RX0_INTERRUPT)
+        #define USART0_CONFIG_B (1 << TXEN0_BIT)
+
+      #elif defined(NO_TX0_INTERRUPT)
+        #define USART0_CONFIG_B (1 << RXEN0_BIT) | (1 << RXCIE0_BIT)
+      #else
+        #ifdef USART0_RS485_MODE
+          #define USART0_CONFIG_B                                              \
+            (1 << TXEN0_BIT) | (1 << TXCIE0_BIT) | (1 << RXEN0_BIT) |          \
+                (1 << RXCIE0_BIT)
+        #else
+          #define USART0_CONFIG_B                                              \
+            (1 << TXEN0_BIT) | (1 << RXEN0_BIT) | (1 << RXCIE0_BIT)
+        #endif
       #endif
     #endif
   #endif
@@ -1399,23 +1518,36 @@ static inline void uart0_init(uint16_t ubrr_value) {
 
   #ifdef USART_SKIP_UBRRH_IF_ZERO
   if (__builtin_constant_p(ubrr_value))
-    if (((ubrr_value >> 8) !=
-         0)) // requires -Os flag - do not use in non-inline functions
+    // requires -Os flag - do not use in non-inline functions
+    if (((ubrr_value >> 8) != 0))
   #endif
       UBRR0H_REGISTER = (ubrr_value >> 8);
 
-  #ifdef USART0_U2X_SPEED
-    #ifdef USART0_MPCM_MODE
-  UCSR0A_REGISTER = (1 << U2X0_BIT) | (1 << MPCM0_BIT);
-    #else
-  UCSR0A_REGISTER = (1 << U2X0_BIT); // enable double speed
+  #if __AVR_ARCH__ == 103
+    #if (!defined(NO_RX0_INTERRUPT) && !defined(NO_TX0_INTERRUPT))
+      #ifdef USART0_RS485_MODE
+  UCSR0A_REGISTER = (1 << RXCIE0_BIT) | (1 << TXCIE0_BIT) | (1 << RS485_BIT);
+      #else
+  UCSR0A_REGISTER = (1 << RXCIE0_BIT);
+      #endif
     #endif
-  #elif defined(USART0_MPCM_MODE)
+  #else
+    #ifdef USART0_U2X_SPEED
+      #ifdef USART0_MPCM_MODE
+  UCSR0A_REGISTER = (1 << U2X0_BIT) | (1 << MPCM0_BIT);
+      #else
+  UCSR0A_REGISTER = (1 << U2X0_BIT); // enable double speed
+      #endif
+    #elif defined(USART0_MPCM_MODE)
   UCSR0A_REGISTER |= (1 << MPCM0_BIT);
+    #endif
   #endif
 
   UCSR0B_REGISTER = USART0_CONFIG_B;
-    // 8n1 is set by default, setting UCSRC is not needed
+  // 8n1 is set by default, setting UCSRC is not needed
+  #if defined(USART0_MPCM_MODE) && __AVR_ARCH__ == 103
+  UCSR0C_REGISTER = USART_CHSIZE_9BITH_gc;
+  #endif
 
   #ifdef USART0_USE_SOFT_RTS
   RTS0_DDR |= (1 << RTS0_IONUM);
@@ -1432,7 +1564,21 @@ static inline void uart0_set_FrameFormat(uint8_t UCSRC_reg) {
 // use instead of USE_DOUBLE_SPEED
 static inline void uart0_set_U2X(void) __attribute__((always_inline));
 static inline void uart0_set_U2X(void) {
+  #if __AVR_ARCH__ == 103
+  UCSR0B_REGISTER = (1 << U2X0_BIT);
+  #else
   UCSR0A_REGISTER |= (1 << U2X0_BIT);
+  #endif
+}
+
+// enable UDRE interrupt
+static inline void uart0_enable_UDREI(void) __attribute__((always_inline));
+static inline void uart0_enable_UDREI(void) {
+  #if __AVR_ARCH__ == 103
+  UCSR0A_REGISTER |= (1 << UDRIE0_BIT);
+  #else
+  UCSR0B_REGISTER |= (1 << UDRIE0_BIT);
+  #endif
 }
 
   #ifdef USART0_MPCM_MODE
@@ -1440,7 +1586,11 @@ static inline void uart0_set_U2X(void) {
 static inline void uart0_mpcm_slave_return_idle(void)
     __attribute__((always_inline));
 static inline void uart0_mpcm_slave_return_idle(void) {
+    #if __AVR_ARCH__ == 103
+  UCSR0B_REGISTER = (1 << MPCM0_BIT);
+    #else
   UCSR0A_REGISTER |= (1 << MPCM0_BIT);
+    #endif
 }
   #endif
 
@@ -1484,23 +1634,36 @@ static inline void uart1_init(uint16_t ubrr_value) {
 
   #ifdef USART_SKIP_UBRRH_IF_ZERO
   if (__builtin_constant_p(ubrr_value))
-    if (((ubrr_value >> 8) !=
-         0)) // requires -Os flag - do not use in non-inline functions
+    // requires -Os flag - do not use in non-inline functions
+    if (((ubrr_value >> 8) != 0))
   #endif
       UBRR1H_REGISTER = (ubrr_value >> 8);
 
-  #ifdef USART1_U2X_SPEED
-    #ifdef USART1_MPCM_MODE
-  UCSR1A_REGISTER = (1 << U2X1_BIT) | (1 << MPCM1_BIT);
-    #else
-  UCSR1A_REGISTER = (1 << U2X1_BIT); // enable double speed
+  #if __AVR_ARCH__ == 103
+    #if (!defined(NO_RX1_INTERRUPT) && !defined(NO_TX1_INTERRUPT))
+      #ifdef USART1_RS485_MODE
+  UCSR1A_REGISTER = (1 << RXCIE1_BIT) | (1 << TXCIE1_BIT) | (1 << RS485_BIT);
+      #else
+  UCSR1A_REGISTER = (1 << RXCIE1_BIT);
+      #endif
     #endif
-  #elif defined(USART1_MPCM_MODE)
+  #else
+    #ifdef USART1_U2X_SPEED
+      #ifdef USART1_MPCM_MODE
+  UCSR1A_REGISTER = (1 << U2X1_BIT) | (1 << MPCM1_BIT);
+      #else
+  UCSR1A_REGISTER = (1 << U2X1_BIT); // enable double speed
+      #endif
+    #elif defined(USART1_MPCM_MODE)
   UCSR1A_REGISTER |= (1 << MPCM1_BIT);
+    #endif
   #endif
 
   UCSR1B_REGISTER = USART1_CONFIG_B;
     // 8n1 is set by default, setting UCSRC is not needed
+  #if defined(USART1_MPCM_MODE) && __AVR_ARCH__ == 103
+  UCSR1C_REGISTER = USART_CHSIZE_9BITH_gc;
+  #endif
 
   #ifdef USART1_USE_SOFT_RTS
   RTS1_DDR |= (1 << RTS1_IONUM);
@@ -1516,14 +1679,34 @@ static inline void uart1_set_FrameFormat(uint8_t UCSRC_reg) {
 
 // use instead of USE_DOUBLE_SPEED
 static inline void uart1_set_U2X(void) __attribute__((always_inline));
-static inline void uart1_set_U2X(void) { UCSR1A_REGISTER |= (1 << U2X1_BIT); }
+static inline void uart1_set_U2X(void) {
+  #if __AVR_ARCH__ == 103
+  UCSR1B_REGISTER = (1 << U2X1_BIT);
+  #else
+  UCSR1A_REGISTER |= (1 << U2X1_BIT);
+  #endif
+}
+
+// enable UDRE interrupt
+static inline void uart1_enable_UDREI(void) __attribute__((always_inline));
+static inline void uart1_enable_UDREI(void) {
+  #if __AVR_ARCH__ == 103
+  UCSR1A_REGISTER |= (1 << UDRIE1_BIT);
+  #else
+  UCSR1B_REGISTER |= (1 << UDRIE1_BIT);
+  #endif
+}
 
   #ifdef USART1_MPCM_MODE
 // return slave to mpcm idle mode (wait for own addres frame)
 static inline void uart1_mpcm_slave_return_idle(void)
     __attribute__((always_inline));
 static inline void uart1_mpcm_slave_return_idle(void) {
+    #if __AVR_ARCH__ == 103
+  UCSR1B_REGISTER = (1 << MPCM1_BIT);
+    #else
   UCSR1A_REGISTER |= (1 << MPCM1_BIT);
+    #endif
 }
   #endif
 
@@ -1562,23 +1745,36 @@ static inline void uart2_init(uint16_t ubrr_value) {
 
   #ifdef USART_SKIP_UBRRH_IF_ZERO
   if (__builtin_constant_p(ubrr_value))
-    if (((ubrr_value >> 8) !=
-         0)) // requires -Os flag - do not use in non-inline functions
+    // requires -Os flag - do not use in non-inline functions
+    if (((ubrr_value >> 8) != 0))
   #endif
       UBRR2H_REGISTER = (ubrr_value >> 8);
 
-  #ifdef USART2_U2X_SPEED
-    #ifdef USART2_MPCM_MODE
-  UCSR2A_REGISTER = (1 << U2X2_BIT) | (1 << MPCM2_BIT);
-    #else
-  UCSR2A_REGISTER = (1 << U2X2_BIT); // enable double speed
+  #if __AVR_ARCH__ == 103
+    #if (!defined(NO_RX2_INTERRUPT) && !defined(NO_TX2_INTERRUPT))
+      #ifdef USART2_RS485_MODE
+  UCSR2A_REGISTER = (1 << RXCIE2_BIT) | (1 << TXCIE2_BIT) | (1 << RS485_BIT);
+      #else
+  UCSR2A_REGISTER = (1 << RXCIE2_BIT);
+      #endif
     #endif
-  #elif defined(USART2_MPCM_MODE)
+  #else
+    #ifdef USART2_U2X_SPEED
+      #ifdef USART2_MPCM_MODE
+  UCSR2A_REGISTER = (1 << U2X2_BIT) | (1 << MPCM2_BIT);
+      #else
+  UCSR2A_REGISTER = (1 << U2X2_BIT); // enable double speed
+      #endif
+    #elif defined(USART2_MPCM_MODE)
   UCSR2A_REGISTER |= (1 << MPCM2_BIT);
+    #endif
   #endif
 
   UCSR2B_REGISTER = USART2_CONFIG_B;
     // 8n1 is set by default, setting UCSRC is not needed
+  #if defined(USART2_MPCM_MODE) && __AVR_ARCH__ == 103
+  UCSR2C_REGISTER = USART_CHSIZE_9BITH_gc;
+  #endif
 
   #ifdef USART2_USE_SOFT_RTS
   RTS2_DDR |= (1 << RTS2_IONUM);
@@ -1594,14 +1790,34 @@ static inline void uart2_set_FrameFormat(uint8_t UCSRC_reg) {
 
 // use instead of USE_DOUBLE_SPEED
 static inline void uart2_set_U2X(void) __attribute__((always_inline));
-static inline void uart2_set_U2X(void) { UCSR2A_REGISTER |= (1 << U2X2_BIT); }
+static inline void uart2_set_U2X(void) {
+  #if __AVR_ARCH__ == 103
+  UCSR2B_REGISTER = (1 << U2X2_BIT);
+  #else
+  UCSR2A_REGISTER |= (1 << U2X2_BIT);
+  #endif
+}
+
+// enable UDRE interrupt
+static inline void uart2_enable_UDREI(void) __attribute__((always_inline));
+static inline void uart2_enable_UDREI(void) {
+  #if __AVR_ARCH__ == 103
+  UCSR2A_REGISTER |= (1 << UDRIE2_BIT);
+  #else
+  UCSR2B_REGISTER |= (1 << UDRIE2_BIT);
+  #endif
+}
 
   #ifdef USART2_MPCM_MODE
 // return slave to mpcm idle mode (wait for own addres frame)
 static inline void uart2_mpcm_slave_return_idle(void)
     __attribute__((always_inline));
 static inline void uart2_mpcm_slave_return_idle(void) {
+    #if __AVR_ARCH__ == 103
+  UCSR2B_REGISTER = (1 << MPCM2_BIT);
+    #else
   UCSR2A_REGISTER |= (1 << MPCM2_BIT);
+    #endif
 }
   #endif
 #endif // USE_USART2
@@ -1627,18 +1843,31 @@ static inline void uart3_init(uint16_t ubrr_value) {
   #endif
       UBRR3H_REGISTER = (ubrr_value >> 8);
 
-  #ifdef USART3_U2X_SPEED
-    #ifdef USART3_MPCM_MODE
-  UCSR3A_REGISTER = (1 << U2X3_BIT) | (1 << MPCM3_BIT);
-    #else
-  UCSR3A_REGISTER = (1 << U2X3_BIT); // enable double speed
+  #if __AVR_ARCH__ == 103
+    #if (!defined(NO_RX3_INTERRUPT) && !defined(NO_TX3_INTERRUPT))
+      #ifdef USART3_RS485_MODE
+  UCSR3A_REGISTER = (1 << RXCIE3_BIT) | (1 << TXCIE3_BIT) | (1 << RS485_BIT);
+      #else
+  UCSR3A_REGISTER = (1 << RXCIE3_BIT);
+      #endif
     #endif
-  #elif defined(USART3_MPCM_MODE)
+  #else
+    #ifdef USART3_U2X_SPEED
+      #ifdef USART3_MPCM_MODE
+  UCSR3A_REGISTER = (1 << U2X3_BIT) | (1 << MPCM3_BIT);
+      #else
+  UCSR3A_REGISTER = (1 << U2X3_BIT); // enable double speed
+      #endif
+    #elif defined(USART3_MPCM_MODE)
   UCSR3A_REGISTER |= (1 << MPCM3_BIT);
+    #endif
   #endif
 
   UCSR3B_REGISTER = USART3_CONFIG_B;
-    // 8n1 is set by default, setting UCSRC is not needed
+  // 8n1 is set by default, setting UCSRC is not needed
+  #if defined(USART3_MPCM_MODE) && __AVR_ARCH__ == 103
+  UCSR3C_REGISTER = USART_CHSIZE_9BITH_gc;
+  #endif
 
   #ifdef USART3_USE_SOFT_RTS
   RTS3_DDR |= (1 << RTS3_IONUM);
@@ -1654,14 +1883,34 @@ static inline void uart3_set_FrameFormat(uint8_t UCSRC_reg) {
 
 // use instead of USE_DOUBLE_SPEED
 static inline void uart3_set_U2X(void) __attribute__((always_inline));
-static inline void uart3_set_U2X(void) { UCSR3A_REGISTER |= (1 << U2X3_BIT); }
+static inline void uart3_set_U2X(void) {
+  #if __AVR_ARCH__ == 103
+  UCSR3B_REGISTER = (1 << U2X3_BIT);
+  #else
+  UCSR3A_REGISTER |= (1 << U2X3_BIT);
+  #endif
+}
+
+// enable UDRE interrupt
+static inline void uart3_enable_UDREI(void) __attribute__((always_inline));
+static inline void uart3_enable_UDREI(void) {
+  #if __AVR_ARCH__ == 103
+  UCSR3A_REGISTER |= (1 << UDRIE3_BIT);
+  #else
+  UCSR3B_REGISTER |= (1 << UDRIE3_BIT);
+  #endif
+}
 
   #ifdef USART3_MPCM_MODE
 // return slave to mpcm idle mode (wait for own addres frame)
 static inline void uart3_mpcm_slave_return_idle(void)
     __attribute__((always_inline));
 static inline void uart3_mpcm_slave_return_idle(void) {
+    #if __AVR_ARCH__ == 103
+  UCSR3B_REGISTER = (1 << MPCM3_BIT);
+    #else
   UCSR3A_REGISTER |= (1 << MPCM3_BIT);
+    #endif
 }
   #endif
 #endif // USE_USART3
@@ -2258,13 +2507,22 @@ static inline void cts0_isr_handler(void) {
     UCSR0B_REGISTER |= (1 << UDRIE0_BIT);
   }
   #else
+    #if __AVR_ARCH__ == 103
+  uint8_t tmp = UCSR0A_REGISTER;
+    #else
   uint8_t tmp = UCSR0B_REGISTER;
+    #endif
+
   if (CTS0_PIN & (1 << CTS0_IONUM)) {
     tmp &= ~(1 << UDRIE0_BIT);
   } else if (tx0_Tail != tx0_Head) {
     tmp |= (1 << UDRIE0_BIT);
   }
+    #if __AVR_ARCH__ == 103
+  UCSR0A_REGISTER = tmp;
+    #else
   UCSR0B_REGISTER = tmp;
+    #endif
   #endif
 }
 
@@ -2273,7 +2531,7 @@ static inline void naked_cts0_isr_handler(void) {
   asm volatile("\n\t"
 
   #if defined(USART0_IN_IO_ADDRESS_SPACE)
-               "cbi %M[UCSRB_reg_IO], %M[UDRIE_bit] \n\t"
+               "cbi %M[UDRIE_reg_IO], %M[UDRIE_bit] \n\t"
                "sbic %M[cts_port], %M[cts_pin] \n\t"
                "reti \n\t"
 
@@ -2281,14 +2539,14 @@ static inline void naked_cts0_isr_handler(void) {
                "lds %B[z_save], (tx0_Tail) \n\t"
                "lds %A[z_save], (tx0_Head) \n\t"
                "cpse %B[z_save], %A[z_save] \n\t"
-               "sbi %M[UCSRB_reg_IO], %M[UDRIE_bit] \n\t"
+               "sbi %M[UDRIE_reg_IO], %M[UDRIE_bit] \n\t"
     #elif defined(USART_USE_GLOBALLY_RESERVED_ISR_SREG_SAVE)
                "push r25 \n\t"
 
                "lds r25, (tx0_Tail) \n\t"
                "lds %[sreg_save], (tx0_Head) \n\t"
                "cpse r25, %[sreg_save] \n\t"
-               "sbi %M[UCSRB_reg_IO], %M[UDRIE_bit] \n\t"
+               "sbi %M[UDRIE_reg_IO], %M[UDRIE_bit] \n\t"
 
                "pop r25 \n\t"
     #else
@@ -2298,7 +2556,7 @@ static inline void naked_cts0_isr_handler(void) {
                "lds r25, (tx0_Tail) \n\t"
                "lds r24, (tx0_Head) \n\t"
                "cpse r25, r24 \n\t"
-               "sbi %M[UCSRB_reg_IO], %M[UDRIE_bit] \n\t"
+               "sbi %M[UDRIE_reg_IO], %M[UDRIE_bit] \n\t"
 
                "pop r25 \n\t"
                "pop r24 \n\t"
@@ -2327,9 +2585,9 @@ static inline void naked_cts0_isr_handler(void) {
     #endif
 
     #ifdef USART0_IN_UPPER_IO_ADDRESS_SPACE
-               "in r24, %M[UCSRB_reg_IO] \n\t"
+               "in r24, %M[UDRIE_reg_IO] \n\t"
     #else
-               "lds r24, %M[UCSRB_reg] \n\t"
+               "lds r24, %M[UDRIE_reg] \n\t"
     #endif
 
                "andi r24, ~(1<<%M[UDRIE_bit]) \n\t"
@@ -2350,17 +2608,17 @@ static inline void naked_cts0_isr_handler(void) {
                                        // - no need to clear it
 
     #ifdef USART0_IN_UPPER_IO_ADDRESS_SPACE
-               "in r24, %M[UCSRB_reg_IO] \n\t"
+               "in r24, %M[UDRIE_reg_IO] \n\t"
     #else
-               "lds r24, %M[UCSRB_reg] \n\t"
+               "lds r24, %M[UDRIE_reg] \n\t"
     #endif
                "ori r24, (1<<%M[UDRIE_bit]) \n\t"
 
                "cts_apply_%=:"
     #ifdef USART0_IN_UPPER_IO_ADDRESS_SPACE
-               "out %M[UCSRB_reg_IO], r24 \n\t"
+               "out %M[UDRIE_reg_IO], r24 \n\t"
     #else
-               "sts %M[UCSRB_reg], r24 \n\t"
+               "sts %M[UDRIE_reg], r24 \n\t"
     #endif
 
                "cts_exit_%=:"
@@ -2387,8 +2645,13 @@ static inline void naked_cts0_isr_handler(void) {
                : /* output operands */
                USART_REG_SAVE_LIST
                : /* input operands */
-               [UCSRB_reg] "n"(_SFR_MEM_ADDR(UCSR0B_REGISTER)),
-               [UCSRB_reg_IO] "M"(_SFR_IO_ADDR(UCSR0B_REGISTER)),
+  #if __AVR_ARCH__ == 103
+               [UDRIE_reg] "n"(_SFR_MEM_ADDR(UCSR0A_REGISTER)),
+               [UDRIE_reg_IO] "M"(_SFR_IO_ADDR(UCSR0A_REGISTER)),
+  #else
+               [UDRIE_reg] "n"(_SFR_MEM_ADDR(UCSR0B_REGISTER)),
+               [UDRIE_reg_IO] "M"(_SFR_IO_ADDR(UCSR0B_REGISTER)),
+  #endif
                [UDRIE_bit] "M"(UDRIE0_BIT),
                [cts_port] "M"(_SFR_IO_ADDR(CTS0_PIN)), [cts_pin] "M"(CTS0_IONUM)
                : /* clobbers */
@@ -2423,7 +2686,7 @@ static inline void naked_cts1_isr_handler(void) {
   asm volatile("\n\t"
 
   #if defined(USART1_IN_IO_ADDRESS_SPACE)
-               "cbi %M[UCSRB_reg_IO], %M[UDRIE_bit] \n\t"
+               "cbi %M[UDRIE_reg_IO], %M[UDRIE_bit] \n\t"
                "sbic %M[cts_port], %M[cts_pin] \n\t"
                "reti \n\t"
 
@@ -2431,7 +2694,7 @@ static inline void naked_cts1_isr_handler(void) {
                "lds %B[z_save], (tx1_Tail) \n\t"
                "lds %A[z_save], (tx1_Head) \n\t"
                "cpse %B[z_save], %A[z_save] \n\t"
-               "sbi %M[UCSRB_reg_IO], %M[UDRIE_bit] \n\t"
+               "sbi %M[UDRIE_reg_IO], %M[UDRIE_bit] \n\t"
 
     #elif defined(USART_USE_GLOBALLY_RESERVED_ISR_SREG_SAVE)
                "push r25 \n\t"
@@ -2439,7 +2702,7 @@ static inline void naked_cts1_isr_handler(void) {
                "lds r25, (tx1_Tail) \n\t"
                "lds %[sreg_save], (tx1_Head) \n\t"
                "cpse r25, %[sreg_save] \n\t"
-               "sbi %M[UCSRB_reg_IO], %M[UDRIE_bit] \n\t"
+               "sbi %M[UDRIE_reg_IO], %M[UDRIE_bit] \n\t"
 
                "pop r25 \n\t"
     #else
@@ -2449,7 +2712,7 @@ static inline void naked_cts1_isr_handler(void) {
                "lds r25, (tx1_Tail) \n\t"
                "lds r24, (tx1_Head) \n\t"
                "cpse r25, r24 \n\t"
-               "sbi %M[UCSRB_reg_IO], %M[UDRIE_bit] \n\t"
+               "sbi %M[UDRIE_reg_IO], %M[UDRIE_bit] \n\t"
 
                "pop r25 \n\t"
                "pop r24 \n\t"
@@ -2471,7 +2734,7 @@ static inline void naked_cts1_isr_handler(void) {
                "push r24 \n\t"
     #endif
 
-               "lds r24, %M[UCSRB_reg] \n\t"
+               "lds r24, %M[UDRIE_reg] \n\t"
                "andi r24, ~(1<<%M[UDRIE_bit]) \n\t"
                "sbic %M[cts_port], %M[cts_pin]\n\t"
                "rjmp cts_apply_%= \n\t"
@@ -2489,10 +2752,10 @@ static inline void naked_cts1_isr_handler(void) {
                "breq cts_exit_%= \n\t" // UDRIE should be disabled in this case
                                        // - no need to clear it
 
-               "lds r24, %M[UCSRB_reg] \n\t"
+               "lds r24, %M[UDRIE_reg] \n\t"
                "ori r24, (1<<%M[UDRIE_bit]) \n\t"
                "cts_apply_%=:"
-               "sts %M[UCSRB_reg], r24 \n\t"
+               "sts %M[UDRIE_reg], r24 \n\t"
 
                "cts_exit_%=:"
     #ifdef USART_USE_GLOBALLY_RESERVED_ISR_Z_SAVE
@@ -2513,8 +2776,13 @@ static inline void naked_cts1_isr_handler(void) {
                : /* output operands */
                USART_REG_SAVE_LIST
                : /* input operands */
-               [UCSRB_reg] "n"(_SFR_MEM_ADDR(UCSR1B_REGISTER)),
-               [UCSRB_reg_IO] "M"(_SFR_IO_ADDR(UCSR1B_REGISTER)),
+  #if __AVR_ARCH__ == 103
+               [UDRIE_reg] "n"(_SFR_MEM_ADDR(UCSR1A_REGISTER)),
+               [UDRIE_reg_IO] "M"(_SFR_IO_ADDR(UCSR1A_REGISTER)),
+  #else
+               [UDRIE_reg] "n"(_SFR_MEM_ADDR(UCSR1B_REGISTER)),
+               [UDRIE_reg_IO] "M"(_SFR_IO_ADDR(UCSR1B_REGISTER)),
+  #endif
                [UDRIE_bit] "M"(UDRIE1_BIT),
                [cts_port] "M"(_SFR_IO_ADDR(CTS1_PIN)), [cts_pin] "M"(CTS1_IONUM)
                : /* clobbers */
@@ -2553,7 +2821,7 @@ static inline void naked_cts2_isr_handler(void) {
                "push r24 \n\t"
   #endif
 
-               "lds r24, %M[UCSRB_reg] \n\t"
+               "lds r24, %M[UDRIE_reg] \n\t"
                "andi r24, ~(1<<%M[UDRIE_bit]) \n\t"
                "sbic %M[cts_port], %M[cts_pin]\n\t"
                "rjmp cts_apply_%= \n\t"
@@ -2571,10 +2839,10 @@ static inline void naked_cts2_isr_handler(void) {
                "breq cts_exit_%= \n\t" // UDRIE should be disabled in this case
                                        // - no need to clear it
 
-               "lds r24, %M[UCSRB_reg] \n\t"
+               "lds r24, %M[UDRIE_reg] \n\t"
                "ori r24, (1<<%M[UDRIE_bit]) \n\t"
                "cts_apply_%=:"
-               "sts %M[UCSRB_reg], r24 \n\t"
+               "sts %M[UDRIE_reg], r24 \n\t"
 
                "cts_exit_%=:"
   #ifdef USART_USE_GLOBALLY_RESERVED_ISR_Z_SAVE
@@ -2594,7 +2862,11 @@ static inline void naked_cts2_isr_handler(void) {
                : /* output operands */
                USART_REG_SAVE_LIST
                : /* input operands */
-               [UCSRB_reg] "n"(_SFR_MEM_ADDR(UCSR2B_REGISTER)),
+  #if __AVR_ARCH__ == 103
+               [UDRIE_reg] "n"(_SFR_MEM_ADDR(UCSR2A_REGISTER)),
+  #else
+               [UDRIE_reg] "n"(_SFR_MEM_ADDR(UCSR2B_REGISTER)),
+  #endif
                [UDRIE_bit] "M"(UDRIE2_BIT),
                [cts_port] "M"(_SFR_IO_ADDR(CTS2_PIN)), [cts_pin] "M"(CTS2_IONUM)
                : /* clobbers */
@@ -2633,7 +2905,7 @@ static inline void naked_cts3_isr_handler(void) {
                "push r24 \n\t"
   #endif
 
-               "lds r24, %M[UCSRB_reg] \n\t"
+               "lds r24, %M[UDRIE_reg] \n\t"
                "andi r24, ~(1<<%M[UDRIE_bit]) \n\t"
                "sbic %M[cts_port], %M[cts_pin]\n\t"
                "rjmp cts_apply_%= \n\t"
@@ -2651,10 +2923,10 @@ static inline void naked_cts3_isr_handler(void) {
                "breq cts_exit_%= \n\t" // UDRIE should be disabled in this case
                                        // - no need to clear it
 
-               "lds r24, %M[UCSRB_reg] \n\t"
+               "lds r24, %M[UDRIE_reg] \n\t"
                "ori r24, (1<<%M[UDRIE_bit]) \n\t"
                "cts_apply_%=:"
-               "sts %M[UCSRB_reg], r24 \n\t"
+               "sts %M[UDRIE_reg], r24 \n\t"
 
                "cts_exit_%=:"
   #ifdef USART_USE_GLOBALLY_RESERVED_ISR_Z_SAVE
@@ -2674,7 +2946,11 @@ static inline void naked_cts3_isr_handler(void) {
                : /* output operands */
                USART_REG_SAVE_LIST
                : /* input operands */
-               [UCSRB_reg] "n"(_SFR_MEM_ADDR(UCSR3B_REGISTER)),
+  #if __AVR_ARCH__ == 103
+               [UDRIE_reg] "n"(_SFR_MEM_ADDR(UCSR3A_REGISTER)),
+  #else
+               [UDRIE_reg] "n"(_SFR_MEM_ADDR(UCSR3B_REGISTER)),
+  #endif
                [UDRIE_bit] "M"(UDRIE3_BIT),
                [cts_port] "M"(_SFR_IO_ADDR(CTS3_PIN)), [cts_pin] "M"(CTS3_IONUM)
                : /* clobbers */

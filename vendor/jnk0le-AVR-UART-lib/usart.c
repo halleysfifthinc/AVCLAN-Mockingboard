@@ -108,25 +108,41 @@ void uart0_reinit(uint16_t ubrr_value) {
   #endif
 
   UCSR0B_REGISTER = 0; // flush all hardware buffers
+  #if __AVR_ARCH__ == 103
+  UCSR0A_REGISTER = 0;
+  #endif
 
   //(writing TXENn to zero) will not become effective until ongoing and pending
-  //transmissions are completed
+  // transmissions are completed
 
   UBRR0L_REGISTER = (uint8_t)ubrr_value;
   UBRR0H_REGISTER = (ubrr_value >> 8);
 
-  #ifdef USART0_U2X_SPEED
-    #ifdef USART0_MPCM_MODE
-  UCSR0A_REGISTER = (1 << U2X0_BIT) | (1 << MPCM0_BIT);
-    #else
-  UCSR0A_REGISTER = (1 << U2X0_BIT); // enable double speed
+  #if __AVR_ARCH__ == 103
+    #if (!defined(NO_RX0_INTERRUPT) && !defined(NO_TX0_INTERRUPT))
+      #ifdef USART0_RS485_MODE
+  UCSR0A_REGISTER = (1 << RXCIE0_BIT) | (1 << TXCIE0_BIT) | (1 << RS485_BIT);
+      #else
+  UCSR0A_REGISTER = (1 << RXCIE0_BIT);
+      #endif
     #endif
-  #elif defined(USART0_MPCM_MODE)
-  UCSR0A_REGISTER = (1 << MPCM0_BIT);
+  #else
+    #ifdef USART0_U2X_SPEED
+      #ifdef USART0_MPCM_MODE
+  UCSR0A_REGISTER = (1 << U2X0_BIT) | (1 << MPCM0_BIT);
+      #else
+  UCSR0A_REGISTER = (1 << U2X0_BIT); // enable double speed
+      #endif
+    #elif defined(USART0_MPCM_MODE)
+  UCSR0A_REGISTER |= (1 << MPCM0_BIT);
+    #endif
   #endif
 
   UCSR0B_REGISTER = USART0_CONFIG_B;
   // 8n1 is set by default, setting UCSRC is not needed
+  #if defined(USART0_MPCM_MODE) && __AVR_ARCH__ == 103
+  UCSR0C_REGISTER = USART_CHSIZE_9BITH_gc;
+  #endif
 
   #ifdef USART0_USE_SOFT_RTS
   RTS0_DDR |= (1 << RTS0_IONUM);
@@ -147,25 +163,41 @@ void uart1_reinit(uint16_t ubrr_value) {
   #endif
 
   UCSR1B_REGISTER = 0; // flush all hardware buffers
+  #if __AVR_ARCH__ == 103
+  UCSR1A_REGISTER = 0;
+  #endif
 
   //(writing TXENn to zero) will not become effective until ongoing and pending
-  //transmissions are completed
+  // transmissions are completed
 
   UBRR1L_REGISTER = (uint8_t)ubrr_value;
   UBRR1H_REGISTER = (ubrr_value >> 8);
 
-  #ifdef USART1_U2X_SPEED
-    #ifdef USART1_MPCM_MODE
-  UCSR1A_REGISTER = (1 << U2X1_BIT) | (1 << MPCM1_BIT);
-    #else
-  UCSR1A_REGISTER = (1 << U2X1_BIT); // enable double speed
+  #if __AVR_ARCH__ == 103
+    #if (!defined(NO_RX1_INTERRUPT) && !defined(NO_TX1_INTERRUPT))
+      #ifdef USART1_RS485_MODE
+  UCSR1A_REGISTER = (1 << RXCIE1_BIT) | (1 << TXCIE1_BIT) | (1 << RS485_BIT);
+      #else
+  UCSR1A_REGISTER = (1 << RXCIE1_BIT);
+      #endif
     #endif
-  #elif defined(USART1_MPCM_MODE)
-  UCSR1A_REGISTER = (1 << MPCM1_BIT);
+  #else
+    #ifdef USART1_U2X_SPEED
+      #ifdef USART1_MPCM_MODE
+  UCSR1A_REGISTER = (1 << U2X1_BIT) | (1 << MPCM1_BIT);
+      #else
+  UCSR1A_REGISTER = (1 << U2X1_BIT); // enable double speed
+      #endif
+    #elif defined(USART1_MPCM_MODE)
+  UCSR1A_REGISTER |= (1 << MPCM1_BIT);
+    #endif
   #endif
 
   UCSR1B_REGISTER = USART1_CONFIG_B;
   // 8n1 is set by default, setting UCSRC is not needed
+  #if defined(USART1_MPCM_MODE) && __AVR_ARCH__ == 103
+  UCSR1C_REGISTER = USART_CHSIZE_9BITH_gc;
+  #endif
 
   #ifdef USART1_USE_SOFT_RTS
   RTS1_DDR |= (1 << RTS1_IONUM);
@@ -186,25 +218,41 @@ void uart2_reinit(uint16_t ubrr_value) {
   #endif
 
   UCSR2B_REGISTER = 0; // flush all hardware buffers
+  #if __AVR_ARCH__ == 103
+  UCSR2A_REGISTER = 0;
+  #endif
 
   //(writing TXENn to zero) will not become effective until ongoing and pending
-  //transmissions are completed
+  // transmissions are completed
 
   UBRR2L_REGISTER = (uint8_t)ubrr_value;
   UBRR2H_REGISTER = (ubrr_value >> 8);
 
-  #ifdef USART2_U2X_SPEED
-    #ifdef USART2_MPCM_MODE
-  UCSR2A_REGISTER = (1 << U2X2_BIT) | (1 << MPCM2_BIT);
-    #else
-  UCSR2A_REGISTER = (1 << U2X2_BIT); // enable double speed
+  #if __AVR_ARCH__ == 103
+    #if (!defined(NO_RX2_INTERRUPT) && !defined(NO_TX2_INTERRUPT))
+      #ifdef USART2_RS485_MODE
+  UCSR2A_REGISTER = (1 << RXCIE2_BIT) | (1 << TXCIE2_BIT) | (1 << RS485_BIT);
+      #else
+  UCSR2A_REGISTER = (1 << RXCIE2_BIT);
+      #endif
     #endif
-  #elif defined(USART2_MPCM_MODE)
-  UCSR2A_REGISTER = (1 << MPCM2_BIT);
+  #else
+    #ifdef USART2_U2X_SPEED
+      #ifdef USART2_MPCM_MODE
+  UCSR2A_REGISTER = (1 << U2X2_BIT) | (1 << MPCM2_BIT);
+      #else
+  UCSR2A_REGISTER = (1 << U2X2_BIT); // enable double speed
+      #endif
+    #elif defined(USART2_MPCM_MODE)
+  UCSR2A_REGISTER |= (1 << MPCM2_BIT);
+    #endif
   #endif
 
   UCSR2B_REGISTER = USART2_CONFIG_B;
   // 8n1 is set by default, setting UCSRC is not needed
+  #if defined(USART2_MPCM_MODE) && __AVR_ARCH__ == 103
+  UCSR2C_REGISTER = USART_CHSIZE_9BITH_gc;
+  #endif
 
   #ifdef USART2_USE_SOFT_RTS
   RTS2_DDR |= (1 << RTS2_IONUM);
@@ -225,22 +273,38 @@ void uart3_reinit(uint16_t ubrr_value) {
   #endif
 
   UCSR3B_REGISTER = 0; // flush all hardware buffers
+  #if __AVR_ARCH__ == 103
+  UCSR3A_REGISTER = 0;
+  #endif
 
   UBRR3L_REGISTER = (uint8_t)ubrr_value;
   UBRR3H_REGISTER = (ubrr_value >> 8);
 
-  #ifdef USART3_U2X_SPEED
-    #ifdef USART3_MPCM_MODE
-  UCSR3A_REGISTER = (1 << U2X3_BIT) | (1 << MPCM3_BIT);
-    #else
-  UCSR3A_REGISTER = (1 << U2X3_BIT); // enable double speed
+  #if __AVR_ARCH__ == 103
+    #if (!defined(NO_RX3_INTERRUPT) && !defined(NO_TX3_INTERRUPT))
+      #ifdef USART3_RS485_MODE
+  UCSR3A_REGISTER = (1 << RXCIE3_BIT) | (1 << TXCIE3_BIT) | (1 << RS485_BIT);
+      #else
+  UCSR3A_REGISTER = (1 << RXCIE3_BIT);
+      #endif
     #endif
-  #elif defined(USART3_MPCM_MODE)
-  UCSR3A_REGISTER = (1 << MPCM3_BIT);
+  #else
+    #ifdef USART3_U2X_SPEED
+      #ifdef USART3_MPCM_MODE
+  UCSR3A_REGISTER = (1 << U2X3_BIT) | (1 << MPCM3_BIT);
+      #else
+  UCSR3A_REGISTER = (1 << U2X3_BIT); // enable double speed
+      #endif
+    #elif defined(USART3_MPCM_MODE)
+  UCSR3A_REGISTER |= (1 << MPCM3_BIT);
+    #endif
   #endif
 
   UCSR3B_REGISTER = USART3_CONFIG_B;
   // 8n1 is set by default, setting UCSRC is not needed
+  #if defined(USART3_MPCM_MODE) && __AVR_ARCH__ == 103
+  UCSR3C_REGISTER = USART_CHSIZE_9BITH_gc;
+  #endif
 
   #ifdef USART3_USE_SOFT_RTS
   RTS3_DDR |= (1 << RTS3_IONUM);
@@ -271,7 +335,13 @@ void uart0_putc(char data) {
         #ifdef USART0_USE_SOFT_CTS
   if (!(CTS0_PIN & (1 << CTS0_IONUM)))
         #endif
-    if (tmp_tx_Tail == tmp_tx_Head && (UCSR0A_REGISTER & UDRE0_BIT)) {
+    if (tmp_tx_Tail == tmp_tx_Head &&
+        #if __AVR_ARCH__ == 103
+        (USR0_REGISTER & UDRE0_BIT)
+        #else
+      (UCSR0A_REGISTER & UDRE0_BIT)
+        #endif
+    ) {
       UDR0_REGISTER = data;
       return;
     }
@@ -280,16 +350,14 @@ void uart0_putc(char data) {
 
   while (tmp_tx_Tail == tmp_tx_Head) // wait for free space in buffer
   {
-    tmp_tx_Tail =
-        tx0_Tail; // for faster pass through, results in a little bigger code
+    // for faster pass through, results in a little bigger code
+    tmp_tx_Tail = tx0_Tail;
   }
-      #else
-  register uint8_t tmp_tx_Head =
-      (tx0_Head + 1) &
-      TX0_BUFFER_MASK; // calculate new position of TX head in buffer
+      #else // !USART0_PUTC_FAST_INSERTIONS
+  // calculate new position of TX head in buffer
+  register uint8_t tmp_tx_Head = (tx0_Head + 1) & TX0_BUFFER_MASK;
 
-  while (tx0_Tail == tmp_tx_Head)
-    ; // wait for free space in buffer
+  while (tx0_Tail == tmp_tx_Head) {} // wait for free space in buffer
       #endif
 
   tx0_buffer[tmp_tx_Head] = data;
@@ -305,7 +373,7 @@ void uart0_putc(char data) {
     if (!(CTS0_PIN & (1 << CTS0_IONUM)))
       #endif
     {
-      UCSR0B_REGISTER |= (1 << UDRIE0_BIT); // enable UDRE interrupt
+      uart0_enable_UDREI(); // enable UDRE interrupt
     }
   }
 }
@@ -346,12 +414,12 @@ void uart0_putc(char data) {
       "rjmp normal_insert_%= \n\t"
 
         #ifdef USART0_IN_IO_ADDRESS_SPACE
-      "sbis %M[UCSRA_reg_IO], %M[udre_bit] \n\t"
+      "sbis %M[UDRE_reg_IO], %M[udre_bit] \n\t"
         #elif defined(USART0_IN_UPPER_IO_ADDRESS_SPACE)
-      "in r26, %M[UCSRA_reg_IO] \n\t"
+      "in r26, %M[UDRE_reg_IO] \n\t"
       "sbrs r26, %M[udre_bit] \n\t"
         #else
-      "lds r26, %M[UCSRA_reg] \n\t"
+      "lds r26, %M[UDRE_reg] \n\t"
       "sbrs r26, %M[udre_bit] \n\t"
         #endif
       "rjmp normal_insert_%= \n\t"
@@ -384,8 +452,13 @@ void uart0_putc(char data) {
       [cts_port] "M"(_SFR_IO_ADDR(CTS0_PORT)), [cts_pin] "M"(CTS0_IONUM),
         #endif
       [mask] "M"(TX0_BUFFER_MASK),
-      [UCSRA_reg] "n"(_SFR_MEM_ADDR(UCSR0A_REGISTER)),
-      [UCSRA_reg_IO] "M"(_SFR_IO_ADDR(UCSR0A_REGISTER)),
+        #if __AVR_ARCH__ == 103
+      [UDRE_reg] "n"(_SFR_MEM_ADDR(USR0_REGISTER)),
+      [UDRE_reg_IO] "M"(_SFR_IO_ADDR(USR0_REGISTER)),
+        #else
+      [UDRE_reg] "n"(_SFR_MEM_ADDR(UCSR0A_REGISTER)),
+      [UDRE_reg_IO] "M"(_SFR_IO_ADDR(UCSR0A_REGISTER)),
+        #endif
       [UDR_reg] "n"(_SFR_MEM_ADDR(UDR0_REGISTER)),
       [UDR_reg_IO] "M"(_SFR_IO_ADDR(UDR0_REGISTER)),
       [udre_bit] "M"(UDRE0_BIT)
@@ -464,7 +537,11 @@ void uart0_putc(char data) {
         #endif
                    : // outputs
                    : // inputs
+        #if __AVR_ARCH__ == 103
+                   [control_reg] "n"(_SFR_MEM_ADDR(UCSR0A_REGISTER)),
+        #else
                    [control_reg] "n"(_SFR_MEM_ADDR(UCSR0B_REGISTER)),
+        #endif
                    [udrie_bit] "M"(UDRIE0_BIT)
                    : // clobbers
                    "r25");
@@ -478,9 +555,9 @@ void uart0_putc(char data) {
                    // register, make sure it is not affected by the compiler
 }
 
-char uart0_putc_(char data) __attribute__((
-    alias("uart0_putc"))); // alias for uart_putc that returns passed argument
-                           // unaffected by omitting any existent rule
+// alias for uart_putc that returns passed argument unaffected by omitting any
+// existent rule
+char uart0_putc_(char data) __attribute__((alias("uart0_putc")));
     #endif // USART_NO_ABI_BREAKING_PREMATURES
 
     //******************************************************************
@@ -676,22 +753,23 @@ void uart0_putstrl(char *string, uint8_t BytesToWrite) {
 }
     #endif // USART_NO_ABI_BREAKING_PREMATURES
 
-    //******************************************************************
-    // Function  : Send string from flash memory.
-    // Arguments : Pointer to string placed in flash memory.
-    // Return    : none
-    //******************************************************************
-    #ifdef USART_NO_ABI_BREAKING_PREMATURES
+  //******************************************************************
+  // Function  : Send string from flash memory.
+  // Arguments : Pointer to string placed in flash memory.
+  // Return    : none
+  //******************************************************************
+    #if __AVR_ARCH__ != 103
+      #ifdef USART_NO_ABI_BREAKING_PREMATURES
 void uart0_puts_p(const __flash char *string) {
-      #ifndef USART0_NOT_ACCESIBLE_FROM_CBI // tiny 102/104
+        #ifndef USART0_NOT_ACCESIBLE_FROM_CBI // tiny 102/104
   register char c;
   while ((c = *string++))
     uart0_putc(c);
-      #endif
+        #endif
 }
-    #else // !USART_NO_ABI_BREAKING_PREMATURES
+      #else // !USART_NO_ABI_BREAKING_PREMATURES
 void uart0_puts_p(const __flash char *string) {
-      #if !defined(__AVR_ATtiny102__) || !defined(__AVR_ATtiny104__)
+        #if !defined(__AVR_ATtiny102__) || !defined(__AVR_ATtiny104__)
   asm volatile(
       "\n\t"
 
@@ -709,9 +787,10 @@ void uart0_puts_p(const __flash char *string) {
       :                          // clobbers
       "r24", "r25", "r26", "r27" // uart_putc()
   );
-      #endif
+        #endif
 }
-    #endif // USART_NO_ABI_BREAKING_PREMATURES
+      #endif // USART_NO_ABI_BREAKING_PREMATURES
+    #endif
 
 //******************************************************************
 // Function  : Send integer formated into ASCI string (base 10).
@@ -922,13 +1001,19 @@ void uart0_flush(void) {
     //******************************************************************
     #ifdef USART0_MPCM_MODE
 void uart0_mpcm_transmit_addres_Frame(uint8_t dat) {
-  while (tx0_Tail != tx0_Head)
-    ;
+  while (tx0_Tail != tx0_Head) {}
+      #if __AVR_ARCH__ == 103
+  UDR0H_REGISTER |= (1 << TXB80_BIT);
+      #else
   UCSR0B_REGISTER |= (1 << TXB80_BIT);
+      #endif
   uart_putc(dat);
-  while (tx0_Tail != tx0_Head)
-    ;
+  while (tx0_Tail != tx0_Head) {}
+      #if __AVR_ARCH__ == 103
+  UDR0H_REGISTER &= ~(1 << TXB80_BIT); // not sure if necessary
+      #else
   UCSR0B_REGISTER &= ~(1 << TXB80_BIT); // not sure if necessary
+      #endif
 }
     #endif
   #endif // NO_TX0_INTERRUPT
@@ -1024,9 +1109,9 @@ void uart1_putc(char data) {
       "rjmp normal_insert_%= \n\t"
 
         #ifdef USART1_IN_IO_ADDRESS_SPACE
-      "sbis %M[UCSRA_reg_IO], %M[udre_bit] \n\t"
+      "sbis %M[UDRE_reg_IO], %M[udre_bit] \n\t"
         #else
-      "lds r26, %M[UCSRA_reg] \n\t"
+      "lds r26, %M[UDRE_reg] \n\t"
       "sbrs r26, %M[udre_bit] \n\t"
         #endif
       "rjmp normal_insert_%= \n\t"
@@ -1058,8 +1143,13 @@ void uart1_putc(char data) {
       [cts_port] "M"(_SFR_IO_ADDR(CTS1_PORT)), [cts_pin] "M"(CTS1_IONUM),
         #endif
       [mask] "M"(TX1_BUFFER_MASK),
-      [UCSRA_reg] "n"(_SFR_MEM_ADDR(UCSR1A_REGISTER)),
-      [UCSRA_reg_IO] "M"(_SFR_IO_ADDR(UCSR1A_REGISTER)),
+        #if __AVR_ARCH__ == 103
+      [UDRE_reg] "n"(_SFR_MEM_ADDR(USR1_REGISTER)),
+      [UDRE_reg_IO] "M"(_SFR_IO_ADDR(USR1_REGISTER)),
+        #else
+      [UDRE_reg] "n"(_SFR_MEM_ADDR(UCSR1A_REGISTER)),
+      [UDRE_reg_IO] "M"(_SFR_IO_ADDR(UCSR1A_REGISTER)),
+        #endif
       [UDR_reg] "n"(_SFR_MEM_ADDR(UDR1_REGISTER)),
       [UDR_reg_IO] "M"(_SFR_IO_ADDR(UDR1_REGISTER)),
       [udre_bit] "M"(UDRE1_BIT)
@@ -1122,7 +1212,11 @@ void uart1_putc(char data) {
                    "sts %M[control_reg], r25 \n\t"
                    : // outputs
                    : // inputs
+        #if __AVR_ARCH__ == 103
+                   [control_reg] "n"(_SFR_MEM_ADDR(UCSR1A_REGISTER)),
+        #else
                    [control_reg] "n"(_SFR_MEM_ADDR(UCSR1B_REGISTER)),
+        #endif
                    [udrie_bit] "M"(UDRIE1_BIT)
                    : // clobbers
                    "r25");
@@ -1562,7 +1656,7 @@ void uart2_putc(char data) {
       "cpse r27, %[head] \n\t"
       "rjmp normal_insert_%= \n\t"
 
-      "lds r26, %M[UCSRA_reg] \n\t"
+      "lds r26, %M[UDRE_reg] \n\t"
       "sbrs r26, %M[udre_bit] \n\t"
       "rjmp normal_insert_%= \n\t"
 
@@ -1589,8 +1683,13 @@ void uart2_putc(char data) {
       [cts_port] "M"(_SFR_IO_ADDR(CTS2_PORT)), [cts_pin] "M"(CTS2_IONUM),
         #endif
       [mask] "M"(TX2_BUFFER_MASK),
-      [UCSRA_reg] "n"(_SFR_MEM_ADDR(UCSR2A_REGISTER)),
-      [UCSRA_reg_IO] "M"(_SFR_IO_ADDR(UCSR2A_REGISTER)),
+        #if __AVR_ARCH__ == 103
+      [UDRE_reg] "n"(_SFR_MEM_ADDR(USR2_REGISTER)),
+      [UDRE_reg_IO] "M"(_SFR_IO_ADDR(USR2_REGISTER)),
+        #else
+      [UDRE_reg] "n"(_SFR_MEM_ADDR(UCSR2A_REGISTER)),
+      [UDRE_reg_IO] "M"(_SFR_IO_ADDR(UCSR2A_REGISTER)),
+        #endif
       [UDR_reg] "n"(_SFR_MEM_ADDR(UDR2_REGISTER)),
       [UDR_reg_IO] "M"(_SFR_IO_ADDR(UDR2_REGISTER)),
       [udre_bit] "M"(UDRE2_BIT)
@@ -1650,7 +1749,11 @@ void uart2_putc(char data) {
                    "sts %M[control_reg], r25 \n\t"
                    : // outputs
                    : // inputs
+      #if __AVR_ARCH__ == 103
+                   [control_reg] "n"(_SFR_MEM_ADDR(UCSR2A_REGISTER)),
+      #else
                    [control_reg] "n"(_SFR_MEM_ADDR(UCSR2B_REGISTER)),
+      #endif
                    [udrie_bit] "M"(UDRIE2_BIT)
                    : // clobbers
                    "r25");
@@ -2088,7 +2191,7 @@ void uart3_putc(char data) {
       "cpse r27, %[head] \n\t"
       "rjmp normal_insert_%= \n\t"
 
-      "lds r26, %M[UCSRA_reg] \n\t"
+      "lds r26, %M[UDRE_reg] \n\t"
       "sbrs r26, %M[udre_bit] \n\t"
       "rjmp normal_insert_%= \n\t"
 
@@ -2115,8 +2218,13 @@ void uart3_putc(char data) {
       [cts_port] "M"(_SFR_IO_ADDR(CTS3_PORT)), [cts_pin] "M"(CTS3_IONUM),
         #endif
       [mask] "M"(TX2_BUFFER_MASK),
-      [UCSRA_reg] "n"(_SFR_MEM_ADDR(UCSR3A_REGISTER)),
-      [UCSRA_reg_IO] "M"(_SFR_IO_ADDR(UCSR3A_REGISTER)),
+        #if __AVR_ARCH__ == 103
+      [UDRE_reg] "n"(_SFR_MEM_ADDR(USR3_REGISTER)),
+      [UDRE_reg_IO] "M"(_SFR_IO_ADDR(USR3_REGISTER)),
+        #else
+      [UDRE_reg] "n"(_SFR_MEM_ADDR(UCSR3A_REGISTER)),
+      [UDRE_reg_IO] "M"(_SFR_IO_ADDR(UCSR3A_REGISTER)),
+        #endif
       [UDR_reg] "n"(_SFR_MEM_ADDR(UDR3_REGISTER)),
       [UDR_reg_IO] "M"(_SFR_IO_ADDR(UDR3_REGISTER)),
       [udre_bit] "M"(UDRE3_BIT)
@@ -2176,7 +2284,11 @@ void uart3_putc(char data) {
                    "sts %M[control_reg], r25 \n\t"
                    : // outputs
                    : // inputs
+      #if __AVR_ARCH__ == 103
+                   [control_reg] "n"(_SFR_MEM_ADDR(UCSR3A_REGISTER)),
+      #else
                    [control_reg] "n"(_SFR_MEM_ADDR(UCSR3B_REGISTER)),
+      #endif
                    [udrie_bit] "M"(UDRIE3_BIT)
                    : // clobbers
                    "r25");
@@ -2549,15 +2661,22 @@ char uart0_getc(void) {
   rx0_Tail = tmp_rx_Tail;
 
       #ifdef USART0_EXTEND_RX_BUFFER
+        #if __AVR_ARCH__ == 103
+  UCSR0A_REGISTER |= (1 << RXCIE0_BIT);
+        #else
   UCSR0B_REGISTER |= (1 << RXCIE0_BIT);
+        #endif
       #endif
 
       #ifdef USART0_USE_SOFT_RTS
   if (RTS0_PORT & (1 << RTS0_IONUM))
-    if (!(UCSR0A_REGISTER &
-          (1 << RXC0_BIT))) // isr has fired so check if there is no unread data
-                            // in UDR (if missed then next read will release RTS
-                            // line)
+        #if __AVR_ARCH__ == 103
+    if (!(USR0_REGISTER & (1 << RXC0_BIT)))
+        #else
+    // isr has fired so check if there is no unread data in UDR (if missed
+    // then next read will release RTS line)
+    if (!(UCSR0A_REGISTER & (1 << RXC0_BIT)))
+        #endif
       RTS0_PORT &= ~(1 << RTS0_IONUM);
       #endif
 
@@ -2617,15 +2736,22 @@ char uart0_getc(void) {
   rx0_Tail = tmp_rx_Tail;
 
       #ifdef USART0_EXTEND_RX_BUFFER
+        #if __AVR_ARCH__ == 103
+  UCSR0A_REGISTER |= (1 << RXCIE0_BIT);
+        #else
   UCSR0B_REGISTER |= (1 << RXCIE0_BIT);
+        #endif
       #endif
 
       #ifdef USART0_USE_SOFT_RTS
   if (RTS0_PORT & (1 << RTS0_IONUM))
-    if (!(UCSR0A_REGISTER &
-          (1 << RXC0_BIT))) // isr has fired so check if there is no unread data
-                            // in UDR (if missed then next read will release RTS
-                            // line)
+        #if __AVR_ARCH__ == 103
+    if (!(USR0_REGISTER & (1 << RXC0_BIT)))
+        #else
+    // isr has fired so check if there is no unread data in UDR (if missed
+    // then next read will release RTS line)
+    if (!(UCSR0A_REGISTER & (1 << RXC0_BIT)))
+        #endif
       RTS0_PORT &= ~(1 << RTS0_IONUM);
       #endif
 
@@ -2974,12 +3100,22 @@ int16_t uart0_getData(void) {
   rx0_Tail = tmp_rx_Tail;
 
       #ifdef USART0_EXTEND_RX_BUFFER
+        #if __AVR_ARCH__ == 103
+  UCSR0A_REGISTER |= (1 << RXCIE0_BIT);
+        #else
   UCSR0B_REGISTER |= (1 << RXCIE0_BIT);
+        #endif
       #endif
 
       #ifdef USART0_USE_SOFT_RTS
   if (RTS0_PORT & (1 << RTS0_IONUM))
+        #if __AVR_ARCH__ == 103
+    if (!(USR0_REGISTER & (1 << RXC0_BIT)))
+        #else
+    // isr has fired so check if there is no unread data in UDR (if missed
+    // then next read will release RTS line)
     if (!(UCSR0A_REGISTER & (1 << RXC0_BIT)))
+        #endif
       RTS0_PORT &= ~(1 << RTS0_IONUM);
       #endif
 
@@ -3023,12 +3159,22 @@ int16_t uart0_getData(void) {
   rx0_Tail = tmp_rx_Tail;
 
       #ifdef USART0_EXTEND_RX_BUFFER
+        #if __AVR_ARCH__ == 103
+  UCSR0A_REGISTER |= (1 << RXCIE0_BIT);
+        #else
   UCSR0B_REGISTER |= (1 << RXCIE0_BIT);
+        #endif
       #endif
 
       #ifdef USART0_USE_SOFT_RTS
   if (RTS0_PORT & (1 << RTS0_IONUM))
+        #if __AVR_ARCH__ == 103
+    if (!(USR0_REGISTER & (1 << RXC0_BIT)))
+        #else
+    // isr has fired so check if there is no unread data in UDR (if missed
+    // then next read will release RTS line)
     if (!(UCSR0A_REGISTER & (1 << RXC0_BIT)))
+        #endif
       RTS0_PORT &= ~(1 << RTS0_IONUM);
       #endif
 
@@ -3056,12 +3202,22 @@ uint8_t uart0_LoadData(uint8_t *data) {
   rx0_Tail = tmp_rx_Tail;
 
     #ifdef USART0_EXTEND_RX_BUFFER
+      #if __AVR_ARCH__ == 103
+  UCSR0A_REGISTER |= (1 << RXCIE0_BIT);
+      #else
   UCSR0B_REGISTER |= (1 << RXCIE0_BIT);
+      #endif
     #endif
 
     #ifdef USART0_USE_SOFT_RTS
   if (RTS0_PORT & (1 << RTS0_IONUM))
+      #if __AVR_ARCH__ == 103
+    if (!(USR0_REGISTER & (1 << RXC0_BIT)))
+      #else
+    // isr has fired so check if there is no unread data in UDR (if missed
+    // then next read will release RTS line)
     if (!(UCSR0A_REGISTER & (1 << RXC0_BIT)))
+      #endif
       RTS0_PORT &= ~(1 << RTS0_IONUM);
     #endif
 
@@ -4792,8 +4948,13 @@ ISR(UDRE0_INTERRUPT, ISR_NAKED) {
       : // input operands
       TX0_INPUT_OPERAND_LIST[UDR_reg_IO] "M"(_SFR_IO_ADDR(UDR0_REGISTER)),
       [UDR_reg] "n"(_SFR_MEM_ADDR(UDR0_REGISTER)),
+  #if __AVR_ARCH__ == 103
+      [control_reg_IO] "M"(_SFR_IO_ADDR(UCSR0A_REGISTER)),
+      [control_reg] "n"(_SFR_MEM_ADDR(UCSR0A_REGISTER)),
+  #else
       [control_reg_IO] "M"(_SFR_IO_ADDR(UCSR0B_REGISTER)),
       [control_reg] "n"(_SFR_MEM_ADDR(UCSR0B_REGISTER)),
+  #endif
       [udrie_bit] "M"(UDRIE0_BIT), [mask] "M"(TX0_BUFFER_MASK)
 
       // no clobbers
@@ -4930,9 +5091,9 @@ ISR(RX0_INTERRUPT, ISR_NAKED) {
   #if defined(USART0_MPCM_MODE) && !defined(MPCM0_MASTER_ONLY)
 
     #ifdef USART0_IN_IO_ADDRESS_SPACE
-      "in r31, %M[UCSRA_reg_IO] \n\t"
+      "in r31, %M[MPCM_reg_IO] \n\t"
     #else
-      "lds r31, %M[UCSRA_reg] \n\t"
+      "lds r31, %M[MPCM_reg] \n\t"
     #endif
 
       "sbrs r31, %M[mpcm_bit] \n\t"
@@ -4947,9 +5108,9 @@ ISR(RX0_INTERRUPT, ISR_NAKED) {
       "andi r31, ~(1<<%M[mpcm_bit]) \n\t"
 
     #ifdef USART0_IN_IO_ADDRESS_SPACE
-      "out %M[UCSRA_reg_IO], r31 \n\t"
+      "out %M[MPCM_reg_IO], r31 \n\t"
     #else
-      "sts %M[UCSRA_reg], r31 \n\t"
+      "sts %M[MPCM_reg], r31 \n\t"
     #endif
 
       "USART0_RX_CONTINUE: "
@@ -5044,9 +5205,14 @@ ISR(RX0_INTERRUPT, ISR_NAKED) {
       USART_REG_SAVE_LIST
 
       : // input operands
+  #if __AVR_ARCH__ == 103
+      RX0_INPUT_OPERAND_LIST[UDR_reg_IO] "M"(_SFR_IO_ADDR(RX0_REGISTER)),
+      [UDR_reg] "n"(_SFR_MEM_ADDR(RX0_REGISTER)),
+  #else
       RX0_INPUT_OPERAND_LIST[UDR_reg_IO] "M"(_SFR_IO_ADDR(UDR0_REGISTER)),
-      [UDR_reg] "n"(_SFR_MEM_ADDR(UDR0_REGISTER)), [mask] "M"(RX0_BUFFER_MASK),
-      [mpcm_address] "M"(MPCM0_ADDRESS),
+      [UDR_reg] "n"(_SFR_MEM_ADDR(UDR0_REGISTER)),
+  #endif
+      [mask] "M"(RX0_BUFFER_MASK), [mpcm_address] "M"(MPCM0_ADDRESS),
   #ifdef MPCM0_GCALL_ADDRESS
       [mpcm_gcall_address] "M"(MPCM0_GCALL_ADDRESS),
   #endif
@@ -5054,10 +5220,17 @@ ISR(RX0_INTERRUPT, ISR_NAKED) {
   #ifdef USART0_USE_SOFT_RTS
       [rts_port] "M"(_SFR_IO_ADDR(RTS0_PORT)), [rts_pin] "M"(RTS0_IONUM),
   #endif
-      [UCSRA_reg] "n"(_SFR_MEM_ADDR(UCSR0A_REGISTER)),
-      [UCSRA_reg_IO] "M"(_SFR_IO_ADDR(UCSR0A_REGISTER)),
+  #if __AVR_ARCH__ == 103
+      [MPCM_reg] "n"(_SFR_MEM_ADDR(UCSR0B_REGISTER)),
+      [MPCM_reg_IO] "M"(_SFR_IO_ADDR(UCSR0B_REGISTER)),
+      [control_reg_IO] "M"(_SFR_IO_ADDR(UCSR0A_REGISTER)),
+      [control_reg] "n"(_SFR_MEM_ADDR(UCSR0A_REGISTER)),
+  #else
+      [MPCM_reg] "n"(_SFR_MEM_ADDR(UCSR0A_REGISTER)),
+      [MPCM_reg_IO] "M"(_SFR_IO_ADDR(UCSR0A_REGISTER)),
       [control_reg_IO] "M"(_SFR_IO_ADDR(UCSR0B_REGISTER)),
       [control_reg] "n"(_SFR_MEM_ADDR(UCSR0B_REGISTER)),
+  #endif
       [rxcie_bit] "M"(RXCIE0_BIT)
 
       // no clobbers
@@ -5178,8 +5351,13 @@ ISR(UDRE1_INTERRUPT, ISR_NAKED) {
       : // input operands
       TX1_INPUT_OPERAND_LIST[UDR_reg_IO] "M"(_SFR_IO_ADDR(UDR1_REGISTER)),
       [UDR_reg] "n"(_SFR_MEM_ADDR(UDR1_REGISTER)),
+  #if __AVR_ARCH__ == 103
+      [control_reg_IO] "M"(_SFR_IO_ADDR(UCSR1A_REGISTER)),
+      [control_reg] "n"(_SFR_MEM_ADDR(UCSR1A_REGISTER)),
+  #else
       [control_reg_IO] "M"(_SFR_IO_ADDR(UCSR1B_REGISTER)),
       [control_reg] "n"(_SFR_MEM_ADDR(UCSR1B_REGISTER)),
+  #endif
       [udrie_bit] "M"(UDRIE1_BIT), [mask] "M"(TX1_BUFFER_MASK)
 
       // no clobbers
@@ -5302,9 +5480,9 @@ ISR(RX1_INTERRUPT, ISR_NAKED) {
   #if defined(USART1_MPCM_MODE) && !defined(MPCM1_MASTER_ONLY)
 
     #ifdef USART1_IN_IO_ADDRESS_SPACE
-      "in r31, %M[UCSRA_reg_IO] \n\t"
+      "in r31, %M[MPCM_reg_IO] \n\t"
     #else
-      "lds r31, %M[UCSRA_reg] \n\t"
+      "lds r31, %M[MPCM_reg] \n\t"
     #endif
 
       "sbrs r31, %M[mpcm_bit] \n\t"
@@ -5319,9 +5497,9 @@ ISR(RX1_INTERRUPT, ISR_NAKED) {
       "andi r31, ~(1<<%M[mpcm_bit]) \n\t"
 
     #ifdef USART1_IN_IO_ADDRESS_SPACE
-      "out %M[UCSRA_reg_IO], r31 \n\t"
+      "out %M[MPCM_reg_IO], r31 \n\t"
     #else
-      "sts %M[UCSRA_reg], r31 \n\t"
+      "sts %M[MPCM_reg], r31 \n\t"
     #endif
 
       "USART1_RX_CONTINUE: "
@@ -5397,9 +5575,14 @@ ISR(RX1_INTERRUPT, ISR_NAKED) {
       USART_REG_SAVE_LIST
 
       : // input operands
+  #if __AVR_ARCH__ == 103
+      RX1_INPUT_OPERAND_LIST[UDR_reg_IO] "M"(_SFR_IO_ADDR(RX1_REGISTER)),
+      [UDR_reg] "n"(_SFR_MEM_ADDR(RX1_REGISTER)),
+  #else
       RX1_INPUT_OPERAND_LIST[UDR_reg_IO] "M"(_SFR_IO_ADDR(UDR1_REGISTER)),
-      [UDR_reg] "n"(_SFR_MEM_ADDR(UDR1_REGISTER)), [mask] "M"(RX1_BUFFER_MASK),
-      [mpcm_address] "M"(MPCM1_ADDRESS),
+      [UDR_reg] "n"(_SFR_MEM_ADDR(UDR1_REGISTER)),
+  #endif
+      [mask] "M"(RX1_BUFFER_MASK), [mpcm_address] "M"(MPCM1_ADDRESS),
   #ifdef MPCM1_GCALL_ADDRESS
       [mpcm_gcall_address] "M"(MPCM1_GCALL_ADDRESS),
   #endif
@@ -5407,10 +5590,17 @@ ISR(RX1_INTERRUPT, ISR_NAKED) {
   #ifdef USART1_USE_SOFT_RTS
       [rts_port] "M"(_SFR_IO_ADDR(RTS1_PORT)), [rts_pin] "M"(RTS1_IONUM),
   #endif
-      [UCSRA_reg] "n"(_SFR_MEM_ADDR(UCSR1A_REGISTER)),
-      [UCSRA_reg_IO] "M"(_SFR_IO_ADDR(UCSR1A_REGISTER)),
+  #if __AVR_ARCH__ == 103
+      [MPCM_reg] "n"(_SFR_MEM_ADDR(UCSR1B_REGISTER)),
+      [MPCM_reg_IO] "M"(_SFR_IO_ADDR(UCSR1B_REGISTER)),
+      [control_reg_IO] "M"(_SFR_IO_ADDR(UCSR1A_REGISTER)),
+      [control_reg] "n"(_SFR_MEM_ADDR(UCSR1A_REGISTER)),
+  #else
+      [MPCM_reg] "n"(_SFR_MEM_ADDR(UCSR1A_REGISTER)),
+      [MPCM_reg_IO] "M"(_SFR_IO_ADDR(UCSR1A_REGISTER)),
       [control_reg_IO] "M"(_SFR_IO_ADDR(UCSR1B_REGISTER)),
       [control_reg] "n"(_SFR_MEM_ADDR(UCSR1B_REGISTER)),
+  #endif
       [rxcie_bit] "M"(RXCIE1_BIT)
 
       // no clobbers
@@ -5515,7 +5705,11 @@ ISR(UDRE2_INTERRUPT, ISR_NAKED) {
 
       : // input operands
       TX2_INPUT_OPERAND_LIST[UDR_reg] "n"(_SFR_MEM_ADDR(UDR2_REGISTER)),
+  #if __AVR_ARCH__ == 103
+      [control_reg] "n"(_SFR_MEM_ADDR(UCSR2A_REGISTER)),
+  #else
       [control_reg] "n"(_SFR_MEM_ADDR(UCSR2B_REGISTER)),
+  #endif
       [udrie_bit] "M"(UDRIE2_BIT), [mask] "M"(TX2_BUFFER_MASK)
 
       // no clobbers
@@ -5620,7 +5814,7 @@ ISR(RX2_INTERRUPT, ISR_NAKED) {
       RX2_EARLY_RECEIVE_EVENT
 
   #if defined(USART2_MPCM_MODE) && !defined(MPCM2_MASTER_ONLY)
-      "lds r31, %M[UCSRA_reg] \n\t"
+      "lds r31, %M[MPCM_reg] \n\t"
 
       "sbrs r31, %M[mpcm_bit] \n\t"
       "rjmp USART2_RX_CONTINUE \n\t"
@@ -5633,7 +5827,7 @@ ISR(RX2_INTERRUPT, ISR_NAKED) {
       "p_%=: "
       "andi r31, ~(1<<%M[mpcm_bit]) \n\t"
 
-      "sts %M[UCSRA_reg], r31 \n\t"
+      "sts %M[MPCM_reg], r31 \n\t"
 
       "USART2_RX_CONTINUE: "
   #endif
@@ -5700,7 +5894,11 @@ ISR(RX2_INTERRUPT, ISR_NAKED) {
       USART_REG_SAVE_LIST
 
       : // input operands
+  #if __AVR_ARCH__ == 103
+      RX2_INPUT_OPERAND_LIST[UDR_reg] "n"(_SFR_MEM_ADDR(RX2_REGISTER)),
+  #else
       RX2_INPUT_OPERAND_LIST[UDR_reg] "n"(_SFR_MEM_ADDR(UDR2_REGISTER)),
+  #endif
       [mask] "M"(RX2_BUFFER_MASK), [mpcm_address] "M"(MPCM2_ADDRESS),
   #ifdef MPCM2_GCALL_ADDRESS
       [mpcm_gcall_address] "M"(MPCM2_GCALL_ADDRESS),
@@ -5709,8 +5907,13 @@ ISR(RX2_INTERRUPT, ISR_NAKED) {
   #ifdef USART2_USE_SOFT_RTS
       [rts_port] "M"(_SFR_IO_ADDR(RTS2_PORT)), [rts_pin] "M"(RTS2_IONUM),
   #endif
-      [UCSRA_reg] "n"(_SFR_MEM_ADDR(UCSR2A_REGISTER)),
+  #if __AVR_ARCH__ == 103
+      [MPCM_reg] "n"(_SFR_MEM_ADDR(UCSR2B_REGISTER)),
+      [control_reg] "n"(_SFR_MEM_ADDR(UCSR2A_REGISTER)),
+  #else
+      [MPCM_reg] "n"(_SFR_MEM_ADDR(UCSR2A_REGISTER)),
       [control_reg] "n"(_SFR_MEM_ADDR(UCSR2B_REGISTER)),
+  #endif
       [rxcie_bit] "M"(RXCIE2_BIT)
 
       // no clobbers
@@ -5815,7 +6018,11 @@ ISR(UDRE3_INTERRUPT, ISR_NAKED) {
 
       : // input operands
       TX3_INPUT_OPERAND_LIST[UDR_reg] "n"(_SFR_MEM_ADDR(UDR3_REGISTER)),
+  #if __AVR_ARCH__ == 103
+      [control_reg] "n"(_SFR_MEM_ADDR(UCSR3A_REGISTER)),
+  #else
       [control_reg] "n"(_SFR_MEM_ADDR(UCSR3B_REGISTER)),
+  #endif
       [udrie_bit] "M"(UDRIE3_BIT), [mask] "M"(TX3_BUFFER_MASK)
 
       // no clobbers
@@ -5920,7 +6127,7 @@ ISR(RX3_INTERRUPT, ISR_NAKED) {
       RX3_EARLY_RECEIVE_EVENT
 
   #if defined(USART3_MPCM_MODE) && !defined(MPCM3_MASTER_ONLY)
-      "lds r31, %M[UCSRA_reg] \n\t"
+      "lds r31, %M[MPCM_reg] \n\t"
 
       "sbrs r31, %M[mpcm_bit] \n\t"
       "rjmp USART3_RX_CONTINUE \n\t"
@@ -5933,7 +6140,7 @@ ISR(RX3_INTERRUPT, ISR_NAKED) {
       "p_%=: "
       "andi r31, ~(1<<%M[mpcm_bit]) \n\t"
 
-      "sts %M[UCSRA_reg], r31 \n\t"
+      "sts %M[MPCM_reg], r31 \n\t"
 
       "USART3_RX_CONTINUE: "
   #endif
@@ -6000,7 +6207,11 @@ ISR(RX3_INTERRUPT, ISR_NAKED) {
       USART_REG_SAVE_LIST
 
       : // input operands
+  #if __AVR_ARCH__ == 103
+      RX3_INPUT_OPERAND_LIST[UDR_reg] "n"(_SFR_MEM_ADDR(RX3_REGISTER)),
+  #else
       RX3_INPUT_OPERAND_LIST[UDR_reg] "n"(_SFR_MEM_ADDR(UDR3_REGISTER)),
+  #endif
       [mask] "M"(RX3_BUFFER_MASK), [mpcm_address] "M"(MPCM3_ADDRESS),
   #ifdef MPCM3_GCALL_ADDRESS
       [mpcm_gcall_address] "M"(MPCM3_GCALL_ADDRESS),
@@ -6009,8 +6220,13 @@ ISR(RX3_INTERRUPT, ISR_NAKED) {
   #ifdef USART3_USE_SOFT_RTS
       [rts_port] "M"(_SFR_IO_ADDR(RTS3_PORT)), [rts_pin] "M"(RTS3_IONUM),
   #endif
-      [UCSRA_reg] "n"(_SFR_MEM_ADDR(UCSR3A_REGISTER)),
+  #if __AVR_ARCH__ == 103
+      [MPCM_reg] "n"(_SFR_MEM_ADDR(UCSR3B_REGISTER)),
+      [control_reg] "n"(_SFR_MEM_ADDR(UCSR3A_REGISTER)),
+  #else
+      [MPCM_reg] "n"(_SFR_MEM_ADDR(UCSR3A_REGISTER)),
       [control_reg] "n"(_SFR_MEM_ADDR(UCSR3B_REGISTER)),
+  #endif
       [rxcie_bit] "M"(RXCIE3_BIT)
 
       // no clobbers
