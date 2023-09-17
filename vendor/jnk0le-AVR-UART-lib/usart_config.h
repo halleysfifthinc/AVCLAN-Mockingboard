@@ -90,9 +90,13 @@
 #define USART_Z_SAVE_REG_NUM                                                   \
   "r2" // register pair rn and rn+1 (rn+1:rn gives "invalid register name")
 
-// #define RX_BUFFER_SIZE 128 // Size of the ring buffers, must be power of 2 //
-// default 32 #define TX_BUFFER_SIZE 64 // Size of the ring buffers, must be
-// power of 2 // default 32
+// Size of the ring buffers, must be power of 2
+// default 32
+// #define RX_BUFFER_SIZE 128
+
+// Size of the ring buffers, must be power of 2
+// default 32
+// #define TX_BUFFER_SIZE 64
 
 /*******************config for multiple USART * mcu's*************************/
 
@@ -113,19 +117,33 @@
 // #define RX3_BUFFER_SIZE 128
 // #define TX3_BUFFER_SIZE 64
 
-// #define NO_RX0_INTERRUPT // removes whole receive code (including ISR) and
-// frees RX0 pin // combining with NO_USART_RX is not necessary #define
-// NO_RX1_INTERRUPT // removes whole receive code (including ISR) and frees RX1
-// pin #define NO_RX2_INTERRUPT // removes whole receive code (including ISR)
-// and frees RX2 pin #define NO_RX3_INTERRUPT // removes whole receive code
-// (including ISR) and frees RX3 pin
+/****** Disable RX interrupts ******/
+// removes whole receive code (including ISR) and frees RX0 pin
+// combining with NO_USART_RX is not necessary
+// #define NO_RX0_INTERRUPT
 
-// #define NO_TX0_INTERRUPT // removes whole transmit code (including ISR) and
-// frees TX0 pin // combining with NO_USART_TX is not necessary #define
-// NO_TX1_INTERRUPT // removes whole transmit code (including ISR) and frees TX1
-// pin #define NO_TX2_INTERRUPT // removes whole transmit code (including ISR)
-// and frees TX2 pin #define NO_TX3_INTERRUPT // removes whole transmit code
-// (including ISR) and frees TX3 pin
+// removes whole receive code (including ISR) and frees RX1 pin
+// #define NO_RX1_INTERRUPT
+
+// removes whole receive code (including ISR) and frees RX2 pin
+// #define NO_RX2_INTERRUPT
+
+// removes whole receive code (including ISR) and frees RX3 pin
+// #define NO_RX3_INTERRUPT
+
+/****** Disable TX interrupts ******/
+// removes whole transmit code (including ISR) and frees TX0 pin
+// combining with NO_USART_TX is not necessary
+// #define NO_TX0_INTERRUPT
+
+// removes whole transmit code (including ISR) and frees TX1 pin
+// #define NO_TX1_INTERRUPT
+
+// removes whole transmit code (including ISR) and frees TX2 pin
+// #define NO_TX2_INTERRUPT
+
+// removes whole transmit code (including ISR) and frees TX3 pin
+// #define NO_TX3_INTERRUPT
 
 // #define USART0_U2X_SPEED // enables double speed for USART0
 // #define USART1_U2X_SPEED // enables double speed for USART1

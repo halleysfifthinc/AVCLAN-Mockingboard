@@ -1384,13 +1384,13 @@ extern "C" {
 // can be executed during compilation)
 
 #ifdef USE_USART0
-void uart0_reinit(uint16_t ubrr_value); // for runtime reinitialization of uart
+// for runtime reinitialization of uart
+void uart0_reinit(uint16_t ubrr_value);
 
+// have to be called once at startup
 static inline void uart0_init(uint16_t ubrr_value)
     __attribute__((always_inline));
-static inline void
-uart0_init(uint16_t ubrr_value) // have to be called once at startup
-{
+static inline void uart0_init(uint16_t ubrr_value) {
   #ifdef USART0_RS485_MODE
   RS485_CONTROL0_DDR |= (1 << RS485_CONTROL0_IONUM); // default pin state is low
   #endif
@@ -1422,39 +1422,35 @@ uart0_init(uint16_t ubrr_value) // have to be called once at startup
   #endif
 }
 
+// UCSRC_reg can be used to set other than 8n1 transmission
 static inline void uart0_set_FrameFormat(uint8_t UCSRC_reg)
     __attribute__((always_inline));
-static inline void
-uart0_set_FrameFormat(uint8_t UCSRC_reg) // UCSRC_reg can be used to set other
-                                         // than 8n1 transmission
-{
+static inline void uart0_set_FrameFormat(uint8_t UCSRC_reg) {
   UCSR0C_REGISTER = UCSRC_reg;
 }
 
+// use instead of USE_DOUBLE_SPEED
 static inline void uart0_set_U2X(void) __attribute__((always_inline));
-static inline void uart0_set_U2X(void) // use instead of USE_DOUBLE_SPEED
-{
+static inline void uart0_set_U2X(void) {
   UCSR0A_REGISTER |= (1 << U2X0_BIT);
 }
 
   #ifdef USART0_MPCM_MODE
+// return slave to mpcm idle mode (wait for own addres frame)
 static inline void uart0_mpcm_slave_return_idle(void)
     __attribute__((always_inline));
-static inline void uart0_mpcm_slave_return_idle(
-    void) // return slave to mpcm idle mode (wait for own addres frame)
-{
+static inline void uart0_mpcm_slave_return_idle(void) {
   UCSR0A_REGISTER |= (1 << MPCM0_BIT);
 }
   #endif
 
   #ifdef USART0_HARDWARE_FLOW_CONTROL_AVAILABLE
+// pass true to enable
 void uart0_hardware_flow_control_init(uint8_t ctsenable, uint8_t rtsenable)
     __attribute__((always_inline));
-void uart0_hardware_flow_control_init(uint8_t ctsenable,
-                                      uint8_t rtsenable) // pass true to enable
-{
-  if (ctsenable &&
-      rtsenable) // -Os dependent, do not use in non-inline functions
+void uart0_hardware_flow_control_init(uint8_t ctsenable, uint8_t rtsenable) {
+  // -Os dependent, do not use in non-inline functions
+  if (ctsenable && rtsenable)
     UCSR0D_REGISTER = (1 << CTSEN0_BIT) | (1 << RTSEN0_BIT);
   else if (ctsenable)
     UCSR0D_REGISTER = (1 << CTSEN0_BIT);
@@ -1473,13 +1469,13 @@ void uart0_hardware_flow_control_init(uint8_t ctsenable,
 #endif // USE_USART0
 
 #ifdef USE_USART1
-void uart1_reinit(uint16_t ubrr_value); // for runtime reinitialization of uart
+// for runtime reinitialization of uart
+void uart1_reinit(uint16_t ubrr_value);
 
+// have to be called once at startup
 static inline void uart1_init(uint16_t ubrr_value)
     __attribute__((always_inline));
-static inline void
-uart1_init(uint16_t ubrr_value) // have to be called once at startup
-{
+static inline void uart1_init(uint16_t ubrr_value) {
   #ifdef USART1_RS485_MODE
   RS485_CONTROL1_DDR |= (1 << RS485_CONTROL1_IONUM); // default pin state is low
   #endif
@@ -1511,41 +1507,35 @@ uart1_init(uint16_t ubrr_value) // have to be called once at startup
   #endif
 }
 
+// UCSRC_reg can be used to set other than 8n1 transmission
 static inline void uart1_set_FrameFormat(uint8_t UCSRC_reg)
     __attribute__((always_inline));
-static inline void
-uart1_set_FrameFormat(uint8_t UCSRC_reg) // UCSRC_reg can be used to set other
-                                         // than 8n1 transmission
-{
+static inline void uart1_set_FrameFormat(uint8_t UCSRC_reg) {
   UCSR1C_REGISTER = UCSRC_reg;
 }
 
+// use instead of USE_DOUBLE_SPEED
 static inline void uart1_set_U2X(void) __attribute__((always_inline));
-static inline void uart1_set_U2X(void) // use instead of USE_DOUBLE_SPEED
-{
-  UCSR1A_REGISTER |= (1 << U2X1_BIT);
-}
+static inline void uart1_set_U2X(void) { UCSR1A_REGISTER |= (1 << U2X1_BIT); }
 
   #ifdef USART1_MPCM_MODE
+// return slave to mpcm idle mode (wait for own addres frame)
 static inline void uart1_mpcm_slave_return_idle(void)
     __attribute__((always_inline));
-static inline void uart1_mpcm_slave_return_idle(
-    void) // return slave to mpcm idle mode (wait for own addres frame)
-{
+static inline void uart1_mpcm_slave_return_idle(void) {
   UCSR1A_REGISTER |= (1 << MPCM1_BIT);
 }
   #endif
 
   #ifdef USART1_HARDWARE_FLOW_CONTROL_AVAILABLE
+// pass true to enable
 static inline void uart1_hardware_flow_control_init(uint8_t ctsenable,
                                                     uint8_t rtsenable)
     __attribute__((always_inline));
-static inline void
-uart1_hardware_flow_control_init(uint8_t ctsenable,
-                                 uint8_t rtsenable) // pass true to enable
-{
-  if (ctsenable &&
-      rtsenable) // -Os dependent, do not use in non-inline functions
+static inline void uart1_hardware_flow_control_init(uint8_t ctsenable,
+                                                    uint8_t rtsenable) {
+  // -Os dependent, do not use in non-inline functions
+  if (ctsenable && rtsenable)
     UCSR1D_REGISTER = (1 << CTSEN1_BIT) | (1 << RTSEN1_BIT);
   else if (ctsenable)
     UCSR1D_REGISTER = (1 << CTSEN1_BIT);
@@ -1557,13 +1547,13 @@ uart1_hardware_flow_control_init(uint8_t ctsenable,
 #endif // USE_USART1
 
 #ifdef USE_USART2
-void uart2_reinit(uint16_t ubrr_value); // for runtime reinitialization of uart
+// for runtime reinitialization of uart
+void uart2_reinit(uint16_t ubrr_value);
 
+// have to be called once at startup
 static inline void uart2_init(uint16_t ubrr_value)
     __attribute__((always_inline));
-static inline void
-uart2_init(uint16_t ubrr_value) // have to be called once at startup
-{
+static inline void uart2_init(uint16_t ubrr_value) {
   #ifdef USART2_RS485_MODE
   RS485_CONTROL2_DDR |= (1 << RS485_CONTROL2_IONUM); // default pin state is low
   #endif
@@ -1595,40 +1585,35 @@ uart2_init(uint16_t ubrr_value) // have to be called once at startup
   #endif
 }
 
+// UCSRC_reg can be used to set other than 8n1 transmission
 static inline void uart2_set_FrameFormat(uint8_t UCSRC_reg)
     __attribute__((always_inline));
-static inline void
-uart2_set_FrameFormat(uint8_t UCSRC_reg) // UCSRC_reg can be used to set other
-                                         // than 8n1 transmission
-{
+static inline void uart2_set_FrameFormat(uint8_t UCSRC_reg) {
   UCSR2C_REGISTER = UCSRC_reg;
 }
 
+// use instead of USE_DOUBLE_SPEED
 static inline void uart2_set_U2X(void) __attribute__((always_inline));
-static inline void uart2_set_U2X(void) // use instead of USE_DOUBLE_SPEED
-{
-  UCSR2A_REGISTER |= (1 << U2X2_BIT);
-}
+static inline void uart2_set_U2X(void) { UCSR2A_REGISTER |= (1 << U2X2_BIT); }
 
   #ifdef USART2_MPCM_MODE
+// return slave to mpcm idle mode (wait for own addres frame)
 static inline void uart2_mpcm_slave_return_idle(void)
     __attribute__((always_inline));
-static inline void uart2_mpcm_slave_return_idle(
-    void) // return slave to mpcm idle mode (wait for own addres frame)
-{
+static inline void uart2_mpcm_slave_return_idle(void) {
   UCSR2A_REGISTER |= (1 << MPCM2_BIT);
 }
   #endif
 #endif // USE_USART2
 
 #ifdef USE_USART3
-void uart3_reinit(uint16_t ubrr_value); // for runtime reinitialization of uart
+// for runtime reinitialization of uart
+void uart3_reinit(uint16_t ubrr_value);
 
+// have to be called once at startup
 static inline void uart3_init(uint16_t ubrr_value)
     __attribute__((always_inline));
-static inline void
-uart3_init(uint16_t ubrr_value) // have to be called once at startup
-{
+static inline void uart3_init(uint16_t ubrr_value) {
   #ifdef USART3_RS485_MODE
   RS485_CONTROL3_DDR |= (1 << RS485_CONTROL3_IONUM); // default pin state is low
   #endif
@@ -1660,27 +1645,22 @@ uart3_init(uint16_t ubrr_value) // have to be called once at startup
   #endif
 }
 
+// UCSRC_reg can be used to set other than 8n1 transmission
 static inline void uart3_set_FrameFormat(uint8_t UCSRC_reg)
     __attribute__((always_inline));
-static inline void
-uart3_set_FrameFormat(uint8_t UCSRC_reg) // UCSRC_reg can be used to set other
-                                         // than 8n1 transmission
-{
+static inline void uart3_set_FrameFormat(uint8_t UCSRC_reg) {
   UCSR3C_REGISTER = UCSRC_reg;
 }
 
+// use instead of USE_DOUBLE_SPEED
 static inline void uart3_set_U2X(void) __attribute__((always_inline));
-static inline void uart3_set_U2X(void) // use instead of USE_DOUBLE_SPEED
-{
-  UCSR3A_REGISTER |= (1 << U2X3_BIT);
-}
+static inline void uart3_set_U2X(void) { UCSR3A_REGISTER |= (1 << U2X3_BIT); }
 
   #ifdef USART3_MPCM_MODE
+// return slave to mpcm idle mode (wait for own addres frame)
 static inline void uart3_mpcm_slave_return_idle(void)
     __attribute__((always_inline));
-static inline void uart3_mpcm_slave_return_idle(
-    void) // return slave to mpcm idle mode (wait for own addres frame)
-{
+static inline void uart3_mpcm_slave_return_idle(void) {
   UCSR3A_REGISTER |= (1 << MPCM3_BIT);
 }
   #endif
@@ -1700,41 +1680,45 @@ inline char uart0_putc_(char data) {
   return data;
 }
     #else
+// alias for uart_putc that returns passed argument unaffected by omitting any
+// existent rule
 void uart0_putc(char data) __attribute__((naked, noinline));
-char uart0_putc_(char data) __attribute__((
-    noinline)); // alias for uart_putc that returns passed argument unaffected
-                // by omitting any existent rule
+char uart0_putc_(char data) __attribute__((noinline));
     #endif
 
-uint8_t
-uart0_putc_noblock(char data); // returns BUFFER_FULL (false) if buffer is full
-                               // and character cannot be sent at the moment
+// returns BUFFER_FULL (false) if buffer is full and character cannot be sent at
+// the moment
+uint8_t uart0_putc_noblock(char data);
 
-void uart0_putstr(
-    char *string); // send string from the memory buffer // stops when NULL byte
-                   // is hit (NULL byte is not included into transmission)
-void uart0_putstrl(
-    char *string,
-    uint8_t BytesToWrite); // send specified number of bytes from the pointed
-                           // buffer (up to 255 bytes)
+// send string from the memory buffer stops when NULL byte is hit (NULL byte is
+// not included into transmission)
+void uart0_putstr(char *string);
 
+// send specified number of bytes from the pointed buffer (up to 255 bytes)
+void uart0_putstrl(char *string, uint8_t BytesToWrite);
+
+    // for deprecated usage only (wastes SRAM data memory to keep all string
+    // constants), instead of this try to use puts_P
     #ifdef __cplusplus
-      #define uart0_puts(str)                                                  \
-        uart0_putstr((const char *)(str)) // macro to avoid const char*
-                                          // conversion restrictions
+      // macro to avoid const char* conversion restrictions
+      #define uart0_puts(str) uart0_putstr((const char *)(str))
     #else
       #define uart0_puts(str) uart0_putstr(str)
-    #endif for deprecated usage only
-                           // (wastes SRAM data memory to keep all string
-                           // constants), instead of this try to use puts_P
-
-    #ifdef __cplusplus
-void uart0_puts_p(const char *string); // send string from flash memory
-    #else
-void uart0_puts_p(const __flash char *string); // send string from flash memory
     #endif
-    #define uart0_puts_P(__strP) uart0_puts_p(PSTR(__strP))
-// macro to automatically put a string constant into flash
+
+    // avrxmega3 has unified memory
+    #if __AVR_ARCH__ != 103
+      #ifdef __cplusplus
+// send string from flash memory
+void uart0_puts_p(const char *string);
+      #else
+// send string from flash memory
+void uart0_puts_p(const __flash char *string);
+      #endif
+
+      // macro to automatically put a string constant into flash
+      #define uart0_puts_P(__strP) uart0_puts_p(PSTR(__strP))
+    #endif
 
 void uart0_putint(int16_t data);
 void uart0_putintr(int16_t data, uint8_t radix);
@@ -1765,14 +1749,16 @@ inline uint8_t uart0_BytesToSend(void) {
 void uart0_mpcm_transmit_addres_Frame(uint8_t dat);
     #endif
 
-    #define uart_putc(__data)               uart0_putc(__data)
-    #define uart_putc_(__data)              uart0_putc_(__data)
-    #define uart_putc_noblock(__data)       uart0_putc_noblock(__data)
-    #define uart_putstrl(__str, __limit)    uart0_putstrl(__str, __limit)
-    #define uart_putstr(__str)              uart0_putstr(__str)
-    #define uart_puts(__str)                uart0_puts(__str)
-    #define uart_puts_p(__strP)             uart0_puts_p(__strP)
-    #define uart_puts_P(__str)              uart0_puts_P(__str)
+    #define uart_putc(__data)            uart0_putc(__data)
+    #define uart_putc_(__data)           uart0_putc_(__data)
+    #define uart_putc_noblock(__data)    uart0_putc_noblock(__data)
+    #define uart_putstrl(__str, __limit) uart0_putstrl(__str, __limit)
+    #define uart_putstr(__str)           uart0_putstr(__str)
+    #define uart_puts(__str)             uart0_puts(__str)
+    #if __AVR_ARCH__ != 103
+      #define uart_puts_p(__strP) uart0_puts_p(__strP)
+      #define uart_puts_P(__str)  uart0_puts_P(__str)
+    #endif
     #define uart_putint(__data)             uart0_putint(__data)
     #define uart_putintr(__data, __radix)   uart0_putintr(__data, __radix)
     #define uart_putuint(__data)            uart0_putuint(__data)
@@ -1802,41 +1788,44 @@ inline char uart1_putc_(char data) {
   return data;
 }
     #else
+// alias for uart_putc that returns passed argument unaffected by omitting any
+// existent rule
 void uart1_putc(char data) __attribute__((naked, noinline));
-char uart1_putc_(char data) __attribute__((
-    noinline)); // alias for uart_putc that returns passed argument unaffected
-                // by omitting any existent rule
+char uart1_putc_(char data) __attribute__((noinline));
     #endif
 
-uint8_t
-uart1_putc_noblock(char data); // returns BUFFER_FULL (false) if buffer is full
-                               // and character cannot be sent at the moment
+// returns BUFFER_FULL (false) if buffer is full and character cannot be sent at
+// the moment
+uint8_t uart1_putc_noblock(char data);
 
-void uart1_putstr(
-    char *string); // send string from the memory buffer // stops when NULL byte
-                   // is hit (NULL byte is not included into transmission)
-void uart1_putstrl(
-    char *string,
-    uint8_t BytesToWrite); // send specified number of bytes from the pointed
-                           // buffer (up to 255 bytes)
+// send string from the memory buffer stops when NULL byte is hit (NULL byte is
+// not included into transmission)
+void uart1_putstr(char *string);
 
+// send specified number of bytes from the pointed buffer (up to 255 bytes)
+void uart1_putstrl(char *string, uint8_t BytesToWrite);
+
+    // for deprecated usage only (wastes SRAM data memory to keep all string
+    // constants), instead of this try to use puts_P
     #ifdef __cplusplus
-      #define uart1_puts(str)                                                  \
-        uart1_putstr((const char *)(str)) // macro to avoid const char*
-                                          // conversion restrictions
+      // macro to avoid const char* conversion restrictions
+      #define uart1_puts(str) uart1_putstr((const char *)(str))
     #else
       #define uart1_puts(str) uart1_putstr(str)
-    #endif for deprecated usage only
-                           // (wastes SRAM data memory to keep all string
-                           // constants), instead of this try to use puts_P
-
-    #ifdef __cplusplus
-void uart1_puts_p(const char *string); // send string from flash memory
-    #else
-void uart1_puts_p(const __flash char *string); // send string from flash memory
     #endif
-    #define uart1_puts_P(__s) uart1_puts_p(PSTR(__s))
-// macro to automatically put a string constant into flash
+
+    // avrxmega3 has unified memory
+    #if __AVR_ARCH__ != 103
+      // macro to automatically put a string constant into flash
+      #ifdef __cplusplus
+// send string from flash memory
+void uart1_puts_p(const char *string);
+      #else
+// send string from flash memory
+void uart1_puts_p(const __flash char *string);
+      #endif
+      #define uart1_puts_P(__s) uart1_puts_p(PSTR(__s))
+    #endif
 
 void uart1_putint(int16_t data);
 void uart1_putintr(int16_t data, uint8_t radix);
@@ -1858,10 +1847,11 @@ void uart1_fputfloat(float data, uint8_t precision);
 void uart1_flush(void); // flush tx buffer
 
 extern volatile uint8_t tx1_Head, tx1_Tail;
+
+// returns number of bytes waiting in the transmit buffer
 inline uint8_t uart1_BytesToSend(void) {
   return (tx1_Head - tx1_Tail - 1) & TX1_BUFFER_MASK;
 }
-    // returns number of bytes waiting in the transmit buffer
 
     #ifdef USART1_MPCM_MODE
 void uart1_mpcm_transmit_addres_Frame(uint8_t dat);
@@ -1877,41 +1867,44 @@ inline char uart2_putc_(char data) {
   return data;
 }
     #else
+// alias for uart_putc that returns passed argument unaffected by omitting any
+// existent rule
 void uart2_putc(char data) __attribute__((naked, noinline));
-char uart2_putc_(char data) __attribute__((
-    noinline)); // alias for uart_putc that returns passed argument unaffected
-                // by omitting any existent rule
+char uart2_putc_(char data) __attribute__((noinline));
     #endif
 
-uint8_t
-uart2_putc_noblock(char data); // returns BUFFER_FULL (false) if buffer is full
-                               // and character cannot be sent at the moment
+// returns BUFFER_FULL (false) if buffer is full and character cannot be sent at
+// the moment
+uint8_t uart2_putc_noblock(char data);
 
-void uart2_putstr(
-    char *string); // send string from the memory buffer // stops when NULL byte
-                   // is hit (NULL byte is not included into transmission)
-void uart2_putstrl(
-    char *string,
-    uint8_t BytesToWrite); // send specified number of bytes from the pointed
-                           // buffer (up to 255 bytes)
+// send string from the memory buffer stops when NULL byte is hit (NULL byte is
+// not included into transmission)
+void uart2_putstr(char *string);
 
+// send specified number of bytes from the pointed buffer (up to 255 bytes)
+void uart2_putstrl(char *string, uint8_t BytesToWrite);
+
+    // for deprecated usage only (wastes SRAM data memory to keep all string
+    // constants), instead of this try to use puts_P
     #ifdef __cplusplus
-      #define uart2_puts(str)                                                  \
-        uart2_putstr((const char *)(str)) // macro to avoid const char*
-                                          // conversion restrictions
+      // macro to avoid const char* conversion restrictions
+      #define uart2_puts(str) uart2_putstr((const char *)(str))
     #else
       #define uart2_puts(str) uart2_putstr(str)
-    #endif for deprecated usage only
-                           // (wastes SRAM data memory to keep all string
-                           // constants), instead of this try to use puts_P
-
-    #ifdef __cplusplus
-void uart2_puts_p(const char *string); // send string from flash memory
-    #else
-void uart2_puts_p(const __flash char *string); // send string from flash memory
     #endif
-    #define uart2_puts_P(__s) uart2_puts_p(PSTR(__s))
-// macro to automatically put a string constant into flash
+
+    // avrxmega3 has unified memory
+    #if __AVR_ARCH__ != 103
+      // macro to automatically put a string constant into flash
+      #ifdef __cplusplus
+// send string from flash memory
+void uart2_puts_p(const char *string);
+      #else
+// send string from flash memory
+void uart2_puts_p(const __flash char *string);
+      #endif
+      #define uart2_puts_P(__s) uart2_puts_p(PSTR(__s))
+    #endif
 
 void uart2_putint(int16_t data);
 void uart2_putintr(int16_t data, uint8_t radix);
@@ -1933,10 +1926,11 @@ void uart2_fputfloat(float data, uint8_t precision);
 void uart2_flush(void); // flush tx buffer
 
 extern volatile uint8_t tx2_Head, tx2_Tail;
+
+// returns number of bytes waiting in the transmit buffer
 inline uint8_t uart2_BytesToSend(void) {
   return (tx2_Head - tx2_Tail - 1) & TX2_BUFFER_MASK;
 }
-    // returns number of bytes waiting in the transmit buffer
 
     #ifdef USART2_MPCM_MODE
 void uart2_mpcm_transmit_addres_Frame(uint8_t dat);
@@ -1952,41 +1946,43 @@ inline char uart3_putc_(char data) {
   return data;
 }
     #else
+// alias for uart_putc that returns passed argument unaffected by omitting any
+// existent rule
 void uart3_putc(char data) __attribute__((naked, noinline));
-char uart3_putc_(char data) __attribute__((
-    noinline)); // alias for uart_putc that returns passed argument unaffected
-                // by omitting any existent rule
+char uart3_putc_(char data) __attribute__((noinline));
     #endif
 
-uint8_t
-uart3_putc_noblock(char data); // returns BUFFER_FULL (false) if buffer is full
-                               // and character cannot be sent at the moment
+// returns BUFFER_FULL (false) if buffer is full and character cannot be sent at
+// the moment
+uint8_t uart3_putc_noblock(char data);
 
-void uart3_putstr(
-    char *string); // send string from the memory buffer // stops when NULL byte
-                   // is hit (NULL byte is not included into transmission)
-void uart3_putstrl(
-    char *string,
-    uint8_t BytesToWrite); // send specified number of bytes from the pointed
-                           // buffer (up to 255 bytes)
+// send string from the memory buffer stops when NULL byte is hit (NULL byte is
+// not included into transmission)
+void uart3_putstr(char *string);
 
+// send specified number of bytes from the pointedbuffer (up to 255 bytes)
+void uart3_putstrl(char *string, uint8_t BytesToWrite);
+
+    // for deprecated usage only (wastes SRAM data memory to keep all string
+    // constants), instead of this try to use puts_P
     #ifdef __cplusplus
-      #define uart3_puts(str)                                                  \
-        uart3_putstr((const char *)(str)) // macro to avoid const char*
-                                          // conversion restrictions
+      // macro to avoid const char* conversion restrictions
+      #define uart3_puts(str) uart3_putstr((const char *)(str))
     #else
       #define uart3_puts(str) uart3_putstr(str)
-    #endif for deprecated usage only
-                           // (wastes SRAM data memory to keep all string
-                           // constants), instead of this try to use puts_P
-
-    #ifdef __cplusplus
-void uart3_puts_p(const char *string); // send string from flash memory
-    #else
-void uart3_puts_p(const __flash char *string); // send string from flash memory
     #endif
-    #define uart3_puts_P(__s) uart3_puts_p(PSTR(__s))
-// macro to automatically put a string constant into flash
+
+    #if __AVR_ARCH__ != 103
+      // macro to automatically put a string constant into flash
+      #ifdef __cplusplus
+// send string from flash memory
+void uart3_puts_p(const char *string);
+      #else
+// send string from flash memory
+void uart3_puts_p(const __flash char *string);
+      #endif
+      #define uart3_puts_P(__s) uart3_puts_p(PSTR(__s))
+    #endif
 
 void uart3_putint(int16_t data);
 void uart3_putintr(int16_t data, uint8_t radix);
@@ -2008,10 +2004,11 @@ void uart3_fputfloat(float data, uint8_t precision);
 void uart3_flush(void); // flush tx buffer
 
 extern volatile uint8_t tx3_Head, tx3_Tail;
+
+// returns number of bytes waiting in the transmit buffer
 inline uint8_t uart3_BytesToSend(void) {
   return (tx3_Head - tx3_Tail - 1) & TX3_BUFFER_MASK;
 }
-    // returns number of bytes waiting in the transmit buffer
 
     #ifdef USART3_MPCM_MODE
 void uart3_mpcm_transmit_addres_Frame(uint8_t dat);
@@ -2026,22 +2023,24 @@ void uart3_mpcm_transmit_addres_Frame(uint8_t dat);
 #ifndef NO_USART_RX
 
   #ifndef NO_RX0_INTERRUPT
-char uart0_getc(void); // get character from receiver ring buffer
+// get character from receiver ring buffer
+char uart0_getc(void);
 
-void uart0_gets(char *buffer,
-                uint8_t bufferlimit); // reads whole receiver buffer or
-                                      // bufferlimit-1 characters
-// newline terminator will not be cut // adds NULL byte at the end of string
-void uart0_getln(char *buffer,
-                 uint8_t bufferlimit); // reads one line from the buffer
-// waits for newline terminator or reached bufferlimit // adds NULL byte at the
-// end of string
-void uart0_getlnToFirstWhiteSpace(
-    char *buffer,
-    uint8_t
-        bufferlimit); // read one line to the first whitespace after the string
+// reads whole receiver buffer or bufferlimit-1 characters
+// newline terminator will not be cut
+// adds NULL byte at the end of string
+void uart0_gets(char *buffer, uint8_t bufferlimit);
+
+// reads one line from the buffer
+// waits for newline terminator or reached bufferlimit
+// adds NULL byte at the end of string
+void uart0_getln(char *buffer, uint8_t bufferlimit);
+
+// read one line to the first whitespace after the string
 // cuts all whitespaces before string and one after the string
+void uart0_getlnToFirstWhiteSpace(char *buffer, uint8_t bufferlimit);
 
+// returns first nonspace character found in the buffer
 inline char uart0_skipWhiteSpaces(void) {
   char c;
   do {
@@ -2049,27 +2048,29 @@ inline char uart0_skipWhiteSpaces(void) {
   } while (c <= 32);
   return c;
 }
-// returns first nonspace character found in the buffer
 
 int16_t uart0_getint(void);
 int32_t uart0_getlong(void);
 float uart0_getfloat(void);
 
-int16_t
-uart0_getData(void); // reads single byte from a buffer // returns negative
-                     // value if buffer is empty (upper byte is non zero)
-uint8_t uart0_LoadData(uint8_t *data); // reads single byte from a buffer and
-                                       // loads it into *data byte
+// reads single byte from a buffer
+// returns negative value if buffer is empty (upper byte is non zero)
+int16_t uart0_getData(void);
+
+// reads single byte from a buffer and loads it into *data byte
 // in case of empty buffers returned flag is set to BUFFER_EMPTY - NULL
+uint8_t uart0_LoadData(uint8_t *data);
 
 extern volatile uint8_t rx0_Head, rx0_Tail;
+
+// returns number of bytes waiting in the receiver buffer
 inline uint8_t uart0_AvailableBytes(void) {
   return (rx0_Head - rx0_Tail) & RX0_BUFFER_MASK;
 }
-// returns number of bytes waiting in the receiver buffer
 
-uint8_t uart0_peek(void); // returns next byte from buffer // returned byte is
-                          // invalid if there is nothing to read
+// returns next byte from buffer
+// returned byte is invalid if there is nothing to read
+uint8_t uart0_peek(void);
 
     #define uart_getc()                    uart0_getc()
     #define uart_gets(__buffptr, __limit)  uart0_gets(__buffptr, __limit)
@@ -2087,22 +2088,24 @@ uint8_t uart0_peek(void); // returns next byte from buffer // returned byte is
   #endif // NO_RX0_INTERRUPT
 
   #ifndef NO_RX1_INTERRUPT
-char uart1_getc(void); // get character from receiver ring buffer
+// get character from receiver ring buffer
+char uart1_getc(void);
 
-void uart1_gets(char *buffer,
-                uint8_t bufferlimit); // reads whole receiver buffer or
-                                      // bufferlimit-1 characters
-// newline terminator will not be cut // adds NULL byte at the end of string
-void uart1_getln(char *buffer,
-                 uint8_t bufferlimit); // reads one line from the buffer
-// waits for newline terminator or reached bufferlimit // adds NULL byte at the
-// end of string
-void uart1_getlnToFirstWhiteSpace(
-    char *buffer,
-    uint8_t
-        bufferlimit); // read one line to the first whitespace after the string
+// reads whole receiver buffer or bufferlimit-1 characters
+// newline terminator will not be cut
+// adds NULL byte at the end of string
+void uart1_gets(char *buffer, uint8_t bufferlimit);
+
+// reads one line from the buffer
+// waits for newline terminator or reached bufferlimit
+// adds NULL byte at the end of string
+void uart1_getln(char *buffer, uint8_t bufferlimit);
+
+// read one line to the first whitespace after the string
 // cuts all whitespaces before string and one after the string
+void uart1_getlnToFirstWhiteSpace(char *buffer, uint8_t bufferlimit);
 
+// returns first nonspace character found in the buffer
 inline char uart1_skipWhiteSpaces(void) {
   char c;
   do {
@@ -2110,46 +2113,50 @@ inline char uart1_skipWhiteSpaces(void) {
   } while (c <= 32);
   return c;
 }
-// returns first nonspace character found in the buffer
 
 int16_t uart1_getint(void);
 int32_t uart1_getlong(void);
 float uart1_getfloat(void);
 
-int16_t
-uart1_getData(void); // reads single byte from a buffer // returns negative
-                     // value if buffer is empty (upper byte is non zero)
-uint8_t uart1_LoadData(uint8_t *data); // reads single byte from a buffer and
-                                       // loads it into *data byte
+// reads single byte from a buffer
+// returns negative value if buffer is empty (upper byte is non zero)
+int16_t uart1_getData(void);
+
+// reads single byte from a buffer and loads it into *data byte
 // in case of empty buffers returned flag is set to BUFFER_EMPTY - NULL
+uint8_t uart1_LoadData(uint8_t *data);
 
 extern volatile uint8_t rx1_Head, rx1_Tail;
+
+// returns number of bytes waiting in the receiver buffer
 inline uint8_t uart1_AvailableBytes(void) {
   return (rx1_Head - rx1_Tail) & RX1_BUFFER_MASK;
 }
-// returns number of bytes waiting in the receiver buffer
 
-uint8_t uart1_peek(void); // returns next byte from buffer // returned byte is
-                          // invalid if there is nothing to read
-  #endif                  // NO_RX0_INTERRUPT
+// returns next byte from buffer
+// returned byte is invalid if there is nothing to read
+uint8_t uart1_peek(void);
+  #endif // NO_RX0_INTERRUPT
 
   #ifndef NO_RX2_INTERRUPT
-char uart2_getc(void); // get character from receiver ring buffer
+// get character from receiver ring buffer
+char uart2_getc(void);
 
-void uart2_gets(char *buffer,
-                uint8_t bufferlimit); // reads whole receiver buffer or
-                                      // bufferlimit-1 characters
-// newline terminator will not be cut // adds NULL byte at the end of string
-void uart2_getln(char *buffer,
-                 uint8_t bufferlimit); // reads one line from the buffer
-// waits for newline terminator or reached bufferlimit // adds NULL byte at the
-// end of string
-void uart2_getlnToFirstWhiteSpace(
-    char *buffer,
-    uint8_t
-        bufferlimit); // read one line to the first whitespace after the string
+// reads whole receiver buffer or bufferlimit-1 characters
+// newline terminator will not be cut
+// adds NULL byte at the end of string
+void uart2_gets(char *buffer, uint8_t bufferlimit);
+
+// reads one line from the buffer
+// waits for newline terminator or reached bufferlimit
+// adds NULL byte at the end of string
+void uart2_getln(char *buffer, uint8_t bufferlimit);
+
+// read one line to the first whitespace after the string
 // cuts all whitespaces before string and one after the string
+void uart2_getlnToFirstWhiteSpace(char *buffer, uint8_t bufferlimit);
 
+// returns first nonspace character found in the buffer
 inline char uart2_skipWhiteSpaces(void) {
   char c;
   do {
@@ -2157,46 +2164,50 @@ inline char uart2_skipWhiteSpaces(void) {
   } while (c <= 32);
   return c;
 }
-// returns first nonspace character found in the buffer
 
 int16_t uart2_getint(void);
 int32_t uart2_getlong(void);
 float uart2_getfloat(void);
 
-int16_t
-uart2_getData(void); // reads single byte from a buffer // returns negative
-                     // value if buffer is empty (upper byte is non zero)
-uint8_t uart2_LoadData(uint8_t *data); // reads single byte from a buffer and
-                                       // loads it into *data byte
+// reads single byte from a buffer
+// returns negative value if buffer is empty (upper byte is non zero)
+int16_t uart2_getData(void);
+
+// reads single byte from a buffer and loads it into *data byte
 // in case of empty buffers returned flag is set to BUFFER_EMPTY - NULL
+uint8_t uart2_LoadData(uint8_t *data);
 
 extern volatile uint8_t rx2_Head, rx2_Tail;
+
+// returns number of bytes waiting in the receiver buffer
 inline uint8_t uart2_AvailableBytes(void) {
   return (rx2_Head - rx2_Tail) & RX2_BUFFER_MASK;
 }
-// returns number of bytes waiting in the receiver buffer
 
-uint8_t uart2_peek(void); // returns next byte from buffer // returned byte is
-                          // invalid if there is nothing to read
-  #endif                  // NO_RX0_INTERRUPT
+// returns next byte from buffer
+// returned byte is invalid if there is nothing to read
+uint8_t uart2_peek(void);
+  #endif // NO_RX0_INTERRUPT
 
   #ifndef NO_RX3_INTERRUPT
-char uart3_getc(void); // get character from receiver ring buffer
+// get character from receiver ring buffer
+char uart3_getc(void);
 
-void uart3_gets(char *buffer,
-                uint8_t bufferlimit); // reads whole receiver buffer or
-                                      // bufferlimit-1 characters
-// newline terminator will not be cut // adds NULL byte at the end of string
-void uart3_getln(char *buffer,
-                 uint8_t bufferlimit); // reads one line from the buffer
-// waits for newline terminator or reached bufferlimit // adds NULL byte at the
-// end of string
-void uart3_getlnToFirstWhiteSpace(
-    char *buffer,
-    uint8_t
-        bufferlimit); // read one line to the first whitespace after the string
+// reads whole receiver buffer or bufferlimit-1 characters
+// newline terminator will not be cut
+// adds NULL byte at the end of string
+void uart3_gets(char *buffer, uint8_t bufferlimit);
+
+// reads one line from the buffer
+// waits for newline terminator or reached bufferlimit
+// adds NULL byte at the end of string
+void uart3_getln(char *buffer, uint8_t bufferlimit);
+
+// read one line to the first whitespace after the string
 // cuts all whitespaces before string and one after the string
+void uart3_getlnToFirstWhiteSpace(char *buffer, uint8_t bufferlimit);
 
+// returns first nonspace character found in the buffer
 inline char uart3_skipWhiteSpaces(void) {
   char c;
   do {
@@ -2204,28 +2215,30 @@ inline char uart3_skipWhiteSpaces(void) {
   } while (c <= 32);
   return c;
 }
-// returns first nonspace character found in the buffer
 
 int16_t uart3_getint(void);
 int32_t uart3_getlong(void);
 float uart3_getfloat(void);
 
-int16_t
-uart3_getData(void); // reads single byte from a buffer // returns negative
-                     // value if buffer is empty (upper byte is non zero)
-uint8_t uart3_LoadData(uint8_t *data); // reads single byte from a buffer and
-                                       // loads it into *data byte
+// reads single byte from a buffer
+// returns negative value if buffer is empty (upper byte is non zero)
+int16_t uart3_getData(void);
+
+// reads single byte from a buffer and  loads it into *data byte
 // in case of empty buffers returned flag is set to BUFFER_EMPTY - NULL
+uint8_t uart3_LoadData(uint8_t *data);
 
 extern volatile uint8_t rx3_Head, rx3_Tail;
+
+// returns number of bytes waiting in the receiver buffer
 inline uint8_t uart3_AvailableBytes(void) {
   return (rx3_Head - rx3_Tail) & RX3_BUFFER_MASK;
 }
-// returns number of bytes waiting in the receiver buffer
 
-uint8_t uart3_peek(void); // returns next byte from buffer // returned byte is
-                          // invalid if there is nothing to read
-  #endif                  // NO_RX0_INTERRUPT
+// returns next byte from buffer
+// returned byte is invalid if there is nothing to read
+uint8_t uart3_peek(void);
+  #endif // NO_RX0_INTERRUPT
 
 #endif // NO_USART_RX
 
@@ -2265,14 +2278,11 @@ static inline void naked_cts0_isr_handler(void) {
                "reti \n\t"
 
     #ifdef USART_USE_GLOBALLY_RESERVED_ISR_Z_SAVE
-
                "lds %B[z_save], (tx0_Tail) \n\t"
                "lds %A[z_save], (tx0_Head) \n\t"
                "cpse %B[z_save], %A[z_save] \n\t"
                "sbi %M[UCSRB_reg_IO], %M[UDRIE_bit] \n\t"
-
     #elif defined(USART_USE_GLOBALLY_RESERVED_ISR_SREG_SAVE)
-
                "push r25 \n\t"
 
                "lds r25, (tx0_Tail) \n\t"
@@ -2418,14 +2428,12 @@ static inline void naked_cts1_isr_handler(void) {
                "reti \n\t"
 
     #ifdef USART_USE_GLOBALLY_RESERVED_ISR_Z_SAVE
-
                "lds %B[z_save], (tx1_Tail) \n\t"
                "lds %A[z_save], (tx1_Head) \n\t"
                "cpse %B[z_save], %A[z_save] \n\t"
                "sbi %M[UCSRB_reg_IO], %M[UDRIE_bit] \n\t"
 
     #elif defined(USART_USE_GLOBALLY_RESERVED_ISR_SREG_SAVE)
-
                "push r25 \n\t"
 
                "lds r25, (tx1_Tail) \n\t"
@@ -2450,7 +2458,6 @@ static inline void naked_cts1_isr_handler(void) {
                "reti \n\t"
 
   #else // USART not in IO
-
     #ifdef USART_USE_GLOBALLY_RESERVED_ISR_SREG_SAVE
                "in %[sreg_save], __SREG__ \n\t"
     #else
@@ -2682,8 +2689,8 @@ static inline void naked_cts3_isr_handler(void) {
 
 #if defined(USE_USART1) || defined(USE_USART2) || defined(USE_USART3)
 
-  // wrapper of stdio.h FDEV_SETUP_STREAM to allow setting udata; udata is used
-  // to store info about port ID
+  // wrapper of stdio.h FDEV_SETUP_STREAM to allow setting udata; udata is
+  // used to store info about port ID
   #define FDEV_SETUP_STREAM_U(p, g, f, u)                                      \
     { .put = p, .get = g, .flags = f, .udata = u, }
 
