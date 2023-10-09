@@ -16,12 +16,11 @@
 #endif
 
 #if __AVR_ARCH__ == 103
-(uint16_t)(((F_CPU / BAUD_RATE) * 4UL) + 0.5)
   // macro calculating precise UBRR value
-  #define BAUD_CALC(x)      (uint16_t)(((F_CPU / BAUD_RATE) * 4UL) + 0.5)
+  #define BAUD_CALC(x)      (uint16_t)(((F_CPU / x) * 4UL) + 0.5)
   #define BAUD_CALC_FAST(x) BAUD_CALC(x)
   // macro calculating UBRR value for double speed
-  #define DOUBLE_BAUD_CALC(x) (uint16_t)(((F_CPU / BAUD_RATE) * 8UL) + 0.5)
+  #define DOUBLE_BAUD_CALC(x) (uint16_t)(((F_CPU / x) * 8UL) + 0.5)
 #else
   // macro calculating precise UBRR value
   #define BAUD_CALC(x)        ((F_CPU + (x) * 8UL) / (16UL * (x)) - 1UL)
@@ -88,11 +87,7 @@
 #define TX3_BUFFER_MASK (TX3_BUFFER_SIZE - 1)
 #define RX3_BUFFER_MASK (RX3_BUFFER_SIZE - 1)
 
-    enum {
-      COMPLETED = 1,
-      BUFFER_EMPTY = 0,
-      BUFFER_FULL = 0
-    };
+enum { COMPLETED = 1, BUFFER_EMPTY = 0, BUFFER_FULL = 0 };
 
 #if defined(URSEL) || defined(URSEL0) || defined(URSEL1) || defined(URSEL2) || \
     defined(URSEL3)

@@ -15,88 +15,104 @@
 // #define NO_USART_RX // disable all receiver code and dependencies
 // #define NO_USART_TX // disable all transmitter code and dependencies
 
-// #define USART_MPCM_MODE // globally enable MPCM operation mode // 9 bit data
-// frame only // always set frame format to 8 data bits
+// globally enable MPCM operation mode
+// 9 bit data frame only
+// always set frame format to 8 data bits
+// #define USART_MPCM_MODE
 
-// #define USE_DOUBLE_SPEED // enables double speed for all available USART
-// interfaces
+// enables double speed for all available USART interfaces
+#define USE_DOUBLE_SPEED
 
-#define RX_STDIO_GETCHAR_ECHO // echoes back received characters in getchar()
-                              // function (for reading in scanf())
+// echoes back received characters in getchar() function (for reading in
+// scanf())
+#define RX_STDIO_GETCHAR_ECHO
 // #define RX_GETC_ECHO // echoes back received characters in getc() function
 
-// #define PUTC_CONVERT_LF_TO_CRLF // allow for unix style (\n only) newline
-// terminator in stored strings // not included into putc_noblock
-#define RX_NEWLINE_MODE 2 // 0 - \r,  1 - \n,  2 - \r\n
-// lot of terminals sends only \r character as a newline terminator, instead of
-// \r\n or even unix style \n (BTW PuTTY doesn't allow to change this) but in
+// allow for unix style (\n only) newline terminator in stored strings
+// not included into putc_noblock
+// #define PUTC_CONVERT_LF_TO_CRLF
+
+// a lot of terminals sends only \r character as a newline terminator, instead
+// of \r\n or even unix style \n (BTW PuTTY doesn't allow to change this) but in
 // return requires \r\n terminator to show not broken text
+// 0 - \r,  1 - \n,  2 - \r\n
+#define RX_NEWLINE_MODE 1
 
-// #define USART_NO_ABI_BREAKING_PREMATURES // do not use prematures that might
-// break compilers ABI (non-gcc calling conventions), compilers that are not
-// forcing constant number of call-used registers might generate even better
-// code
+// do not use prematures that might break compilers ABI (non-gcc calling
+// conventions), compilers that are not forcing constant number of call-used
+// registers might generate even better code
+// #define USART_NO_ABI_BREAKING_PREMATURES
 
-// #define USART_PUTHEX_IN_UPPERCASE // use uppercase letters in uart_puthex()
-// function
+// use uppercase letters in uart_puthex() function
+#define USART_PUTHEX_IN_UPPERCASE
 
-// #define USART_EXTEND_RX_BUFFER // extend RX buffer by hardware 2/3 byte FIFO
-// // required for hardware and software RTS
+// extend RX buffer by hardware 2/3 byte FIFO
+// required for hardware and software RTS
+// #define USART_EXTEND_RX_BUFFER
 
-// #define USART_PUTC_FAST_INSERTIONS // skip FIFO procedure and write directly
-// data to the UDR register when possible // probably required for full bus
-// utilization at highest speed (f_cpu/8)
+// skip FIFO procedure and write directly
+// data to the UDR register when possible
+// probably required for full bus utilization at highest speed (f_cpu/8)
+// #define USART_PUTC_FAST_INSERTIONS
 
-// #define USART_NO_LOCAL_BUFFERS // do not allocate temporary buffers on stack
-// for integer/float <-> asci conversions and use globally visible u_tmp_buff[]
-// instead // it have to be declared in application part and have to be at least
-// of 6-17 bytes wide (depending on what is being converted)
+// do not allocate temporary buffers on stack for integer/float <-> asci
+// conversions and use globally visible u_tmp_buff[] instead it have to be
+// declared in application part and have to be at least of 6-17 bytes wide
+// (depending on what is being converted)
+// #define USART_NO_LOCAL_BUFFERS
 
-// #define USART_UNSAFE_TX_INTERRUPT // max 19 cycles of interrupt latency //
-// 3+PC bytes on stack // will not interrupt itself
+// max 19 cycles of interrupt latency
+// 3+PC bytes on stack
+// will not interrupt itself
+// #define USART_UNSAFE_TX_INTERRUPT
 
-// #define USART_UNSAFE_RX_INTERRUPT // max 23 cycles of interrupt latency //
-// 4+PC bytes on stack // will not interrupt itself
+// max 23 cycles of interrupt latency
+// 4+PC bytes on stack
+// will not interrupt itself
+// #define USART_UNSAFE_RX_INTERRUPT
 
-// #define USART_REMAP_LAST_INTERFACE // remap hardware registers of USART1/2/3
-// to USART0 if only one interface is used
+// remap hardware registers of USART1/2/3 to USART0 if only one interface is
+// used
+// #define USART_REMAP_LAST_INTERFACE
 
-// #define USART_SKIP_UBRRH_IF_ZERO // do not generate code for writing to ubrrh
-// if calculated value is zero // prematures out 2 bytes if ubrr is compile time
-// constant
+// do not generate code for writing to ubrrh if calculated value is zero
+// prematures out 2 bytes if ubrr is compile time constant
+// #define USART_SKIP_UBRRH_IF_ZERO
 
-// #define USART_USE_GLOBALLY_RESERVED_ISR_SREG_SAVE // prematures out 4 cycles
-// from every isr run // requires one globally reserved lower register
+// prematures out 4 cycles from every isr run
+// requires one globally reserved lower register
+#define USART_USE_GLOBALLY_RESERVED_ISR_SREG_SAVE
 
-// #define USART_USE_GLOBALLY_RESERVED_ISR_Z_SAVE    // prematures out 6 cycles
-// from every isr run // requires pair of globally reserved lower registers
-//  usage of globally reserved register for temporary storage in interrupts,
-//  should be combined with other interrupts for best results. special care have
-//  to be taken when doing so, since those registers can still be used by other
-//  compilation units (fixable in gcc by -ffixed-n flag, where n is a suppressed
-//  register), precompiled libraries (vprintf, vscanf, qsort, strtod, strtol,
-//  strtoul), or even assembly hardcoded libraries (fft, aes). registers r2-r7
-//  should be used instead of the higher ones, since those are never used by gcc
-//  for eg. argument passing.
+// prematures out 6 cycles from every isr run
+// requires pair of globally reserved lower registers usage of globally reserved
+// register for temporary storage in interrupts, should be combined with other
+// interrupts for best results. special care have to be taken when doing so,
+// since those registers can still be used by other compilation units (fixable
+// in gcc by -ffixed-n flag, where n is a suppressed register), precompiled
+// libraries (vprintf, vscanf, qsort, strtod, strtol, strtoul), or even assembly
+// hardcoded libraries (fft, aes). registers r2-r7 should be used instead of the
+// higher ones, since those are never used by gcc for eg. argument passing.
+#define USART_USE_GLOBALLY_RESERVED_ISR_Z_SAVE
 
-#define USART_SREG_SAVE_REG_NAME                                               \
-  G_sreg_save // ??? // have to be redeclared under the same name if the same
-              // registers are reused in other instances (libs)
-#define USART_SREG_SAVE_REG_NUM "r4"
+// have to be redeclared under the same name if the same registers are reused in
+// other instances (libs)
+#define USART_SREG_SAVE_REG_NAME G_sreg_save
+#define USART_SREG_SAVE_REG_NUM  "r4"
 
-#define USART_Z_SAVE_REG_NAME                                                  \
-  G_z_save // ??? // have to be redeclared under the same name if the same
-           // registers are reused in other instances (libs)
-#define USART_Z_SAVE_REG_NUM                                                   \
-  "r2" // register pair rn and rn+1 (rn+1:rn gives "invalid register name")
+// have to be redeclared under the same name if the same registers are reused in
+// other instances (libs)
+#define USART_Z_SAVE_REG_NAME G_z_save
+
+// register pair rn and rn+1 (rn+1:rn gives "invalid register name")
+#define USART_Z_SAVE_REG_NUM "r2"
 
 // Size of the ring buffers, must be power of 2
 // default 32
-// #define RX_BUFFER_SIZE 128
+#define RX_BUFFER_SIZE 64
 
 // Size of the ring buffers, must be power of 2
 // default 32
-// #define TX_BUFFER_SIZE 64
+#define TX_BUFFER_SIZE 128
 
 /*******************config for multiple USART * mcu's*************************/
 

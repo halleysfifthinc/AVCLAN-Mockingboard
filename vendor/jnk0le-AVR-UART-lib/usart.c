@@ -11,6 +11,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <util/atomic.h>
+
+#include "../../src/timing.h"
+
 #include <util/delay.h>
 
 #include "usart.h"
@@ -4946,10 +4949,13 @@ ISR(UDRE0_INTERRUPT, ISR_NAKED) {
       USART_REG_SAVE_LIST
 
       : // input operands
+  #if defined(USART0_IN_IO_ADDRESS_SPACE) ||                                   \
+      defined(USART0_IN_UPPER_IO_ADDRESS_SPACE)
       TX0_INPUT_OPERAND_LIST[UDR_reg_IO] "M"(_SFR_IO_ADDR(UDR0_REGISTER)),
+  #else
       [UDR_reg] "n"(_SFR_MEM_ADDR(UDR0_REGISTER)),
+  #endif
   #if __AVR_ARCH__ == 103
-      [control_reg_IO] "M"(_SFR_IO_ADDR(UCSR0A_REGISTER)),
       [control_reg] "n"(_SFR_MEM_ADDR(UCSR0A_REGISTER)),
   #else
       [control_reg_IO] "M"(_SFR_IO_ADDR(UCSR0B_REGISTER)),
@@ -5206,7 +5212,6 @@ ISR(RX0_INTERRUPT, ISR_NAKED) {
 
       : // input operands
   #if __AVR_ARCH__ == 103
-      RX0_INPUT_OPERAND_LIST[UDR_reg_IO] "M"(_SFR_IO_ADDR(RX0_REGISTER)),
       [UDR_reg] "n"(_SFR_MEM_ADDR(RX0_REGISTER)),
   #else
       RX0_INPUT_OPERAND_LIST[UDR_reg_IO] "M"(_SFR_IO_ADDR(UDR0_REGISTER)),
@@ -5222,8 +5227,6 @@ ISR(RX0_INTERRUPT, ISR_NAKED) {
   #endif
   #if __AVR_ARCH__ == 103
       [MPCM_reg] "n"(_SFR_MEM_ADDR(UCSR0B_REGISTER)),
-      [MPCM_reg_IO] "M"(_SFR_IO_ADDR(UCSR0B_REGISTER)),
-      [control_reg_IO] "M"(_SFR_IO_ADDR(UCSR0A_REGISTER)),
       [control_reg] "n"(_SFR_MEM_ADDR(UCSR0A_REGISTER)),
   #else
       [MPCM_reg] "n"(_SFR_MEM_ADDR(UCSR0A_REGISTER)),
