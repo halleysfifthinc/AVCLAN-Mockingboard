@@ -335,7 +335,7 @@ ISR(RTC_PIT_vect) {
         cd_Time_Min = 0x0;
       }
     }
+    Event |= EV_STATUS;
   }
-  Event |= EV_STATUS;
   RTC.PITINTFLAGS |= RTC_PI_bm;
 }
