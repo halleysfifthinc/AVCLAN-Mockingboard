@@ -26,7 +26,6 @@
 #include <stdint.h>
 
 extern uint8_t RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
-extern uint8_t readkey;
 
 void RS232_Init(void);
 void RS232_Print_P(const char *str_addr);

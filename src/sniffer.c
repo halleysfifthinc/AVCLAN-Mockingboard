@@ -36,6 +36,7 @@
 uint8_t Event;
 uint8_t echoCharacters;
 uint8_t readBinary;
+uint8_t readkey;
 
 const char const *offon[] = {"OFF", "ON"};
 

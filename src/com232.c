@@ -38,7 +38,6 @@
   (uint16_t)((float)(F_CPU * 64 / (RXMODE_S * (float)BAUD_RATE)) + 0.5)
 
 uint8_t RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
-uint8_t readkey;
 
 void RS232_Init(void) {
   RS232_RxCharBegin = RS232_RxCharEnd = 0;
