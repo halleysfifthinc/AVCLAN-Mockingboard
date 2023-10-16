@@ -881,8 +881,16 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
 void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary) {
   if (binary) {
     RS232_SendByte(0x10); // Data Link Escape, signaling binary data forthcoming
-    RS232_sendbytes((uint8_t *)frame,
-                    sizeof(AVCLAN_frame_t) - sizeof(uint8_t *));
+    RS232_SendByte(frame->broadcast);
+
+    // Send addresses in big-endian order
+    RS232_SendByte(*(((uint8_t *)&frame->controller_addr) + 1));
+    RS232_SendByte(*(((uint8_t *)&frame->controller_addr) + 0));
+    RS232_SendByte(*(((uint8_t *)&frame->peripheral_addr) + 1));
+    RS232_SendByte(*(((uint8_t *)&frame->peripheral_addr) + 0));
+
+    RS232_SendByte(frame->control);
+    RS232_SendByte(frame->length);
     RS232_sendbytes(frame->data, frame->length);
     RS232_SendByte(0x17); // End of transmission block
     RS232_Print("\n");
