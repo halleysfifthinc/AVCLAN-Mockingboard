@@ -154,29 +154,29 @@ uint16_t pulsewidth;
 #define SW_ID 0x11 // 11 For my stereo
 
 // commands
-const uint8_t stat1[] = {0x4, 0x00, 0x00, 0x01, 0x0A};
-const uint8_t stat2[] = {0x4, 0x00, 0x00, 0x01, 0x08};
-const uint8_t stat3[] = {0x4, 0x00, 0x00, 0x01, 0x0D};
-const uint8_t stat4[] = {0x4, 0x00, 0x00, 0x01, 0x0C};
+const uint8_t stat1[] = {0x00, 0x00, 0x01, 0x0A};
+const uint8_t stat2[] = {0x00, 0x00, 0x01, 0x08};
+const uint8_t stat3[] = {0x00, 0x00, 0x01, 0x0D};
+const uint8_t stat4[] = {0x00, 0x00, 0x01, 0x0C};
 
 // broadcast
-const uint8_t lan_stat1[] = {0x3, 0x00, 0x01, 0x0A};
-const uint8_t lan_reg[] = {0x3, SW_ID, 0x01, 0x00};
-const uint8_t lan_init[] = {0x3, SW_ID, 0x01, 0x01};
-const uint8_t lan_check[] = {0x3, SW_ID, 0x01, 0x20};
-const uint8_t lan_playit[] = {0x4, SW_ID, 0x01, 0x45, 0x63};
+const uint8_t lan_stat1[] = {0x00, 0x01, 0x0A};
+const uint8_t lan_reg[] = {SW_ID, 0x01, 0x00};
+const uint8_t lan_init[] = {SW_ID, 0x01, 0x01};
+const uint8_t lan_check[] = {SW_ID, 0x01, 0x20};
+const uint8_t lan_playit[] = {SW_ID, 0x01, 0x45, 0x63};
 
-const uint8_t play_req1[] = {0x4, 0x00, 0x25, 0x63, 0x80};
+const uint8_t play_req1[] = {0x00, 0x25, 0x63, 0x80};
 
 #ifdef __AVENSIS__
-const uint8_t play_req2[] = {0x6, 0x00, SW_ID, 0x63, 0x42};
+const uint8_t play_req2[] = {0x00, SW_ID, 0x63, 0x42};
 #else
-const uint8_t play_req2[] = {0x6, 0x00, SW_ID, 0x63, 0x42, 0x01, 0x00};
+const uint8_t play_req2[] = {0x00, SW_ID, 0x63, 0x42, 0x01, 0x00};
 #endif
 
-const uint8_t play_req3[] = {0x5, 0x00, SW_ID, 0x63, 0x42, 0x41};
-const uint8_t stop_req[] = {0x5, 0x00, SW_ID, 0x63, 0x43, 0x01};
-const uint8_t stop_req2[] = {0x5, 0x00, SW_ID, 0x63, 0x43, 0x41};
+const uint8_t play_req3[] = {0x00, SW_ID, 0x63, 0x42, 0x41};
+const uint8_t stop_req[] = {0x00, SW_ID, 0x63, 0x43, 0x01};
+const uint8_t stop_req2[] = {0x00, SW_ID, 0x63, 0x43, 0x41};
 
 // Init commands
 const AVCLAN_KnownMessage_t c8 = {
@@ -265,7 +265,7 @@ AVCLAN_KnownMessage_t CMD_STOP2 = {
 const AVCLAN_KnownMessage_t CMD_BEEP = {
     UNICAST, 5, {0x00, 0x63, 0x29, 0x60, 0x02}};
 
-uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd);
+uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd, uint8_t l);
 
 void AVCLAN_init() {
   // Pull-ups are disabled by default
@@ -732,19 +732,19 @@ uint8_t AVCLAN_readframe() {
     AVCLAN_printframe(&frame, printBinary);
 
   if (for_me) {
-    if (CheckCmd(&frame, stat1)) {
+    if (CheckCmd(&frame, stat1, sizeof(stat1))) {
       answerReq = cm_Status1;
       return 1;
     }
-    if (CheckCmd(&frame, stat2)) {
+    if (CheckCmd(&frame, stat2, sizeof(stat2))) {
       answerReq = cm_Status2;
       return 1;
     }
-    if (CheckCmd(&frame, stat3)) {
+    if (CheckCmd(&frame, stat3, sizeof(stat3))) {
       answerReq = cm_Status3;
       return 1;
     }
-    if (CheckCmd(&frame, stat4)) {
+    if (CheckCmd(&frame, stat4, sizeof(stat4))) {
       answerReq = cm_Status4;
       return 1;
     }
@@ -753,46 +753,46 @@ uint8_t AVCLAN_readframe() {
     //   return 1;
     // }
 
-    if (CheckCmd(&frame, play_req1)) {
+    if (CheckCmd(&frame, play_req1, sizeof(play_req1))) {
       answerReq = cm_PlayReq1;
       return 1;
     }
-    if (CheckCmd(&frame, play_req2)) {
+    if (CheckCmd(&frame, play_req2, sizeof(play_req2))) {
       answerReq = cm_PlayReq2;
       return 1;
     }
-    if (CheckCmd(&frame, play_req3)) {
+    if (CheckCmd(&frame, play_req3, sizeof(play_req3))) {
       answerReq = cm_PlayReq3;
       return 1;
     }
-    if (CheckCmd(&frame, stop_req)) {
+    if (CheckCmd(&frame, stop_req, sizeof(stop_req))) {
       answerReq = cm_StopReq;
       return 1;
     }
-    if (CheckCmd(&frame, stop_req2)) {
+    if (CheckCmd(&frame, stop_req2, sizeof(stop_req2))) {
       answerReq = cm_StopReq2;
       return 1;
     }
   } else { // broadcast check
 
-    if (CheckCmd(&frame, lan_playit)) {
+    if (CheckCmd(&frame, lan_playit, sizeof(lan_playit))) {
       answerReq = cm_PlayIt;
       return 1;
     }
-    if (CheckCmd(&frame, lan_check)) {
+    if (CheckCmd(&frame, lan_check, sizeof(lan_check))) {
       answerReq = cm_Check;
       CMD_CHECK.data[4] = frame.data[3];
       return 1;
     }
-    if (CheckCmd(&frame, lan_reg)) {
+    if (CheckCmd(&frame, lan_reg, sizeof(lan_reg))) {
       answerReq = cm_Register;
       return 1;
     }
-    if (CheckCmd(&frame, lan_init)) {
+    if (CheckCmd(&frame, lan_init, sizeof(lan_init))) {
       answerReq = cm_Init;
       return 1;
     }
-    if (CheckCmd(&frame, lan_stat1)) {
+    if (CheckCmd(&frame, lan_stat1, sizeof(lan_stat1))) {
       answerReq = cm_Status1;
       return 1;
     }
@@ -971,9 +971,7 @@ void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary) {
   }
 }
 
-uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd) {
-  uint8_t l = *cmd++;
-
+uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd, uint8_t l) {
   for (uint8_t i = 0; i < l; i++) {
     if (frame->data[i] != *cmd++)
       return 0;
