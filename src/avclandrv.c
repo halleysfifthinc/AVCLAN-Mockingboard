@@ -134,9 +134,11 @@ uint8_t printBinary;
 
 uint8_t playMode;
 
-uint8_t cd_Track;
-uint8_t cd_Time_Min;
-uint8_t cd_Time_Sec;
+AVCLAN_CD_Status_t cd_status;
+
+uint8_t *cd_Track;
+uint8_t *cd_Time_Min;
+uint8_t *cd_Time_Sec;
 
 uint8_t answerReq;
 
@@ -299,6 +301,14 @@ void AVCLAN_init() {
   TCB1.CCMP = 0xFFFF;
   TCB1.CTRLA = TCB_CLKSEL | TCB_ENABLE_bm;
 
+  // Setup RTC as 1 sec periodic timer
+  loop_until_bit_is_clear(RTC_STATUS, RTC_CTRLABUSY_bp);
+  RTC.CTRLA = RTC_PRESCALER_DIV1_gc;
+  RTC.CLKSEL = RTC_CLKSEL_INT32K_gc;
+  RTC.PITINTCTRL = RTC_PI_bm;
+  loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CTRLBUSY_bp);
+  RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm;
+
   // Set PA4 and PC0 as outputs
   PORTA.DIRSET = PIN4_bm;
   PORTC.DIRSET = PIN0_bm;
@@ -308,11 +318,54 @@ void AVCLAN_init() {
 
   answerReq = cm_Null;
 
-  cd_Track = 1;
-  cd_Time_Min = 0;
-  cd_Time_Sec = 0;
+  cd_status.cd1 = 1;
+  cd_status.disc = 1;
+  cd_status.cd2 = cd_status.cd3 = cd_status.cd4 = cd_status.cd5 =
+      cd_status.cd6 = 0;
+  cd_status.state = cd_LOADING;
+  cd_status.disk_random = 0;
+  cd_status.random = 0;
+  cd_status.disk_repeat = 0;
+  cd_status.repeat = 0;
+  cd_status.scan = 0;
+
+  cd_status.track = 1;
+  cd_status.mins = 0;
+  cd_status.secs = 0;
+
+  cd_Track = &cd_status.track;
+  cd_Time_Min = &cd_status.mins;
+  cd_Time_Sec = &cd_status.secs;
+
   playMode = 0;
   CD_Mode = stStop;
+}
+
+/* Increment packed 2-digit BCD number.
+   WARNING: Overflow behavior is incorrect (e.g. `incBCD(0x99) != 0x00`) */
+uint8_t incBCD(uint8_t data) {
+  if ((data & 0x9) == 0x9)
+    return (data + 7);
+
+  return (data + 1);
+}
+
+// Periodic interrupt with a 1 sec period
+ISR(RTC_PIT_vect) {
+  if (CD_Mode == stPlay) {
+    uint8_t sec = *cd_Time_Sec;
+    uint8_t min = *cd_Time_Min;
+    sec = incBCD(sec);
+    if (sec == 0x60) {
+      *cd_Time_Sec = 0;
+      min = incBCD(min);
+      if (min == 0xA0) {
+        *cd_Time_Min = 0x0;
+      }
+    }
+    answerReq = cm_CDStatus;
+  }
+  RTC.PITINTFLAGS |= RTC_PI_bm;
 }
 
 void set_AVC_logic_for(uint8_t val, uint16_t period) {
@@ -878,6 +931,8 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   return 0;
 }
 
+uint8_t AVCLAN_responseNeeded() { return (answerReq != 0); }
+
 void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary) {
   if (binary) {
     RS232_SendByte(0x10); // Data Link Escape, signaling binary data forthcoming
@@ -990,9 +1045,9 @@ uint8_t AVCLan_SendInitCommands() {
 void AVCLan_Send_Status() {
   uint8_t STATUS[] = {0x63, 0x31, 0xF1, 0x01, 0x10, 0x01,
                       0x01, 0x00, 0x00, 0x00, 0x80};
-  STATUS[6] = cd_Track;
-  STATUS[7] = cd_Time_Min;
-  STATUS[8] = cd_Time_Sec;
+  STATUS[6] = *cd_Track;
+  STATUS[7] = *cd_Time_Min;
+  STATUS[8] = *cd_Time_Sec;
   STATUS[9] = 0;
 
   AVCLAN_frame_t status = {.broadcast = UNICAST,
@@ -1083,14 +1138,14 @@ uint8_t AVCLan_SendAnswer() {
       frame.broadcast = CMD_PLAY_OK4.broadcast;
       frame.length = CMD_PLAY_OK4.length;
       frame.data = (uint8_t *)&CMD_PLAY_OK4.data[0];
-      CMD_PLAY_OK4.data[8] = cd_Track;
-      CMD_PLAY_OK4.data[9] = cd_Time_Min;
-      CMD_PLAY_OK4.data[10] = cd_Time_Sec;
+      CMD_PLAY_OK4.data[8] = *cd_Track;
+      CMD_PLAY_OK4.data[9] = *cd_Time_Min;
+      CMD_PLAY_OK4.data[10] = *cd_Time_Sec;
       r = AVCLAN_sendframe(&frame);
-
+      CD_Mode = stPlay;
+    case cm_CDStatus:
       if (!r)
         AVCLan_Send_Status();
-      CD_Mode = stPlay;
       break;
     case cm_StopReq:
     case cm_StopReq2:
@@ -1101,9 +1156,9 @@ uint8_t AVCLan_SendAnswer() {
       frame.data = (uint8_t *)&CMD_STOP1.data[0];
       r = AVCLAN_sendframe(&frame);
 
-      CMD_STOP2.data[8] = cd_Track;
-      CMD_STOP2.data[9] = cd_Time_Min;
-      CMD_STOP2.data[10] = cd_Time_Sec;
+      CMD_STOP2.data[8] = *cd_Track;
+      CMD_STOP2.data[9] = *cd_Time_Min;
+      CMD_STOP2.data[10] = *cd_Time_Sec;
       frame.broadcast = CMD_STOP2.broadcast;
       frame.length = CMD_STOP2.length;
       frame.data = (uint8_t *)&CMD_STOP2.data[0];

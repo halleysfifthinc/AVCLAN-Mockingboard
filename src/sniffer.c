@@ -30,10 +30,6 @@
 #include "avclandrv.h"
 #include "com232.h"
 
-#define EV_NOTHING 0
-#define EV_STATUS  4
-
-uint8_t Event;
 uint8_t echoCharacters;
 uint8_t readBinary;
 uint8_t readkey;
@@ -67,16 +63,8 @@ int main() {
       AVCLAN_readframe();
     } else {
       // check command from HU
-      if (answerReq != 0)
+      if (AVCLAN_responseNeeded())
         AVCLan_SendAnswer();
-    }
-
-    // HandleEvent
-    switch (Event) {
-      case EV_STATUS:
-        Event &= ~EV_STATUS;
-        AVCLan_Send_Status();
-        break;
     }
 
     // Key handler
@@ -157,7 +145,7 @@ int main() {
           break;
         case 'b':
         case 'B': // Beep
-          answerReq = cm_Beep;
+          // answerReq = cm_Beep;
           AVCLan_SendAnswer();
           break;
         case 'e': // Beep
@@ -250,20 +238,9 @@ void Setup() {
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, (CLK_PRESCALE | CLK_PRESCALE_DIV));
 
   general_GPIO_init();
-
-  // Setup RTC as 1 sec periodic timer
-  loop_until_bit_is_clear(RTC_STATUS, RTC_CTRLABUSY_bp);
-  RTC.CTRLA = RTC_PRESCALER_DIV1_gc;
-  RTC.CLKSEL = RTC_CLKSEL_INT32K_gc;
-  RTC.PITINTCTRL = RTC_PI_bm;
-  loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CTRLBUSY_bp);
-  RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm;
-
   RS232_Init();
-
   AVCLAN_init();
 
-  Event = EV_NOTHING;
   sei();
 }
 
@@ -313,29 +290,4 @@ void print_help() {
               "E - Print line status\n"
 #endif
               "? - Print this message\n");
-}
-
-/* Increment packed 2-digit BCD number.
-   WARNING: Overflow behavior is incorrect (e.g. `incBCD(0x99) != 0x00`) */
-uint8_t incBCD(uint8_t data) {
-  if ((data & 0x9) == 0x9)
-    return (data + 7);
-
-  return (data + 1);
-}
-
-// Periodic interrupt with a 1 sec period
-ISR(RTC_PIT_vect) {
-  if (CD_Mode == stPlay) {
-    cd_Time_Sec = incBCD(cd_Time_Sec);
-    if (cd_Time_Sec == 0x60) {
-      cd_Time_Sec = 0;
-      cd_Time_Min = incBCD(cd_Time_Min);
-      if (cd_Time_Min == 0xA0) {
-        cd_Time_Min = 0x0;
-      }
-    }
-    Event |= EV_STATUS;
-  }
-  RTC.PITINTFLAGS |= RTC_PI_bm;
 }

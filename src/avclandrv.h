@@ -73,10 +73,43 @@ typedef enum {
   cm_PrevDisc = 123,
   cm_ScanModeOn = 130,
   cm_ScanModeOff = 131,
+  cm_CDStatus,
 } commands;
 
+typedef enum {
+  cd_OPEN = 0x01,
+  cd_ERR1 = 0x02,
+  cd_SEEKING = 0x08,
+  cd_PLAYBACK = 0x10,
+  cd_SEEKING_TRACK = 0x20,
+  cd_LOADING = 0x80,
+} cd_state;
+
+typedef struct AVCLAN_CD_Status {
+  _Bool cd1 : 1;
+  _Bool cd2 : 1;
+  _Bool cd3 : 1;
+  _Bool cd4 : 1;
+  _Bool cd5 : 1;
+  _Bool cd6 : 1;
+  int : 2;
+  cd_state state;
+  uint8_t disc;
+  uint8_t track;
+  uint8_t mins;
+  uint8_t secs;
+  int : 1;
+  _Bool disk_random : 1;
+  _Bool random : 1;
+  _Bool disk_repeat : 1;
+  _Bool repeat : 1;
+  _Bool disk_scan : 1;
+  _Bool scan : 1;
+  int : 2;
+  uint8_t flags2;
+} AVCLAN_CD_Status_t;
+
 typedef enum { stStop = 0, stPlay = 1 } cd_modes;
-extern cd_modes CD_Mode;
 
 typedef enum MSG_TYPE { BROADCAST = 0, UNICAST = 1 } MSG_TYPE_t;
 
@@ -98,6 +131,9 @@ typedef struct AVCLAN_frame_struct {
 
 uint8_t AVCLAN_readframe();
 uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame);
+
+uint8_t AVCLAN_responseNeeded();
+
 void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary);
 AVCLAN_frame_t *AVCLAN_parseframe(const uint8_t *bytes, uint8_t len);
 
@@ -105,14 +141,6 @@ void AVCLAN_init();
 void AVCLan_Send_Status();
 void AVCLan_Register();
 uint8_t AVCLan_SendAnswer();
-
-extern uint8_t cd_Track;
-extern uint8_t cd_Time_Min;
-extern uint8_t cd_Time_Sec;
-
-extern uint8_t playMode;
-
-extern uint8_t answerReq;
 
 #ifdef SOFTWARE_DEBUG
 void AVCLan_Measure();
