@@ -125,6 +125,12 @@
 #define READING_NBITS  GPIOR2
 #define READING_PARITY GPIOR3
 
+#ifdef SOFTWARE_DEBUG
+  #define TCB_CNTMODE TCB_CNTMODE_FRQPW_gc
+#else
+  #define TCB_CNTMODE TCB_CNTMODE_PW_gc
+#endif
+
 uint16_t CD_ID;
 uint16_t HU_ID;
 
@@ -282,13 +288,7 @@ void AVCLAN_init() {
   EVSYS.ASYNCCH0 = EVSYS_ASYNCCH0_AC2_OUT_gc;
   EVSYS.ASYNCUSER0 = EVSYS_ASYNCUSER0_ASYNCCH0_gc; // USER0 is TCB0
 
-// TCB0 for read bit timing
-#ifdef SOFTWARE_DEBUG
-  #define TCB_CNTMODE TCB_CNTMODE_FRQPW_gc
-#else
-  #define TCB_CNTMODE TCB_CNTMODE_PW_gc
-#endif
-
+  // TCB0 for read bit timing
   TCB0.CTRLB = TCB_CNTMODE;
   TCB0.INTCTRL = TCB_CAPT_bm;
   TCB0.EVCTRL = TCB_CAPTEI_bm;
@@ -436,7 +436,7 @@ void AVCLAN_sendbit_ACK() {
 uint8_t AVCLAN_readbit_ACK() {
   TCB1.CNT = 0;
   set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0);
-  AVC_SET_LOGICAL_1();
+  AVC_SET_LOGICAL_1(); // Stop driving bus
 
   while (1) {
     if (!BUS_IS_IDLE && (TCB1.CNT > AVCLAN_READBIT_THRESHOLD))
@@ -538,7 +538,7 @@ ISR(TCB0_INT_vect) {
       const uint8_t *: AVCLAN_readbitsi,                                       \
       uint8_t *: AVCLAN_readbitsi)(bits, len)
 
-// Send `len` bits on the AVCLAN bus; returns the even parity
+// Read `len` bits on the AVCLAN bus; returns the even parity
 uint8_t AVCLAN_readbitsi(uint8_t *bits, uint8_t len) {
   cli();
   READING_BYTE = 0;
@@ -564,7 +564,7 @@ uint8_t AVCLAN_readbitsi(uint8_t *bits, uint8_t len) {
   return (parity & 1);
 }
 
-// Send `len` bits on the AVCLAN bus; returns the even parity
+// Read `len` bits on the AVCLAN bus; returns the even parity
 uint8_t AVCLAN_readbitsl(uint16_t *bits, int8_t len) {
   uint8_t parity = 0;
   if (len > 8) {
