@@ -309,12 +309,10 @@ void AVCLAN_init() {
   loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CTRLBUSY_bp);
   RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm;
 
-  // Set PA4 and PC0 as outputs
-  PORTA.DIRSET = PIN4_bm;
-  PORTC.DIRSET = PIN0_bm;
-
   // Set bus output pins to idle
   AVC_SET_LOGICAL_1();
+
+  AVCLAN_muteDevice(0); // unmute AVCLAN bus TX
 
   answerReq = cm_Null;
 
@@ -368,6 +366,33 @@ ISR(RTC_PIT_vect) {
   RTC.PITINTFLAGS |= RTC_PI_bm;
 }
 
+// Mute device TX on AVCLAN bus
+void AVCLAN_muteDevice(uint8_t mute) {
+  if (mute) {
+    // clang-format off
+    __asm__ __volatile__("cbi %[vporta_dir], 4; \n\t"
+                         "cbi %[vportc_dir], 0; \n\t"
+                         ::
+                         [vporta_dir] "I"(_SFR_IO_ADDR(VPORTA_DIR)),
+                         [vportc_dir] "I"(_SFR_IO_ADDR(VPORTC_DIR)));
+    // clang-format on
+  } else {
+    // clang-format off
+    __asm__ __volatile__("sbi %[vporta_dir], 4; \n\t"
+                         "sbi %[vportc_dir], 0; \n\t"
+                         ::
+                         [vporta_dir] "I"(_SFR_IO_ADDR(VPORTA_DIR)),
+                         [vportc_dir] "I"(_SFR_IO_ADDR(VPORTC_DIR)));
+    // clang-format on
+  }
+}
+
+// Returns true if device TX is muted on AVCLAN bus
+uint8_t AVCLAN_ismuted() {
+  return (((VPORTA_DIR & PIN4_bm) | (VPORTA_DIR & PIN0_bm)) == 0);
+}
+
+// Set AVC bus to `val` (logical 1 or 0) for `period` ticks of TCB1
 void set_AVC_logic_for(uint8_t val, uint16_t period) {
   TCB1.CNT = 0;
   if (val) {
@@ -646,7 +671,7 @@ uint8_t AVCLAN_readframe() {
   }
 
   // is this command for me ?
-  for_me = (frame.peripheral_addr == CD_ID);
+  for_me = !AVCLAN_ismuted() && (frame.peripheral_addr == CD_ID);
 
   if (for_me)
     AVCLAN_sendbit_ACK();
@@ -731,72 +756,75 @@ uint8_t AVCLAN_readframe() {
   if (printAllFrames)
     AVCLAN_printframe(&frame, printBinary);
 
-  if (for_me) {
-    if (CheckCmd(&frame, stat1, sizeof(stat1))) {
-      answerReq = cm_Status1;
-      return 1;
-    }
-    if (CheckCmd(&frame, stat2, sizeof(stat2))) {
-      answerReq = cm_Status2;
-      return 1;
-    }
-    if (CheckCmd(&frame, stat3, sizeof(stat3))) {
-      answerReq = cm_Status3;
-      return 1;
-    }
-    if (CheckCmd(&frame, stat4, sizeof(stat4))) {
-      answerReq = cm_Status4;
-      return 1;
-    }
-    // if (CheckCmd((uint8_t*)stat5)) {
-    //   answerReq = cm_Status5;
-    //   return 1;
-    // }
+  if (!AVCLAN_ismuted()) {
+    if (for_me) {
+      if (CheckCmd(&frame, stat1, sizeof(stat1))) {
+        answerReq = cm_Status1;
+        return 1;
+      }
+      if (CheckCmd(&frame, stat2, sizeof(stat2))) {
+        answerReq = cm_Status2;
+        return 1;
+      }
+      if (CheckCmd(&frame, stat3, sizeof(stat3))) {
+        answerReq = cm_Status3;
+        return 1;
+      }
+      if (CheckCmd(&frame, stat4, sizeof(stat4))) {
+        answerReq = cm_Status4;
+        return 1;
+      }
+      // if (CheckCmd((uint8_t*)stat5)) {
+      //   answerReq = cm_Status5;
+      //   return 1;
+      // }
 
-    if (CheckCmd(&frame, play_req1, sizeof(play_req1))) {
-      answerReq = cm_PlayReq1;
-      return 1;
-    }
-    if (CheckCmd(&frame, play_req2, sizeof(play_req2))) {
-      answerReq = cm_PlayReq2;
-      return 1;
-    }
-    if (CheckCmd(&frame, play_req3, sizeof(play_req3))) {
-      answerReq = cm_PlayReq3;
-      return 1;
-    }
-    if (CheckCmd(&frame, stop_req, sizeof(stop_req))) {
-      answerReq = cm_StopReq;
-      return 1;
-    }
-    if (CheckCmd(&frame, stop_req2, sizeof(stop_req2))) {
-      answerReq = cm_StopReq2;
-      return 1;
-    }
-  } else { // broadcast check
+      if (CheckCmd(&frame, play_req1, sizeof(play_req1))) {
+        answerReq = cm_PlayReq1;
+        return 1;
+      }
+      if (CheckCmd(&frame, play_req2, sizeof(play_req2))) {
+        answerReq = cm_PlayReq2;
+        return 1;
+      }
+      if (CheckCmd(&frame, play_req3, sizeof(play_req3))) {
+        answerReq = cm_PlayReq3;
+        return 1;
+      }
+      if (CheckCmd(&frame, stop_req, sizeof(stop_req))) {
+        answerReq = cm_StopReq;
+        return 1;
+      }
+      if (CheckCmd(&frame, stop_req2, sizeof(stop_req2))) {
+        answerReq = cm_StopReq2;
+        return 1;
+      }
+    } else { // broadcast check
 
-    if (CheckCmd(&frame, lan_playit, sizeof(lan_playit))) {
-      answerReq = cm_PlayIt;
-      return 1;
-    }
-    if (CheckCmd(&frame, lan_check, sizeof(lan_check))) {
-      answerReq = cm_Check;
-      CMD_CHECK.data[4] = frame.data[3];
-      return 1;
-    }
-    if (CheckCmd(&frame, lan_reg, sizeof(lan_reg))) {
-      answerReq = cm_Register;
-      return 1;
-    }
-    if (CheckCmd(&frame, lan_init, sizeof(lan_init))) {
-      answerReq = cm_Init;
-      return 1;
-    }
-    if (CheckCmd(&frame, lan_stat1, sizeof(lan_stat1))) {
-      answerReq = cm_Status1;
-      return 1;
+      if (CheckCmd(&frame, lan_playit, sizeof(lan_playit))) {
+        answerReq = cm_PlayIt;
+        return 1;
+      }
+      if (CheckCmd(&frame, lan_check, sizeof(lan_check))) {
+        answerReq = cm_Check;
+        CMD_CHECK.data[4] = frame.data[3];
+        return 1;
+      }
+      if (CheckCmd(&frame, lan_reg, sizeof(lan_reg))) {
+        answerReq = cm_Register;
+        return 1;
+      }
+      if (CheckCmd(&frame, lan_init, sizeof(lan_init))) {
+        answerReq = cm_Init;
+        return 1;
+      }
+      if (CheckCmd(&frame, lan_stat1, sizeof(lan_stat1))) {
+        answerReq = cm_Status1;
+        return 1;
+      }
     }
   }
+
   answerReq = cm_Null;
   return 1;
 }
@@ -839,6 +867,9 @@ AVCLAN_frame_t *AVCLAN_parseframe(const uint8_t *bytes, uint8_t len) {
 }
 
 uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
+  if (AVCLAN_ismuted())
+    return 1;
+
   STOPEvent;
 
   // wait for free line

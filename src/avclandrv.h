@@ -120,7 +120,6 @@ typedef struct AVCLAN_KnownMessage_struct {
 } AVCLAN_KnownMessage_t;
 
 typedef struct AVCLAN_frame_struct {
-  uint8_t valid;
   MSG_TYPE_t broadcast;     // 0 for broadcast messages
   uint16_t controller_addr; // formerly "master"
   uint16_t peripheral_addr; // formerly "slave"
@@ -128,6 +127,9 @@ typedef struct AVCLAN_frame_struct {
   uint8_t length;
   uint8_t *data;
 } AVCLAN_frame_t;
+
+void AVCLAN_init();
+void AVCLAN_muteDevice(uint8_t mute);
 
 uint8_t AVCLAN_readframe();
 uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame);
@@ -137,7 +139,6 @@ uint8_t AVCLAN_responseNeeded();
 void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary);
 AVCLAN_frame_t *AVCLAN_parseframe(const uint8_t *bytes, uint8_t len);
 
-void AVCLAN_init();
 void AVCLan_Send_Status();
 void AVCLan_Register();
 uint8_t AVCLan_SendAnswer();

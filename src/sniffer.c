@@ -32,6 +32,7 @@
 
 uint8_t echoCharacters;
 uint8_t readBinary;
+uint8_t muteBus;
 uint8_t readkey;
 
 const char const *offon[] = {"OFF", "ON"};
@@ -141,6 +142,13 @@ int main() {
           echoCharacters ^= 1;
           RS232_Print("Echo characters: ");
           RS232_Print(offon[echoCharacters]);
+          RS232_Print("\n");
+          break;
+        case 'm': // Mute mockingboard device on AVCLAN bus
+          muteBus ^= 1;
+          AVCLAN_muteDevice(muteBus);
+          RS232_Print("Mute device: ");
+          RS232_Print(offon[muteBus]);
           RS232_Print("\n");
           break;
         case 'b':
@@ -277,9 +285,11 @@ void print_help() {
   RS232_Print("S - read sequence\n"
               "W - send command\n"
               "Q - send broadcast\n"
+              "m - Toggle mute for mockingboard bus activity\n"
               "l - Toggle message logging\n"
               "k - Toggle character echo\n"
               "R/r - register device\n"
+              "X/x - Turn binary ON or OFF, respectively\n"
               "B - Beep\n"
               "v - Toggle verbose logging\n"
 #ifdef SOFTWARE_DEBUG
