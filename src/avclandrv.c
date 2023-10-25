@@ -607,8 +607,6 @@ uint8_t AVCLAN_readframe() {
   STOPEvent; // disable timer1 interrupt
 
   uint8_t data[MAXMSGLEN];
-  uint8_t i;
-  uint8_t for_me = 0;
   AVCLAN_frame_t frame = {
       .data = data,
   };
@@ -667,10 +665,9 @@ uint8_t AVCLAN_readframe() {
     return 0;
   }
 
-  // is this command for me ?
-  for_me = !AVCLAN_ismuted() && (frame.peripheral_addr == CD_ID);
+  uint8_t shouldACK = !AVCLAN_ismuted() && (frame.peripheral_addr == CD_ID);
 
-  if (for_me)
+  if (shouldACK)
     AVCLAN_sendbit_ACK();
   else
     AVCLAN_readbits(&tmp, 1);
@@ -690,7 +687,7 @@ uint8_t AVCLAN_readframe() {
     RS232_Print(".\n");
     STARTEvent;
     return 0;
-  } else if (for_me) {
+  } else if (shouldACK) {
     AVCLAN_sendbit_ACK();
   } else {
     AVCLAN_readbits(&tmp, 1);
@@ -711,7 +708,7 @@ uint8_t AVCLAN_readframe() {
     RS232_Print(".\n");
     STARTEvent;
     return 0;
-  } else if (for_me) {
+  } else if (shouldACK) {
     AVCLAN_sendbit_ACK();
   } else {
     AVCLAN_readbits(&tmp, 1);
@@ -725,7 +722,7 @@ uint8_t AVCLAN_readframe() {
     return 0;
   }
 
-  for (i = 0; i < frame.length; i++) {
+  for (uint8_t i = 0; i < frame.length; i++) {
     parity = AVCLAN_readbyte(&frame.data[i]);
     AVCLAN_readbits(&tmp, 1);
     if (parity != (tmp & 1)) {
@@ -741,7 +738,7 @@ uint8_t AVCLAN_readframe() {
       RS232_Print(".\n");
       STARTEvent;
       return 0;
-    } else if (for_me) {
+    } else if (shouldACK) {
       AVCLAN_sendbit_ACK();
     } else {
       AVCLAN_readbits(&tmp, 1);
@@ -754,7 +751,7 @@ uint8_t AVCLAN_readframe() {
     AVCLAN_printframe(&frame, printBinary);
 
   if (!AVCLAN_ismuted()) {
-    if (for_me) {
+    if (shouldACK) {
       if (CheckCmd(&frame, stat1, sizeof(stat1))) {
         answerReq = cm_Status1;
         return 1;
