@@ -132,8 +132,6 @@ uint8_t printAllFrames;
 uint8_t verbose;
 uint8_t printBinary;
 
-uint8_t playMode;
-
 AVCLAN_CD_Status_t cd_status;
 
 uint8_t *cd_Track;
@@ -335,7 +333,6 @@ void AVCLAN_init() {
   cd_Time_Min = &cd_status.mins;
   cd_Time_Sec = &cd_status.secs;
 
-  playMode = 0;
   CD_Mode = stStop;
 }
 
@@ -1140,7 +1137,6 @@ uint8_t AVCLan_SendAnswer() {
       RS232_Print("AVCCHK\n");
       break;
     case cm_PlayReq1:
-      playMode = 0;
       frame.broadcast = CMD_PLAY_OK1.broadcast;
       frame.length = CMD_PLAY_OK1.length;
       frame.data = (uint8_t *)&CMD_PLAY_OK1.data[0];
@@ -1148,7 +1144,6 @@ uint8_t AVCLan_SendAnswer() {
       break;
     case cm_PlayReq2:
     case cm_PlayReq3:
-      playMode = 0;
       frame.broadcast = CMD_PLAY_OK2.broadcast;
       frame.length = CMD_PLAY_OK2.length;
       frame.data = (uint8_t *)&CMD_PLAY_OK2.data[0];
@@ -1162,7 +1157,6 @@ uint8_t AVCLan_SendAnswer() {
       CD_Mode = stPlay;
       break;
     case cm_PlayIt:
-      playMode = 1;
       RS232_Print("PLAY\n");
       frame.broadcast = CMD_PLAY_OK4.broadcast;
       frame.length = CMD_PLAY_OK4.length;
@@ -1179,7 +1173,6 @@ uint8_t AVCLan_SendAnswer() {
     case cm_StopReq:
     case cm_StopReq2:
       CD_Mode = stStop;
-      playMode = 0;
       frame.broadcast = CMD_STOP1.broadcast;
       frame.length = CMD_STOP1.length;
       frame.data = (uint8_t *)&CMD_STOP1.data[0];
