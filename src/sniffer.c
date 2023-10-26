@@ -65,7 +65,7 @@ int main() {
     } else {
       // check command from HU
       if (AVCLAN_responseNeeded())
-        AVCLan_SendAnswer();
+        AVCLAN_respond();
     }
 
     // Key handler
@@ -122,16 +122,6 @@ int main() {
           AVCLAN_sendframe(&msg);
           msg.peripheral_addr = HU_ID;
           break;
-        case 'R': // Register and wait for a response
-          RS232_Print("REGIST:\n");
-          AVCLan_Register();
-          TCB1.CNT = 0;
-          while (TCB1.CNT < 540) {}
-          CHECK_AVC_LINE;
-          break;
-        case 'r': // Register into the abyss
-          AVCLan_Register();
-          break;
         case 'l': // Print received messages
           printAllFrames ^= 1;
           RS232_Print("Logging: ");
@@ -154,9 +144,9 @@ int main() {
         case 'b':
         case 'B': // Beep
           // answerReq = cm_Beep;
-          AVCLan_SendAnswer();
+          AVCLAN_respond();
           break;
-        case 'e': // Beep
+        case 'e':
           data_tmp[0] = 0x00;
           data_tmp[1] = 0x01;
           data_tmp[2] = 0x11;
@@ -288,7 +278,6 @@ void print_help() {
               "m - Toggle mute for mockingboard bus activity\n"
               "l - Toggle message logging\n"
               "k - Toggle character echo\n"
-              "R/r - register device\n"
               "X/x - Turn binary ON or OFF, respectively\n"
               "B - Beep\n"
               "v - Toggle verbose logging\n"

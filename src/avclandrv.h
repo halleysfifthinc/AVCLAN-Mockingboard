@@ -135,13 +135,10 @@ uint8_t AVCLAN_readframe();
 uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame);
 
 uint8_t AVCLAN_responseNeeded();
+uint8_t AVCLAN_respond();
 
 void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary);
 AVCLAN_frame_t *AVCLAN_parseframe(const uint8_t *bytes, uint8_t len);
-
-void AVCLan_Send_Status();
-void AVCLan_Register();
-uint8_t AVCLan_SendAnswer();
 
 #ifdef SOFTWARE_DEBUG
 void AVCLan_Measure();
