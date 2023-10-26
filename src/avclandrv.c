@@ -182,48 +182,6 @@ const uint8_t play_req3[] = {0x00, SW_ID, 0x63, 0x42, 0x41};
 const uint8_t stop_req[] = {0x00, SW_ID, 0x63, 0x43, 0x01};
 const uint8_t stop_req2[] = {0x00, SW_ID, 0x63, 0x43, 0x41};
 
-// Init commands
-const AVCLAN_KnownMessage_t c8 = {
-    BROADCAST,
-    11,
-    {0x63, 0x31, 0xF1, 0x00, 0x90, 0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80}};
-const AVCLAN_KnownMessage_t c1 = {
-    BROADCAST,
-    10,
-    {0x63, 0x31, 0xF1, 0x00, 0x80, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x80}};
-const AVCLAN_KnownMessage_t cA = {
-    BROADCAST,
-    11,
-    {0x63, 0x31, 0xF1, 0x00, 0x30, 0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80}};
-const AVCLAN_KnownMessage_t c2 = {
-    BROADCAST,
-    10,
-    {0x63, 0x31, 0xF3, 0x00, 0x3F, 0x00, 0x00, 0x00, 0x00, 0x02}};
-const AVCLAN_KnownMessage_t c3 = {
-    BROADCAST,
-    10,
-    {0x63, 0x31, 0xF3, 0x00, 0x3F, 0x00, 0x01, 0x00, 0x01, 0x02}};
-const AVCLAN_KnownMessage_t c4 = {
-    BROADCAST,
-    10,
-    {0x63, 0x31, 0xF3, 0x00, 0x3D, 0x00, 0x01, 0x00, 0x01, 0x02}};
-const AVCLAN_KnownMessage_t c5 = {
-    BROADCAST,
-    10,
-    {0x63, 0x31, 0xF3, 0x00, 0x39, 0x00, 0x01, 0x00, 0x01, 0x02}};
-const AVCLAN_KnownMessage_t c6 = {
-    BROADCAST,
-    10,
-    {0x63, 0x31, 0xF3, 0x00, 0x31, 0x00, 0x01, 0x00, 0x01, 0x02}};
-const AVCLAN_KnownMessage_t c7 = {
-    BROADCAST,
-    10,
-    {0x63, 0x31, 0xF3, 0x00, 0x21, 0x00, 0x01, 0x00, 0x01, 0x02}};
-const AVCLAN_KnownMessage_t c9 = {
-    BROADCAST,
-    10,
-    {0x63, 0x31, 0xF3, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x02}};
-
 // answers
 const AVCLAN_KnownMessage_t CMD_REGISTER = {
     UNICAST, 5, {0x00, 0x01, SW_ID, 0x10, 0x63}};
@@ -1114,67 +1072,6 @@ uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd, uint8_t l) {
       return 0;
   }
   return 1;
-}
-
-uint8_t AVCLan_SendInitCommands() {
-  uint8_t r;
-  AVCLAN_frame_t frame = {.broadcast = BROADCAST,
-                          .controller_addr = CD_ID,
-                          .peripheral_addr = HU_ID,
-                          .control = 0xF,
-                          .length = c1.length};
-  frame.data = (uint8_t *)&c1.data[0];
-
-  r = AVCLAN_sendframe(&frame);
-  if (!r) {
-    frame.length = c2.length;
-    frame.data = (uint8_t *)&c2.data[0];
-    r = AVCLAN_sendframe(&frame); // c2
-  }
-  if (!r) {
-    frame.length = c3.length;
-    frame.data = (uint8_t *)&c3.data[0];
-    r = AVCLAN_sendframe(&frame); // c3
-  }
-  if (!r) {
-    frame.length = c4.length;
-    frame.data = (uint8_t *)&c4.data[0];
-    r = AVCLAN_sendframe(&frame); // c4
-  }
-  if (!r) {
-    frame.length = c5.length;
-    frame.data = (uint8_t *)&c5.data[0];
-    r = AVCLAN_sendframe(&frame); // c5
-  }
-  if (!r) {
-    frame.length = c6.length;
-    frame.data = (uint8_t *)&c6.data[0];
-    r = AVCLAN_sendframe(&frame); // c6
-  }
-  if (!r) {
-    frame.length = c7.length;
-    frame.data = (uint8_t *)&c7.data[0];
-    r = AVCLAN_sendframe(&frame); // c7
-  }
-  if (!r) {
-    frame.length = c8.length;
-    frame.data = (uint8_t *)&c8.data[0];
-    r = AVCLAN_sendframe(&frame); // c8
-  }
-  if (!r) {
-    frame.length = c9.length;
-    frame.data = (uint8_t *)&c9.data[0];
-    r = AVCLAN_sendframe(&frame); // c9
-  }
-  if (!r) {
-    frame.length = cA.length;
-    frame.data = (uint8_t *)&cA.data[0];
-    r = AVCLAN_sendframe(&frame); // cA
-  }
-  // const uint8_t c1[] = { 0x0, 0x0B,		0x63, 0x31, 0xF1, 0x00, 0x80,
-  // 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x80 }; r =
-  // AVCLan_SendAnswerFrame((uint8_t*)c1);
-  return r;
 }
 
 void AVCLan_Send_Status() {
