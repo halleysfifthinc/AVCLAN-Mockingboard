@@ -992,20 +992,25 @@ uint8_t AVCLAN_respond() {
 
 void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary) {
   if (binary) {
-    RS232_SendByte(0x10); // Data Link Escape, signaling binary data forthcoming
-    RS232_SendByte(frame->broadcast);
+    uint8_t buffer[8];
+    buffer[0] = 0x10; // Data Link Escape, signaling binary data forthcoming
+    buffer[1] = frame->broadcast;
 
     // Send addresses in big-endian order
-    RS232_SendByte(*(((uint8_t *)&frame->controller_addr) + 1));
-    RS232_SendByte(*(((uint8_t *)&frame->controller_addr) + 0));
-    RS232_SendByte(*(((uint8_t *)&frame->peripheral_addr) + 1));
-    RS232_SendByte(*(((uint8_t *)&frame->peripheral_addr) + 0));
+    buffer[2] = *(((uint8_t *)&frame->controller_addr) + 1);
+    buffer[3] = *(((uint8_t *)&frame->controller_addr) + 0);
+    buffer[4] = *(((uint8_t *)&frame->peripheral_addr) + 1);
+    buffer[5] = *(((uint8_t *)&frame->peripheral_addr) + 0);
 
-    RS232_SendByte(frame->control);
-    RS232_SendByte(frame->length);
+    buffer[6] = frame->control;
+    buffer[7] = frame->length;
+    RS232_sendbytes((uint8_t *)&buffer, 8);
     RS232_sendbytes(frame->data, frame->length);
-    RS232_SendByte(0x17); // End of transmission block
-    RS232_Print("\n");
+
+    buffer[0] = 0x17; // End of transmission block
+    buffer[1] = 0x0D; // \r
+    buffer[2] = 0x0A; // \n
+    RS232_sendbytes((uint8_t *)&buffer, 3);
   } else {
     RS232_PrintHex4(frame->broadcast);
 
