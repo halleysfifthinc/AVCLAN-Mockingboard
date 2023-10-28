@@ -131,8 +131,6 @@
   #define TCB_CNTMODE TCB_CNTMODE_PW_gc
 #endif
 
-uint16_t CD_ID;
-uint16_t HU_ID;
 
 uint8_t printAllFrames;
 uint8_t verbose;
@@ -623,7 +621,8 @@ uint8_t AVCLAN_readframe() {
     return 0;
   }
 
-  uint8_t shouldACK = !AVCLAN_ismuted() && (frame.peripheral_addr == CD_ID);
+  uint8_t shouldACK =
+      !AVCLAN_ismuted() && (frame.peripheral_addr == DEVICE_ADDR);
 
   if (shouldACK)
     AVCLAN_sendbit_ACK();

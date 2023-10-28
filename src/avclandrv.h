@@ -38,14 +38,10 @@
   sbi(RTC.PITINTCTRL, RTC_PI_bp);                                              \
   sbi(USART0.CTRLA, USART_RXCIE_bp);
 
-#define CHECK_AVC_LINE                                                         \
-  if (!BUS_IS_IDLE)                                                            \
-    AVCLAN_readframe();
-
 #define MAXMSGLEN 32
 
-extern uint16_t CD_ID; // CD Changer ID
-extern uint16_t HU_ID; // Head-unit ID
+#define DEVICE_ADDR 0x360 // CD Changer address
+#define HU_ADDR     0x190 // Head-unit address
 
 extern uint8_t printAllFrames;
 extern uint8_t verbose;

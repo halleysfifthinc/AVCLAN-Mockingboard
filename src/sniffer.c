@@ -50,7 +50,7 @@ int main() {
   uint8_t data_tmp[MAXMSGLEN];
   AVCLAN_frame_t msg = {
       .broadcast = UNICAST,
-      .controller_addr = CD_ID,
+      .controller_addr = DEVICE_ADDR,
       .control = 0xF,
       .data = data_tmp,
   };
@@ -120,7 +120,7 @@ int main() {
           msg.peripheral_addr = 0x1FF;
           msg.length = s_len;
           AVCLAN_sendframe(&msg);
-          msg.peripheral_addr = HU_ID;
+          msg.peripheral_addr = HU_ADDR;
           break;
         case 'l': // Print received messages
           printAllFrames ^= 1;
@@ -143,8 +143,16 @@ int main() {
           break;
         case 'b':
         case 'B': // Beep
-          // answerReq = cm_Beep;
-          AVCLAN_respond();
+          data_tmp[0] = 0x00;
+          data_tmp[1] = 0x63;
+          data_tmp[2] = 0x29;
+          data_tmp[3] = 0x60;
+          data_tmp[4] = 0x01;
+          msg.length = 5;
+          msg.broadcast = UNICAST;
+          msg.controller_addr = DEVICE_ADDR;
+          msg.peripheral_addr = HU_ADDR;
+          AVCLAN_sendframe(&msg);
           break;
         case 'e':
           data_tmp[0] = 0x00;
@@ -154,8 +162,8 @@ int main() {
           data_tmp[4] = 0x63;
           msg.length = 5;
           msg.broadcast = UNICAST;
-          msg.controller_addr = CD_ID;
-          msg.peripheral_addr = HU_ID;
+          msg.controller_addr = DEVICE_ADDR;
+          msg.peripheral_addr = HU_ADDR;
           AVCLAN_sendframe(&msg);
           break;
 
@@ -225,9 +233,6 @@ int main() {
 }
 
 void Setup() {
-  CD_ID = 0x360;
-  HU_ID = 0x190;
-
   printAllFrames = 1;
   echoCharacters = 1;
   readBinary = 0;
@@ -256,6 +261,10 @@ void general_GPIO_init() {
   // toggling and saves power) for unused and unconnected pins
   PORTC.PIN2CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
   PORTB.PIN0CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
+
+  // TODO: Remove once IGN_SENSE hardware is fixed
+  PORTB.DIRSET = PIN3_bm;
+  PORTB.OUTSET = PIN3_bm;
 
   // Output only pins: PA3-5, PB1-2,4-5; PC0-1
   // TODO: TxD (PA1), RTS (PA3) is output only, test if RxD needs the input
