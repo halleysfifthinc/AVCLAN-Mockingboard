@@ -94,7 +94,9 @@
 #include <avr/sfr_defs.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
+#define VAR_DECLS
 #include "avclandrv.h"
 #include "com232.h"
 
@@ -131,6 +133,7 @@
   #define TCB_CNTMODE TCB_CNTMODE_PW_gc
 #endif
 
+#define MAX_SEND_ATTEMPTS 3
 
 uint8_t printAllFrames;
 uint8_t verbose;
@@ -153,79 +156,19 @@ uint16_t period = 0;
 
 uint16_t pulsewidth;
 
-#define SW_ID 0x11 // 11 For my stereo
-
-// commands
-const uint8_t stat1[] = {0x00, 0x00, 0x01, 0x0A};
-const uint8_t stat2[] = {0x00, 0x00, 0x01, 0x08};
-const uint8_t stat3[] = {0x00, 0x00, 0x01, 0x0D};
-const uint8_t stat4[] = {0x00, 0x00, 0x01, 0x0C};
-
-// broadcast
-const uint8_t lan_stat1[] = {0x00, 0x01, 0x0A};
-const uint8_t lan_reg[] = {SW_ID, 0x01, 0x00};
-const uint8_t lan_init[] = {SW_ID, 0x01, 0x01};
-const uint8_t lan_check[] = {SW_ID, 0x01, 0x20};
-const uint8_t lan_playit[] = {SW_ID, 0x01, 0x45, 0x63};
-
-const uint8_t play_req1[] = {0x00, 0x25, 0x63, 0x80};
-
-#ifdef __AVENSIS__
-const uint8_t play_req2[] = {0x00, SW_ID, 0x63, 0x42};
-#else
-const uint8_t play_req2[] = {0x00, SW_ID, 0x63, 0x42, 0x01, 0x00};
-#endif
-
-const uint8_t play_req3[] = {0x00, SW_ID, 0x63, 0x42, 0x41};
-const uint8_t stop_req[] = {0x00, SW_ID, 0x63, 0x43, 0x01};
-const uint8_t stop_req2[] = {0x00, SW_ID, 0x63, 0x43, 0x41};
-
 // answers
-const AVCLAN_KnownMessage_t CMD_REGISTER = {
-    UNICAST, 5, {0x00, 0x01, SW_ID, 0x10, 0x63}};
-const AVCLAN_KnownMessage_t CMD_STATUS1 = {
-    UNICAST, 4, {0x00, 0x01, 0x00, 0x1A}};
-const AVCLAN_KnownMessage_t CMD_STATUS2 = {
-    UNICAST, 4, {0x00, 0x01, 0x00, 0x18}};
-const AVCLAN_KnownMessage_t CMD_STATUS3 = {
-    UNICAST, 4, {0x00, 0x01, 0x00, 0x1D}};
-const AVCLAN_KnownMessage_t CMD_STATUS4 = {
-    UNICAST, 5, {0x00, 0x01, 0x00, 0x1C, 0x00}};
-AVCLAN_KnownMessage_t CMD_CHECK = {
-    UNICAST, 6, {0x00, 0x01, SW_ID, 0x30, 0x00, 0x00}};
+uint8_t lancheck_resp[] = {0x00, 0x01, 0x00, 0xFF};
+const uint8_t list_functions_resp[] = {0x00, dev_COMM_CTRL, dev_COMM_v1,
+                                       List_Functions_Resp, dev_CD_CHANGER};
+uint8_t ping_resp[] = {0x00, dev_COMM_CTRL, dev_COMM_v1, Ping_Resp, 0xFF, 0x00};
+uint8_t function_change_resp[] = {0x00, dev_CD_CHANGER, dev_COMM_v1, 0xFF,
+                                  0x01};
+uint8_t cdstatus_resp[] = {
+    dev_CD_CHANGER, dev_STATUS, Report, 0x01, cd_SEEKING_TRACK, 0x01, 0x00,
+    0xFF,           0x7F,       0x00,   0xc0};
 
-const AVCLAN_KnownMessage_t CMD_STATUS5 = {
-    UNICAST, 5, {0x00, 0x5C, 0x12, 0x53, 0x02}};
-const AVCLAN_KnownMessage_t CMD_STATUS5A = {
-    BROADCAST, 5, {0x5C, 0x31, 0xF1, 0x00, 0x00}};
-
-const AVCLAN_KnownMessage_t CMD_STATUS6 = {
-    UNICAST, 6, {0x00, 0x5C, 0x32, 0xF0, 0x02, 0x00}};
-
-const AVCLAN_KnownMessage_t CMD_PLAY_OK1 = {
-    UNICAST, 5, {0x00, 0x63, SW_ID, 0x50, 0x01}};
-const AVCLAN_KnownMessage_t CMD_PLAY_OK2 = {
-    UNICAST, 5, {0x00, 0x63, SW_ID, 0x52, 0x01}};
-const AVCLAN_KnownMessage_t CMD_PLAY_OK3 = {
-    BROADCAST,
-    11,
-    {0x63, 0x31, 0xF1, 0x01, 0x00, 0x01, 0xFF, 0xFF, 0xFF, 0x00, 0x80}};
-AVCLAN_KnownMessage_t CMD_PLAY_OK4 = {
-    BROADCAST,
-    11,
-    {0x63, 0x31, 0xF1, 0x01, 0x28, 0x00, 0x00, 0x01, 0x00, 0x00, 0x80}};
-
-const AVCLAN_KnownMessage_t CMD_STOP1 = {
-    UNICAST, 5, {0x00, 0x63, SW_ID, 0x53, 0x01}};
-AVCLAN_KnownMessage_t CMD_STOP2 = {
-    BROADCAST,
-    11,
-    {0x63, 0x31, 0xF1, 0x00, 0x30, 0x00, 0x00, 0x01, 0x00, 0x00, 0x80}};
-
-const AVCLAN_KnownMessage_t CMD_BEEP = {
-    UNICAST, 5, {0x00, 0x63, 0x29, 0x60, 0x02}};
-
-uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd, uint8_t l);
+uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame);
+void AVCLAN_updateCDStatus();
 
 void AVCLAN_init() {
   // Pull-ups are disabled by default
@@ -274,16 +217,17 @@ void AVCLAN_init() {
   cd_status.disc = 1;
   cd_status.cd2 = cd_status.cd3 = cd_status.cd4 = cd_status.cd5 =
       cd_status.cd6 = 0;
-  cd_status.state = cd_LOADING;
+  cd_status.state = cd_SEEKING_TRACK;
   cd_status.disk_random = 0;
   cd_status.random = 0;
   cd_status.disk_repeat = 0;
   cd_status.repeat = 0;
   cd_status.scan = 0;
+  cd_status.flags2 = 0xC0;
 
   cd_status.track = 1;
-  cd_status.mins = 0;
-  cd_status.secs = 0;
+  cd_status.mins = 0xFF;
+  cd_status.secs = 0x7F;
 
   cd_Track = &cd_status.track;
   cd_Time_Min = &cd_status.mins;
@@ -707,74 +651,8 @@ uint8_t AVCLAN_readframe() {
   if (printAllFrames)
     AVCLAN_printframe(&frame, printBinary);
 
-  if (!AVCLAN_ismuted()) {
-    if (shouldACK) {
-      if (CheckCmd(&frame, stat1, sizeof(stat1))) {
-        answerReq = cm_Status1;
-        return 1;
-      }
-      if (CheckCmd(&frame, stat2, sizeof(stat2))) {
-        answerReq = cm_Status2;
-        return 1;
-      }
-      if (CheckCmd(&frame, stat3, sizeof(stat3))) {
-        answerReq = cm_Status3;
-        return 1;
-      }
-      if (CheckCmd(&frame, stat4, sizeof(stat4))) {
-        answerReq = cm_Status4;
-        return 1;
-      }
-      // if (CheckCmd((uint8_t*)stat5)) {
-      //   answerReq = cm_Status5;
-      //   return 1;
-      // }
-
-      if (CheckCmd(&frame, play_req1, sizeof(play_req1))) {
-        answerReq = cm_PlayReq1;
-        return 1;
-      }
-      if (CheckCmd(&frame, play_req2, sizeof(play_req2))) {
-        answerReq = cm_PlayReq2;
-        return 1;
-      }
-      if (CheckCmd(&frame, play_req3, sizeof(play_req3))) {
-        answerReq = cm_PlayReq3;
-        return 1;
-      }
-      if (CheckCmd(&frame, stop_req, sizeof(stop_req))) {
-        answerReq = cm_StopReq;
-        return 1;
-      }
-      if (CheckCmd(&frame, stop_req2, sizeof(stop_req2))) {
-        answerReq = cm_StopReq2;
-        return 1;
-      }
-    } else { // broadcast check
-
-      if (CheckCmd(&frame, lan_playit, sizeof(lan_playit))) {
-        answerReq = cm_PlayIt;
-        return 1;
-      }
-      if (CheckCmd(&frame, lan_check, sizeof(lan_check))) {
-        answerReq = cm_Check;
-        CMD_CHECK.data[4] = frame.data[3];
-        return 1;
-      }
-      if (CheckCmd(&frame, lan_reg, sizeof(lan_reg))) {
-        answerReq = cm_Register;
-        return 1;
-      }
-      if (CheckCmd(&frame, lan_init, sizeof(lan_init))) {
-        answerReq = cm_Init;
-        return 1;
-      }
-      if (CheckCmd(&frame, lan_stat1, sizeof(lan_stat1))) {
-        answerReq = cm_Status1;
-        return 1;
-      }
-    }
-  }
+  if (!AVCLAN_ismuted())
+    AVCLAN_handleframe(&frame);
 
   answerReq = cm_Null;
   return 1;
@@ -786,10 +664,9 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
 
   STOPEvent;
 
-  // wait for free line
-  uint8_t line_busy = 1;
   uint8_t parity = 0;
 
+  // wait for free line
   TCB1.CNT = 0;
   while (BUS_IS_IDLE) {
     // Wait for 120% of a bit length
@@ -876,114 +753,211 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   return 0;
 }
 
-uint8_t AVCLAN_responseNeeded() { return (answerReq != 0); }
+const AVCLAN_frame_t *frameQueue[4];
+
+static inline uint8_t qFull() {
+  return ((qWrite - qRead) == sizeof(frameQueue));
+}
+
+static inline uint8_t qMask(uint8_t pos) {
+  return pos & (sizeof(frameQueue) - 1);
+}
+
+uint8_t qPush(const AVCLAN_frame_t *frame) {
+  if (qFull())
+    return 1;
+
+  frameQueue[qMask(qWrite++)] = frame;
+
+  return 0;
+}
+
+const AVCLAN_frame_t *qPeek() {
+  if (qEmpty())
+    return NULL;
+
+  return frameQueue[qMask(qRead)];
+}
+
+const AVCLAN_frame_t *qPop() {
+  if (qEmpty())
+    return NULL;
+
+  return frameQueue[qMask(qRead++)];
+}
+
+uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
+  uint8_t respond = 0;
+  AVCLAN_frame_t *resp = malloc(sizeof(AVCLAN_frame_t));
+
+  if (!resp)
+    return NULL;
+
+  resp->controller_addr = DEVICE_ADDR;
+  resp->control = 0xF;
+
+  if (!frame->broadcast) {
+    // peripheral_addr will be 0xFFF or 0x1FF based on all currently known
+    // examples
+    // if (frame->peripheral_addr == 0xFFF || frame->peripheral_addr == 0x1FF) {
+    if (frame->data[0] == 0) {
+      if (frame->data[1] == dev_COMM_CTRL) {
+        switch (frame->data[2]) {
+          case Lancheck_Scan_Req:
+            lancheck_resp[3] = Lancheck_Scan_Resp;
+            goto GROUPED;
+          case Lancheck_Req:
+            lancheck_resp[3] = Lancheck_Resp;
+            goto GROUPED;
+          case Lancheck_End_Req:
+            lancheck_resp[3] = Lancheck_End_Resp;
+            goto GROUPED;
+          default:
+            break;
+          GROUPED:
+            resp->broadcast = UNICAST;
+            resp->peripheral_addr = HU_ADDR;
+            resp->length = sizeof(lancheck_resp);
+            resp->data = (uint8_t *)lancheck_resp;
+            respond = 1;
+        }
+      }
+    } else if (frame->data[0] == dev_COMM_v1) {
+      if (frame->data[1] == dev_COMM_CTRL) {
+        switch (frame->data[2]) {
+          case Advertise_Function:
+            if (frame->data[3] == dev_CD_CHANGER)
+              CD_Mode = stPlay;
+            else
+              CD_Mode = stStop;
+            break;
+          case Ping_Req:
+            resp->broadcast = UNICAST;
+            resp->peripheral_addr = HU_ADDR;
+            resp->length = sizeof(ping_resp);
+            ping_resp[4] = frame->data[3];
+            resp->data = (uint8_t *)&ping_resp;
+            respond = 1;
+            break;
+          case List_Functions_Req:
+            resp->broadcast = UNICAST;
+            resp->peripheral_addr = HU_ADDR;
+            resp->length = sizeof(list_functions_resp);
+            resp->data = (uint8_t *)&list_functions_resp;
+            respond = 1;
+            break;
+          // case Restart_Lan:
+          //   break;
+          default:
+        }
+      }
+    }
+    // }
+  } else if (frame->peripheral_addr == DEVICE_ADDR) { // unicast to CD changer
+    if (frame->data[0] == 0) {
+      switch (frame->data[1]) {
+        case dev_COMM_v1:
+          switch (frame->data[2]) {
+            case dev_CD_CHANGER:
+              switch (frame->data[3]) {
+                case Enable_Function_Req:
+                  function_change_resp[3] = Enable_Function_Resp;
+                  cd_status.state = cd_SEEKING;
+                  cd_status.flags2 = 0x80;
+                  *cd_Time_Min = 0x00;
+                  *cd_Time_Sec = 0x00;
+                  CD_Mode = stPlay;
+                  answerReq = cm_CDStatus;
+                  goto GROUPED2;
+                case Disable_Function_Req:
+                  function_change_resp[3] = Disable_Function_Resp;
+                  CD_Mode = stStop;
+                  cd_status.state = 0;
+                  *cd_Time_Min = 0x00;
+                  *cd_Time_Sec = 0x00;
+                  answerReq = cm_CDStatus;
+                  goto GROUPED2;
+                // case 0x80:
+                //   act = Inserted_CD;
+                //   goto GROUPED;
+                default:
+                  break;
+                GROUPED2:
+                  resp->broadcast = UNICAST;
+                  resp->peripheral_addr = HU_ADDR;
+                  resp->length = sizeof(function_change_resp);
+                  resp->data = (uint8_t *)function_change_resp;
+                  respond = 1;
+              }
+            default:
+          }
+          break;
+        case dev_CMD_SW:
+        case dev_STATUS:
+          if (frame->data[2] == dev_CD_CHANGER) {
+            switch (frame->data[3]) {
+              case Request_Report:
+                cdstatus_resp[2] = Report;
+                goto GROUPED3;
+              case Request_Report2:
+                cdstatus_resp[2] = Report2;
+                goto GROUPED3;
+              case Request_Loader2:
+                cdstatus_resp[2] = Report_Loader2;
+                goto GROUPED3;
+              default:
+                break;
+              GROUPED3:
+                memcpy(&cdstatus_resp[3], &cd_status, sizeof(cd_status));
+                resp->broadcast = BROADCAST;
+                resp->peripheral_addr = 0x1FF;
+                resp->length = sizeof(function_change_resp);
+                resp->data = (uint8_t *)function_change_resp;
+                respond = 1;
+            }
+          }
+          break;
+        default:
+      }
+    }
+  }
+
+  if (!respond) {
+    free(resp);
+  } else {
+    qPush(resp);
+  }
+
+  return respond;
+}
 
 uint8_t AVCLAN_respond() {
   uint8_t r = 0;
-  AVCLAN_frame_t frame = {.broadcast = UNICAST,
-                          .controller_addr = CD_ID,
-                          .peripheral_addr = HU_ID,
-                          .control = 0xF,
-                          .length = 0};
-
-  switch (answerReq) {
-    case cm_Status1:
-      frame.broadcast = CMD_STATUS1.broadcast;
-      frame.length = CMD_STATUS1.length;
-      frame.data = (uint8_t *)&CMD_STATUS1.data[0];
-      r = AVCLAN_sendframe(&frame);
-      break;
-    case cm_Status2:
-      frame.broadcast = CMD_STATUS2.broadcast;
-      frame.length = CMD_STATUS2.length;
-      frame.data = (uint8_t *)&CMD_STATUS2.data[0];
-      r = AVCLAN_sendframe(&frame);
-      break;
-    case cm_Status3:
-      frame.broadcast = CMD_STATUS3.broadcast;
-      frame.length = CMD_STATUS3.length;
-      frame.data = (uint8_t *)&CMD_STATUS3.data[0];
-      r = AVCLAN_sendframe(&frame);
-      break;
-    case cm_Status4:
-      frame.broadcast = CMD_STATUS4.broadcast;
-      frame.length = CMD_STATUS4.length;
-      frame.data = (uint8_t *)&CMD_STATUS4.data[0];
-      r = AVCLAN_sendframe(&frame);
-      break;
-    case cm_Register:
-      frame.broadcast = CMD_REGISTER.broadcast;
-      frame.length = CMD_REGISTER.length;
-      frame.data = (uint8_t *)&CMD_REGISTER.data[0];
-      r = AVCLAN_sendframe(&frame);
-      break;
-    // case cm_Init: // RS232_Print("INIT\n");
-    //   r = AVCLan_SendInitCommands();
-    //   break;
-    case cm_Check:
-      frame.broadcast = CMD_CHECK.broadcast;
-      frame.length = CMD_CHECK.length;
-      frame.data = CMD_CHECK.data;
-      r = AVCLAN_sendframe(&frame);
-      CMD_CHECK.data[6]++;
-      RS232_Print("AVCCHK\n");
-      break;
-    case cm_PlayReq1:
-      frame.broadcast = CMD_PLAY_OK1.broadcast;
-      frame.length = CMD_PLAY_OK1.length;
-      frame.data = (uint8_t *)&CMD_PLAY_OK1.data;
-      r = AVCLAN_sendframe(&frame);
-      break;
-    case cm_PlayReq2:
-    case cm_PlayReq3:
-      frame.broadcast = CMD_PLAY_OK2.broadcast;
-      frame.length = CMD_PLAY_OK2.length;
-      frame.data = (uint8_t *)&CMD_PLAY_OK2.data;
-      r = AVCLAN_sendframe(&frame);
-      if (!r) {
-        frame.broadcast = CMD_PLAY_OK3.broadcast;
-        frame.length = CMD_PLAY_OK3.length;
-        frame.data = (uint8_t *)&CMD_PLAY_OK3.data;
-        r = AVCLAN_sendframe(&frame);
+  if (!qEmpty()) {
+    const AVCLAN_frame_t *resp = qPeek();
+    for (uint8_t i = 0; i < MAX_SEND_ATTEMPTS; i++) {
+      r = AVCLAN_sendframe(resp);
+      if (!r) { // Send succeeded
+        resp = qPop();
+        free((AVCLAN_frame_t *)resp);
+        break;
       }
-      CD_Mode = stPlay;
-      break;
-    case cm_PlayIt:
-      RS232_Print("PLAY\n");
-      frame.broadcast = CMD_PLAY_OK4.broadcast;
-      frame.length = CMD_PLAY_OK4.length;
-      frame.data = (uint8_t *)&CMD_PLAY_OK4.data;
-      CMD_PLAY_OK4.data[8] = *cd_Track;
-      CMD_PLAY_OK4.data[9] = *cd_Time_Min;
-      CMD_PLAY_OK4.data[10] = *cd_Time_Sec;
-      r = AVCLAN_sendframe(&frame);
-      CD_Mode = stPlay;
-    case cm_CDStatus:
-      if (!r)
-        AVCLan_Send_Status();
-      break;
-    case cm_StopReq:
-    case cm_StopReq2:
-      CD_Mode = stStop;
-      frame.broadcast = CMD_STOP1.broadcast;
-      frame.length = CMD_STOP1.length;
-      frame.data = (uint8_t *)&CMD_STOP1.data;
-      r = AVCLAN_sendframe(&frame);
+    }
+    if (r) { // Sending failed all attempts; give up sending frame
+      resp = qPop();
+      free((AVCLAN_frame_t *)resp);
+    }
+  } else if (!answerReq) {
+    AVCLAN_frame_t frame = {.broadcast = UNICAST,
+                            .controller_addr = DEVICE_ADDR,
+                            .peripheral_addr = HU_ADDR,
+                            .control = 0xF,
+                            .length = 0};
 
-      CMD_STOP2.data[8] = *cd_Track;
-      CMD_STOP2.data[9] = *cd_Time_Min;
-      CMD_STOP2.data[10] = *cd_Time_Sec;
-      frame.broadcast = CMD_STOP2.broadcast;
-      frame.length = CMD_STOP2.length;
-      frame.data = (uint8_t *)&CMD_STOP2.data;
-      r = AVCLAN_sendframe(&frame);
-      break;
-    case cm_Beep:
-      frame.broadcast = CMD_BEEP.broadcast;
-      frame.length = CMD_BEEP.length;
-      frame.data = (uint8_t *)&CMD_BEEP.data;
-      r = AVCLAN_sendframe(&frame);
-      break;
+    switch (answerReq) {
+      case cm_CDStatus:
+        AVCLAN_updateCDStatus();
+    }
   }
 
   answerReq = cm_Null;
@@ -1070,45 +1044,27 @@ AVCLAN_frame_t *AVCLAN_parseframe(const uint8_t *bytes, uint8_t len) {
   return frame;
 }
 
-uint8_t CheckCmd(const AVCLAN_frame_t *frame, const uint8_t *cmd, uint8_t l) {
-  for (uint8_t i = 0; i < l; i++) {
-    if (frame->data[i] != *cmd++)
-      return 0;
+void AVCLAN_updateCDStatus() {
+  if (CD_Mode) {
+    if (cd_status.state != cd_PLAYBACK) {
+      cd_status.state = cd_PLAYBACK;
+      answerReq = cm_CDStatus;
+    }
+
+    if (answerReq == cm_CDStatus) {
+      cdstatus_resp[2] = Report;
+      memcpy(&cdstatus_resp[3], &cd_status, sizeof(cd_status));
+
+      AVCLAN_frame_t status = {.broadcast = BROADCAST,
+                               .controller_addr = DEVICE_ADDR,
+                               .peripheral_addr = 0x1FF,
+                               .control = 0xF,
+                               .length = sizeof(cdstatus_resp),
+                               .data = (uint8_t *)&cdstatus_resp};
+
+      AVCLAN_sendframe(&status);
+    }
   }
-  return 1;
-}
-
-void AVCLan_Send_Status() {
-  uint8_t STATUS[] = {0x63, 0x31, 0xF1, 0x01, 0x10, 0x01,
-                      0x01, 0x00, 0x00, 0x00, 0x80};
-  STATUS[6] = *cd_Track;
-  STATUS[7] = *cd_Time_Min;
-  STATUS[8] = *cd_Time_Sec;
-  STATUS[9] = 0;
-
-  AVCLAN_frame_t status = {.broadcast = UNICAST,
-                           .controller_addr = CD_ID,
-                           .peripheral_addr = HU_ID,
-                           .control = 0xF,
-                           .length = 11,
-                           .data = &STATUS[0]};
-
-  AVCLAN_sendframe(&status);
-}
-
-void AVCLan_Register() {
-  AVCLAN_frame_t register_frame = {.broadcast = CMD_REGISTER.broadcast,
-                                   .controller_addr = CD_ID,
-                                   .peripheral_addr = HU_ID,
-                                   .control = 0xF,
-                                   .length = CMD_REGISTER.length,
-                                   .data = (uint8_t *)CMD_REGISTER.data};
-  RS232_Print("REG_ST\n");
-  AVCLAN_sendframe(&register_frame);
-  RS232_Print("REG_END\n");
-  // AVCLan_Command( cm_Register );
-  answerReq = cm_Init;
-  AVCLAN_respond();
 }
 
 #ifdef SOFTWARE_DEBUG

@@ -49,28 +49,84 @@ extern uint8_t printBinary;
 
 typedef enum {
   cm_Null = 0,
-  cm_Status1 = 1,
-  cm_Status2 = 2,
-  cm_Status3 = 3,
-  cm_Status4 = 4,
-  cm_PlayReq1 = 5,
-  cm_PlayReq2 = 6,
-  cm_PlayReq3 = 7,
-  cm_StopReq = 8,
-  cm_StopReq2 = 9,
-  cm_Register = 100,
-  cm_Init = 101,
-  cm_Check = 102,
-  cm_PlayIt = 103,
-  cm_Beep = 110,
-  cm_NextTrack = 120,
-  cm_PrevTrack = 121,
-  cm_NextDisc = 122,
-  cm_PrevDisc = 123,
-  cm_ScanModeOn = 130,
-  cm_ScanModeOff = 131,
   cm_CDStatus,
 } commands;
+
+typedef enum {
+  dev_COMM_CTRL = 0x01,
+  dev_COMM_v1 = 0x11,
+  dev_COMM_v2 = 0x12,
+  dev_SW = 0x21,
+  dev_SW_NAME = 0x23,
+  dev_SW_CONVERTING = 0x24,
+  dev_CMD_SW = 0x25,
+  dev_STATUS = 0x31,
+  dev_BEEP_HU = 0x28,
+  dev_BEEP_SPEAKERS = 0x29,
+  dev_TUNER = 0x60,
+  dev_TAPE_DECK = 0x61,
+  dev_CD = 0x62,
+  dev_CD_CHANGER = 0x63,
+  dev_AUDIO_AMP = 0x74,
+} devices;
+
+typedef enum {
+  // LAN related
+  List_Functions_Req = 0x00,
+  List_Functions_Resp = 0x10,
+  Restart_Lan = 0x01,
+  Lancheck_End_Req = 0x08,
+  Lancheck_End_Resp = 0x18,
+  Lancheck_Scan_Req = 0x0a,
+  Lancheck_Scan_Resp = 0x1a,
+  Lancheck_Req = 0x0c,
+  Lancheck_Resp = 0x1c,
+  Ping_Req = 0x20,
+  Ping_Resp = 0x30,
+
+  // Device switching
+  Enable_Function_Req = 0x42,
+  Enable_Function_Resp = 0x52,
+  Disable_Function_Req = 0x43,
+  Disable_Function_Resp = 0x53,
+
+  Advertise_Function = 0x45,
+  General_Query = 0x46,
+
+  // Physical interface
+  Eject = 0x80,
+  Disc_Up = 0x90,
+  Disc_Down = 0x91,
+  Pwrvol_Knob_Righthand_Turn = 0x9c,
+  Pwrvol_Knob_Lefthand_Turn = 0x9d,
+  Track_Seek_Up = 0x94,
+  Track_Seek_Down = 0x95,
+  CD_Enable_Scan = 0xa6,
+  CD_Disable_Scan = 0xa7,
+  CD_Enable_Repeat = 0xa0,
+  CD_Disable_Repeat = 0xa1,
+  CD_Enable_Random = 0xb0,
+  CD_Disable_Random = 0xb1,
+
+  // CD functions
+  // Events
+  Inserted_CD = 0x50,
+  Removed_CD = 0x51,
+
+  // Requests
+  Request_Report = 0xe0,
+  Request_Report2 = 0xe2,
+  Request_Loader2 = 0xe4,
+  Request_Track_Name = 0xed,
+
+  // Reports
+  Report = 0xf1,
+  Report2 = 0xf2,
+  Report_Loader = 0xf3,
+  Report_Loader2 = 0xf4,
+  Report_TOC = 0xf9,
+  Report_Track_Name = 0xfd,
+} actions;
 
 typedef enum {
   cd_OPEN = 0x01,
@@ -89,7 +145,7 @@ typedef struct AVCLAN_CD_Status {
   _Bool cd5 : 1;
   _Bool cd6 : 1;
   int : 2;
-  cd_state state;
+  uint8_t state;
   uint8_t disc;
   uint8_t track;
   uint8_t mins;
@@ -101,19 +157,13 @@ typedef struct AVCLAN_CD_Status {
   _Bool repeat : 1;
   _Bool disk_scan : 1;
   _Bool scan : 1;
-  int : 2;
+  int : 1;
   uint8_t flags2;
 } AVCLAN_CD_Status_t;
 
 typedef enum { stStop = 0, stPlay = 1 } cd_modes;
 
 typedef enum MSG_TYPE { BROADCAST = 0, UNICAST = 1 } MSG_TYPE_t;
-
-typedef struct AVCLAN_KnownMessage_struct {
-  MSG_TYPE_t broadcast;
-  uint8_t length;
-  uint8_t data[11];
-} AVCLAN_KnownMessage_t;
 
 typedef struct AVCLAN_frame_struct {
   MSG_TYPE_t broadcast;     // 0 for broadcast messages
@@ -130,7 +180,21 @@ void AVCLAN_muteDevice(uint8_t mute);
 uint8_t AVCLAN_readframe();
 uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame);
 
-uint8_t AVCLAN_responseNeeded();
+// To allow inlining qEmpty and AVCLAN_responseNeeded
+#ifndef VAR_DECLS
+  #define _DECL extern
+  #define _INIT(x)
+#else
+  #define _DECL
+  #define _INIT(x) = x
+#endif
+_DECL uint8_t answerReq _INIT(0);
+_DECL uint8_t qWrite _INIT(0);
+_DECL uint8_t qRead _INIT(0);
+
+inline uint8_t qEmpty() { return (qWrite == qRead); }
+inline uint8_t AVCLAN_responseNeeded() { return (answerReq != 0) || !qEmpty(); }
+
 uint8_t AVCLAN_respond();
 
 void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary);

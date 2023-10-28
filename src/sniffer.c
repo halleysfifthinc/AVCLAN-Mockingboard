@@ -62,10 +62,8 @@ int main() {
 
     if (!BUS_IS_IDLE) {
       AVCLAN_readframe();
-    } else {
-      // check command from HU
-      if (AVCLAN_responseNeeded())
-        AVCLAN_respond();
+    } else if (AVCLAN_responseNeeded()) {
+      AVCLAN_respond();
     }
 
     // Key handler
