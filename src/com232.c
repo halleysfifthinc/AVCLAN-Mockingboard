@@ -69,9 +69,8 @@ void RS232_SendByte(uint8_t Data) {
 }
 
 void RS232_sendbytes(const uint8_t *bytes, uint8_t len) {
-  const uint8_t *end = bytes + len;
-  while (bytes < end) {
-    RS232_SendByte(*bytes++);
+  for (uint8_t i = 0; i < len; i++) {
+    RS232_SendByte(bytes[i]);
   }
 }
 

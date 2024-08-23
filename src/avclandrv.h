@@ -191,6 +191,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame);
 _DECL uint8_t answerReq _INIT(0);
 _DECL uint8_t qWrite _INIT(0);
 _DECL uint8_t qRead _INIT(0);
+extern cd_modes CD_Mode;
 
 inline uint8_t qEmpty() { return (qWrite == qRead); }
 inline uint8_t AVCLAN_responseNeeded() { return (answerReq != 0) || !qEmpty(); }

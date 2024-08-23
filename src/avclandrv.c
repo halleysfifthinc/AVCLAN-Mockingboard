@@ -255,7 +255,7 @@ ISR(RTC_PIT_vect) {
       *cd_Time_Sec = 0;
       min = incBCD(min);
       if (min == 0xA0) {
-        *cd_Time_Min = 0x0;
+        *cd_Time_Min = 0;
       }
     }
     answerReq = cm_CDStatus;
@@ -523,7 +523,7 @@ uint8_t AVCLAN_readframe() {
   }
   uint16_t startbitlen = TCB1.CNT;
   if (startbitlen < (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8)) {
-    RS232_Print("ERR: Short start bit.\n");
+    RS232_Print("ERR: 1.\n");
     STARTEvent;
     return 0;
   }
@@ -886,7 +886,7 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
                   resp->broadcast = UNICAST;
                   resp->peripheral_addr = HU_ADDR;
                   resp->length = sizeof(function_change_resp);
-                  resp->data = (uint8_t *)function_change_resp;
+                  resp->data = (uint8_t *)&function_change_resp;
                   respond = 1;
               }
             default:
@@ -911,8 +911,8 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
                 memcpy(&cdstatus_resp[3], &cd_status, sizeof(cd_status));
                 resp->broadcast = BROADCAST;
                 resp->peripheral_addr = 0x1FF;
-                resp->length = sizeof(function_change_resp);
-                resp->data = (uint8_t *)function_change_resp;
+                resp->length = sizeof(cdstatus_resp);
+                resp->data = (uint8_t *)&cdstatus_resp;
                 respond = 1;
             }
           }
@@ -947,16 +947,14 @@ uint8_t AVCLAN_respond() {
       resp = qPop();
       free((AVCLAN_frame_t *)resp);
     }
-  } else if (!answerReq) {
-    AVCLAN_frame_t frame = {.broadcast = UNICAST,
-                            .controller_addr = DEVICE_ADDR,
-                            .peripheral_addr = HU_ADDR,
-                            .control = 0xF,
-                            .length = 0};
-
+  } else {
     switch (answerReq) {
+      case cm_Null:
+        break;
       case cm_CDStatus:
         AVCLAN_updateCDStatus();
+        break;
+      default:
     }
   }
 

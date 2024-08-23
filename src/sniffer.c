@@ -152,7 +152,8 @@ int main() {
           msg.peripheral_addr = HU_ADDR;
           AVCLAN_sendframe(&msg);
           break;
-        case 'e':
+        case 'p':
+          CD_Mode = stPlay;
           data_tmp[0] = 0x00;
           data_tmp[1] = 0x01;
           data_tmp[2] = 0x11;
