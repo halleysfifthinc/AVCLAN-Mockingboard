@@ -17,7 +17,9 @@
 				"ms-vscode.cpptools",
 				"ms-vscode.cmake-tools",
 				"rockcat.avr-support",
-				"harikrishnan94.cxx-compiler-explorer"
+				"harikrishnan94.cxx-compiler-explorer",
+				"ms-vscode.cpptools-extension-pack",
+				"twxs.cmake"
 			],
 			"settings": {
 				"editor.formatOnSave": true,
@@ -31,10 +33,14 @@
 					"*.S": "avr"
 				},
 				"cmake.configureOnOpen": true,
-				"compilerexplorer.compilationDirectory": "${workspaceFolder}/build",
+				"compilerexplorer.compilationDirectory": "${workspaceFolder}/build"
 			}
 		}
 	}
+	// "runArgs": [
+	// 	"--device=/dev/ttyUSB0",
+	// 	"--device=/dev/ttyUSB1"
+	// ]
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"
 }
