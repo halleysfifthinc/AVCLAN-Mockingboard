@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.24)
 include(CMakeDependentOption)
 
-set(WITH_MCU OFF)
+set(WITH_MCU OFF) # Disable target name modification setting from toolchain
 set(AVR_MCU "attiny3216")
-set(AVR_UPLOADTOOL_PORT /dev/ttyUSB0)
+set(AVR_UPLOADTOOL_PORT /dev/ttyUSB1)
 set(AVR_PROGRAMMER serialupdi)
 set(AVR_UPLOADTOOL_BAUDRATE 230400)
 
@@ -97,17 +97,9 @@ endif()
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if(CMAKE_BUILD_TYPE MATCHES Release)
-   set(CMAKE_C_FLAGS_RELEASE "-Os")
-endif(CMAKE_BUILD_TYPE MATCHES Release)
-
-if(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo)
-   set(CMAKE_C_FLAGS_RELWITHDEBINFO "-Os -save-temps -g -gdwarf-3 -gstrict-dwarf")
-endif(CMAKE_BUILD_TYPE MATCHES RelWithDebInfo)
-
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-   set(CMAKE_C_FLAGS_DEBUG "-O0 -save-temps -g -gdwarf-3 -gstrict-dwarf")
-endif(CMAKE_BUILD_TYPE MATCHES Debug)
+set(CMAKE_C_FLAGS_RELEASE "-Os")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -save-temps -g -gdwarf-3 -gstrict-dwarf")
+set(CMAKE_C_FLAGS_DEBUG "-O0 -save-temps -g -gdwarf-3 -gstrict-dwarf")
 
 # Set startup time to 8 ms (0x4)
 set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -U syscfg1:w:0x4:m)
@@ -134,6 +126,3 @@ target_compile_options(mockingboard PRIVATE
     -fdata-sections
     -fshort-enums
 )
-
-
-
