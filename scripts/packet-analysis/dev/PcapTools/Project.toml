@@ -1,0 +1,21 @@
+name = "PcapTools"
+uuid = "222fe7e8-3f39-464a-bf97-d9bbb753f246"
+authors = ["Christian Rorvik <christian.rorvik@gmail.com>"]
+version = "1.1.1"
+
+[deps]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Mmap = "a63ad114-7e13-5084-954f-fe012c677804"
+UnixTimes = "ab1a18e7-b408-4913-896c-624bb82ed7f4"
+UnsafeArrays = "c4a57d5a-5b31-53a6-b365-19f8c011fbd6"
+
+[compat]
+UnixTimes = "1"
+UnsafeArrays = "1"
+julia = "1.4"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
