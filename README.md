@@ -37,7 +37,10 @@ The circuit board and firmware is functional and can send/recieve messages on th
     - https://github.com/sigrokproject/sigrok-test/pull/22
     - https://github.com/sigrokproject/sigrok-dumps/pull/43
     - https://github.com/sigrokproject/libsigrokdecode/pull/106
-- 
+- https://web.archive.org/web/20230319000356/http://softservice.com.pl/corolla/avc/avclan.php
+- https://web.archive.org/web/20040617005106/http://www.interfacebus.com/Design_Connector_IEbus.html
+- https://web.archive.org/web/2/https://old.pinouts.ru/Car-Stereo-Toyota-Lexus/Toyota_1990-2002_CD_Chang_pinout.shtml
+- https://web.archive.org/web/20240519043021/https://pop.fsck.pl/hardware/toyota-corolla.html
 
 # Current Issues:
 
