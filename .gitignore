@@ -1,4 +1,9 @@
 *.o
 *.elf
 *.hex
+*.zip
+*.db
+*.bak
 build/
+hardware/_autosave*
+hardware/fp-info-cache
