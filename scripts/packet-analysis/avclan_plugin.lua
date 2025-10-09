@@ -20,7 +20,7 @@
 
 local iebusproto = Proto("iebus", "IEBus protocol")
 
-local f_broadcast = ProtoField.bool("iebus.broadcast", "Broadcast", base.NONE, { [1] = "false", [2] = "true" })
+local f_broadcast = ProtoField.bool("iebus.broadcast", "Broadcast", base.NONE, { [2] = "false", [1] = "true" })
 local f_controller_addr = ProtoField.uint16("iebus.controller", "Controller address", base.HEX, nil, 0x0FFF)
 local f_peripheral_addr = ProtoField.uint16("iebus.peripheral", "Peripheral address", base.HEX, nil, 0x0FFF)
 local f_control = ProtoField.uint8("iebus.control", "Control field", base.HEX)
@@ -185,6 +185,7 @@ local known_actions_names = {
     ["GENERAL_QUERY"] = 0x46,
 
     -- Physical interface
+    ["BACKLIGHT_ADJUST"] = 0x59,
     ["EJECT"] = 0x80,
     ["DISC_UP"] = 0x90,
     ["DISC_DOWN"] = 0x91,
@@ -201,20 +202,21 @@ local known_actions_names = {
 
     -- CD functions
     -- Events
-    ["INSERTED_CD"] = 0x50,
-    ["REMOVED_CD"] = 0x51,
+    ["INSERTION"] = 0x50,
+    ["EJECTION"] = 0x51,
 
     -- Requests
-    ["REQUEST_REPORT"] = 0xe0,
-    ["REQUEST_REPORT2"] = 0xe2,
-    ["REQUEST_LOADER2"] = 0xe4,
+    ["INITIAL_REPORT_REQUEST"] = 0xe0,
+    ["PLAYBACK_REQUEST"] = 0xe2,
+    ["LOADING_REQUEST2"] = 0xe4,
     ["REQUEST_TRACK_NAME"] = 0xed,
 
     -- Reports
-    ["REPORT"] = 0xf1,
-    ["REPORT2"] = 0xf2,
-    ["REPORT_LOADER"] = 0xf3,
-    ["REPORT_LOADER2"] = 0xf4,
+    ["INITIAL_REPORT_RESPONSE"] = 0xf0,
+    ["STATUS_REPORT"] = 0xf1,
+    ["PLAYBACK_REPORT"] = 0xf2,
+    ["LOADING_STATUS_REPORT"] = 0xf3,
+    ["LOADING_RESPONSE2"] = 0xf4,
     ["REPORT_TOC"] = 0xf9,
     ["REPORT_TRACK_NAME"] = 0xfd,
 }
@@ -242,6 +244,7 @@ local known_actions = {
     [0x46] = "GENERAL_QUERY",
 
     -- Physical interface
+    [0x59] = "BACKLIGHT_ADJUST",
     [0x80] = "EJECT",
     [0x90] = "DISC_UP",
     [0x91] = "DISC_DOWN",
@@ -258,20 +261,21 @@ local known_actions = {
 
     -- CD functions
     -- Events
-    [0x50] = "INSERTED_CD",
-    [0x51] = "REMOVED_CD",
+    [0x50] = "INSERTION",
+    [0x51] = "EJECTION",
 
     -- Requests
-    [0xe0] = "REQUEST_REPORT",
-    [0xe2] = "REQUEST_REPORT2",
-    [0xe4] = "REQUEST_LOADER2",
+    [0xe0] = "INITIAL_REPORT_REQUEST",
+    [0xe2] = "PLAYBACK_REQUEST",
+    [0xe4] = "LOADING_REQUEST2",
     [0xed] = "REQUEST_TRACK_NAME",
 
     -- Reports
-    [0xf1] = "REPORT",
-    [0xf2] = "REPORT2",
-    [0xf3] = "REPORT_LOADER",
-    [0xf4] = "REPORT_LOADER2",
+    [0xf0] = "INITIAL_REPORT_RESPONSE",
+    [0xf1] = "STATUS_REPORT",
+    [0xf2] = "PLAYBACK_REPORT",
+    [0xf3] = "LOADING_STATUS_REPORT",
+    [0xf4] = "LOADING_RESPONSE2",
     [0xf9] = "REPORT_TOC",
     [0xfd] = "REPORT_TRACK_NAME",
 }
@@ -280,6 +284,7 @@ local f_action = ProtoField.uint8("avclan.action", "Action", base.HEX, known_act
 local f_functions = ProtoField.bytes("avclan.functions", "Functions", base.SPACE, "Device functions")
 
 local f_ping_count = ProtoField.uint8("avclan.ping.count", "Ping count")
+local f_backlight = ProtoField.uint8("avclan.backlight.brightness", "Backlight brightness")
 
 local f_radio_active = ProtoField.bool("avclan.radio.active", "Radio", base.NONE, {"ON", "OFF"})
 local f_radio_status = ProtoField.uint8("avclan.radio.status", "Radio status", base.HEX,
@@ -353,14 +358,30 @@ local f_cd_track = ProtoField.uint8("avclan.cd.track", "Track number", base.HEX)
 local f_cd_min = ProtoField.uint8("avclan.cd.mins", "CD track play time, minutes", base.HEX)
 local f_cd_sec = ProtoField.uint8("avclan.cd.secs", "CD track play time, seconds", base.HEX)
 
-local f_cd_flags = ProtoField.uint8("avclan.cd.flags", "CD player flags", base.HEX, {
-    [0x02] = "DISK_RANDOM",
-    [0x04] = "RANDOM",
-    [0x08] = "DISK_REPEAT",
-    [0x10] = "REPEAT",
-    [0x20] = "DISK_SCAN",
-    [0x40] = "SCAN",
-})
+local f_cd_flags = ProtoField.uint8("avclan.cd.flags", "CD player flags")
+local f_cd_flag_disk_random = ProtoField.bool("avclan.cd.flags.disk_random", "DISK_RANDOM", 8, nil, 0x02)
+local f_cd_flag_random = ProtoField.bool("avclan.cd.flags.random", "RANDOM", 8, nil, 0x04)
+local f_cd_flag_disk_repeat = ProtoField.bool("avclan.cd.flags.disk_repeat", "DISK_REPEAT", 8, nil, 0x08)
+local f_cd_flag_repeat = ProtoField.bool("avclan.cd.flags.repeat", "REPEAT", 8, nil, 0x10)
+local f_cd_flag_disk_scan = ProtoField.bool("avclan.cd.flags.disk_scan", "DISK_SCAN", 8, nil, 0x20)
+local f_cd_flag_scan = ProtoField.bool("avclan.cd.flags.scan", "SCAN", 8, nil, 0x40)
+
+local f_tape_present = ProtoField.uint8("avclan.tape.present", "Tape deck slot", base.HEX, {[0x01] = "FILLED", [0x00] = "EMPTY"})
+local f_tape_state = ProtoField.uint8("avclan.tape.state", "Tape deck state")
+local f_tape_seeking_rev = ProtoField.bool("avclan.tape.state.seeking_rev", "SEEKING_REVERSE", 8, nil, 0x01)
+local f_tape_err1 = ProtoField.bool("avclan.tape.state.err1", "ERR1", 8, nil, 0x02)
+local f_tape_playback = ProtoField.bool("avclan.tape.state.playback", "PLAYBACK", 8, nil, 0x04)
+local f_tape_seeking = ProtoField.bool("avclan.tape.state.seeking", "SEEKING", 8, nil, 0x08)
+local f_tape_state1 = ProtoField.bool("avclan.tape.state.unknown1", "UNKOWN1", 8, nil, 0x10)
+local f_tape_random = ProtoField.bool("avclan.tape.state.random", "RANDOM", 8, nil, 0x80)
+
+local f_tape_flags = ProtoField.uint16("avclan.tape.flags", "Tape deck flags")
+local f_tape_stereo = ProtoField.bool("avclan.tape.flags.stereo", "STEREO", 16, nil, 0x0004)
+local f_tape_dolby = ProtoField.bool("avclan.tape.flags.dolby", "DOLBY", 16, nil, 0x0002)
+local f_tape_flag1 = ProtoField.bool("avclan.tape.flags.flag1", "UNKNOWN1", 16, nil, 0x0100)
+local f_tape_flag2 = ProtoField.bool("avclan.tape.flags.flag2", "UNKNOWN2", 16, nil, 0x1000)
+local f_tape_flag3 = ProtoField.bool("avclan.tape.flags.flag3", "UNKNOWN3", 16, nil, 0x2000)
+local f_tape_flag4 = ProtoField.bool("avclan.tape.flags.flag4", "UNKNOWN4", 16, nil, 0x8000)
 
 avclanproto.fields = {
     f_from_device,
@@ -369,6 +390,7 @@ avclanproto.fields = {
     f_action,
     f_functions,
     f_ping_count,
+    f_backlight,
     f_radio_active,
     f_radio_status,
     f_radio_flags,
@@ -405,6 +427,27 @@ avclanproto.fields = {
     f_cd_min,
     f_cd_sec,
     f_cd_flags,
+    f_cd_flag_disk_random,
+    f_cd_flag_random,
+    f_cd_flag_disk_repeat,
+    f_cd_flag_repeat,
+    f_cd_flag_disk_scan,
+    f_cd_flag_scan,
+    f_tape_present,
+    f_tape_state,
+    f_tape_seeking_rev,
+    f_tape_err1,
+    f_tape_playback,
+    f_tape_seeking,
+    f_tape_state1,
+    f_tape_random,
+    f_tape_flags,
+    f_tape_stereo,
+    f_tape_dolby,
+    f_tape_flag1,
+    f_tape_flag2,
+    f_tape_flag3,
+    f_tape_flag4,
 }
 
 local pe_unhandled_msg = ProtoExpert.new("avclan.expert", "Message not decoded",
@@ -495,6 +538,12 @@ function avclanproto.dissector(buffer, pinfo, tree)
             else
                 subtree:add_proto_expert_info(pe_unhandled_msg)
             end
+        elseif to_device == known_devices_names["COMM_CTRL"] then
+            local action_tree = subtree:add(f_action, buffer(offset+2,1))
+            local action = field_action().value
+            if action == known_actions_names["BACKLIGHT_ADJUST"] then
+                subtree:add(f_backlight, buffer(offset+3,1))
+            end
         elseif to_device == known_actions_names["LANCHECK_SCAN_REQ"] or
             to_device == known_actions_names["LANCHECK_REQ"] or
             to_device == known_actions_names["LANCHECK_END_REQ"] then
@@ -516,11 +565,11 @@ function avclanproto.dissector(buffer, pinfo, tree)
         local freqtree = radiotree:add(f_radio_freq, buffer(offset+6,2))
         local radio_band = buffer(offset+5,1):uint()
         local freq = field_radio_freq().value
-        if bit32.band(radio_band, 0xF0) == 0x80 then
+        if bit.band(radio_band, 0xF0) == 0x80 then
             freqtree:append_text(" (" .. 87.5+(freq-1)*.05 .. " MHz)")
-        elseif bit32.band(radio_band, 0xF0) == 0xC0 then
+        elseif bit.band(radio_band, 0xF0) == 0xC0 then
             freqtree:append_text(" (" .. 153+(freq-1)*1 .. " kHz)")
-        elseif bit32.band(radio_band, 0xF0) == 0x00 then
+        elseif bit.band(radio_band, 0xF0) == 0x00 then
             freqtree:append_text(" (" .. 522+(freq-1)*9 .. " kHz)")
         end
 
@@ -544,9 +593,9 @@ function avclanproto.dissector(buffer, pinfo, tree)
       from_device == known_devices_names["CD_CHANGER"] or
       from_device == known_devices_names["CD_CHANGER2"] then
         subtree:add(f_action, buffer(offset+2,1))
-
         local action = field_action().value
-        if action == known_actions_names["REPORT"] then
+
+        if action == known_actions_names["STATUS_REPORT"] then
             local cdtree = subtree:add(avclanproto, buffer(offset,9), "Device: CD player")
             local cd_slots = cdtree:add(f_cd_slots, buffer(offset+3,1))
             cd_slots:add(f_cd_slot1, buffer(offset+3,1))
@@ -572,7 +621,70 @@ function avclanproto.dissector(buffer, pinfo, tree)
             cd_status:append_text("track " .. tostring(buffer(offset+6,1)):gsub("(.)(.)", "%1%2") .. ", ")
             cd_status:append_text("time " .. tostring(buffer(offset+7,1)):gsub("0x(.)(.)", "%1%2") .. ":")
             cd_status:append_text(tostring(buffer(offset+8,1)):gsub("(.)(.)", "%1%2"))
-            cdtree:add(f_cd_flags, buffer(offset+9,1))
+            local cd_flags = cdtree:add(f_cd_flags, buffer(offset+9,1))
+            cd_flags:add(f_cd_flag_disk_random, buffer(offset+9,1))
+            cd_flags:add(f_cd_flag_random, buffer(offset+9,1))
+            cd_flags:add(f_cd_flag_disk_repeat, buffer(offset+9,1))
+            cd_flags:add(f_cd_flag_repeat, buffer(offset+9,1))
+            cd_flags:add(f_cd_flag_disk_scan, buffer(offset+9,1))
+            cd_flags:add(f_cd_flag_scan, buffer(offset+9,1))
+        elseif action == known_actions_names["LOADING_STATUS_REPORT"] then
+            local cdtree = subtree:add(avclanproto, buffer(offset,9), "Device: CD player")
+            local available_slots = cdtree:add(f_cd_slots, buffer(offset+4,1))
+            available_slots:add(f_cd_slot1, buffer(offset+4,1))
+            available_slots:add(f_cd_slot2, buffer(offset+4,1))
+            available_slots:add(f_cd_slot3, buffer(offset+4,1))
+            available_slots:add(f_cd_slot4, buffer(offset+4,1))
+            available_slots:add(f_cd_slot5, buffer(offset+4,1))
+            available_slots:add(f_cd_slot6, buffer(offset+4,1))
+
+            local occupied_slots = cdtree:add(f_cd_slots, buffer(offset+6,1))
+            occupied_slots:add(f_cd_slot1, buffer(offset+6,1))
+            occupied_slots:add(f_cd_slot2, buffer(offset+6,1))
+            occupied_slots:add(f_cd_slot3, buffer(offset+6,1))
+            occupied_slots:add(f_cd_slot4, buffer(offset+6,1))
+            occupied_slots:add(f_cd_slot5, buffer(offset+6,1))
+            occupied_slots:add(f_cd_slot6, buffer(offset+6,1))
+
+            local redundant_slots = cdtree:add(f_cd_slots, buffer(offset+8,1))
+            redundant_slots:add(f_cd_slot1, buffer(offset+8,1))
+            redundant_slots:add(f_cd_slot2, buffer(offset+8,1))
+            redundant_slots:add(f_cd_slot3, buffer(offset+8,1))
+            redundant_slots:add(f_cd_slot4, buffer(offset+8,1))
+            redundant_slots:add(f_cd_slot5, buffer(offset+8,1))
+            redundant_slots:add(f_cd_slot6, buffer(offset+8,1))
+
+            local cd_state = cdtree:add(f_cd_state, buffer(offset+9,1))
+            cd_state:add(f_cd_open, buffer(offset+9,1))
+            cd_state:add(f_cd_err1, buffer(offset+9,1))
+            cd_state:add(f_cd_seeking, buffer(offset+9,1))
+            cd_state:add(f_cd_playback, buffer(offset+9,1))
+            cd_state:add(f_cd_seeking_track, buffer(offset+9,1))
+            cd_state:add(f_cd_loading, buffer(offset+9,1))
+        end
+    elseif from_device == known_devices_names["TAPE_DECK"] then
+        subtree:add(f_action, buffer(offset+2,1))
+        local action = field_action().value
+
+        if action == known_actions_names["STATUS_REPORT"] then
+            local tapetree = subtree:add(avclanproto, buffer(offset,4), "Device: Tape deck")
+            tapetree:add(f_tape_present, buffer(offset+3,1))
+
+            local tape_state = tapetree:add(f_tape_state, buffer(offset+4,1))
+            tape_state:add(f_tape_seeking_rev, buffer(offset+4,1))
+            tape_state:add(f_tape_err1, buffer(offset+4,1))
+            tape_state:add(f_tape_playback, buffer(offset+4,1))
+            tape_state:add(f_tape_seeking, buffer(offset+4,1))
+            tape_state:add(f_tape_state1, buffer(offset+4,1))
+            tape_state:add(f_tape_random, buffer(offset+4,1))
+
+            local tape_flags = tapetree:add(f_tape_flags, buffer(offset+5,2))
+            tape_flags:add(f_tape_stereo, buffer(offset+5,2))
+            tape_flags:add(f_tape_dolby, buffer(offset+5,2))
+            tape_flags:add(f_tape_flag1, buffer(offset+5,2))
+            tape_flags:add(f_tape_flag2, buffer(offset+5,2))
+            tape_flags:add(f_tape_flag3, buffer(offset+5,2))
+            tape_flags:add(f_tape_flag4, buffer(offset+5,2))
         end
     else
         subtree:add_proto_expert_info(pe_unhandled_msg)
