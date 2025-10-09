@@ -79,7 +79,7 @@
   A bit `0` is dominant on the bus, which is a design choice that affects
   bit/interpretation:
     - Low addresses have priority upon transmission conflicts
-    - The broadcast bit is `1` for normal communication
+    - The broadcast bit is `1` (floating, no effort) for normal communication
     - For acknowledge bits, the receiver extends the logical '0' of the sync
       period to the length of a normal bit `0`. Hence, a NAK (bit `1`) is
       equivalent to no response.
@@ -157,15 +157,23 @@ uint16_t period = 0;
 uint16_t pulsewidth;
 
 // answers
-uint8_t lancheck_resp[] = {0x00, 0x01, 0x00, 0xFF};
+uint8_t lancheck_resp[] = {0x00, 0x01, 0x00, 0xFF, 0xFF};
 const uint8_t list_functions_resp[] = {0x00, dev_COMM_CTRL, dev_COMM_v1,
                                        List_Functions_Resp, dev_CD_CHANGER};
 uint8_t ping_resp[] = {0x00, dev_COMM_CTRL, dev_COMM_v1, Ping_Resp, 0xFF, 0x00};
 uint8_t function_change_resp[] = {0x00, dev_CD_CHANGER, dev_COMM_v1, 0xFF,
                                   0x01};
-uint8_t cdstatus_resp[] = {
-    dev_CD_CHANGER, dev_STATUS, Report, 0x01, cd_SEEKING_TRACK, 0x01, 0x00,
-    0xFF,           0x7F,       0x00,   0xc0};
+uint8_t cdstatus_resp[] = {dev_CD_CHANGER,
+                           dev_STATUS,
+                           Status_Report,
+                           0x01,
+                           cd_SEEKING_TRACK,
+                           0x01,
+                           0x00,
+                           0xFF,
+                           0x7F,
+                           0x00,
+                           0x80};
 
 uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame);
 void AVCLAN_updateCDStatus();
@@ -789,6 +797,8 @@ const AVCLAN_frame_t *qPop() {
 uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
   uint8_t respond = 0;
   AVCLAN_frame_t *resp = malloc(sizeof(AVCLAN_frame_t));
+  uint8_t from;
+  uint8_t to;
 
   if (!resp)
     return NULL;
@@ -796,36 +806,43 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
   resp->controller_addr = DEVICE_ADDR;
   resp->control = 0xF;
 
+  // BROADCAST (1 is UNICAST)
   if (!frame->broadcast) {
     // peripheral_addr will be 0xFFF or 0x1FF based on all currently known
     // examples
     // if (frame->peripheral_addr == 0xFFF || frame->peripheral_addr == 0x1FF) {
-    if (frame->data[0] == 0) {
-      if (frame->data[1] == dev_COMM_CTRL) {
+    from = frame->data[0];
+    if (from == 0) {
+      to = frame->data[1];
+      if (to == dev_COMM_CTRL) {
         switch (frame->data[2]) {
           case Lancheck_Scan_Req:
             lancheck_resp[3] = Lancheck_Scan_Resp;
+            lancheck_resp[4] = 0x01;
+            resp->length = sizeof(lancheck_resp);
             goto GROUPED;
           case Lancheck_Req:
             lancheck_resp[3] = Lancheck_Resp;
+            lancheck_resp[4] = 0x00;
+            resp->length = sizeof(lancheck_resp);
             goto GROUPED;
           case Lancheck_End_Req:
             lancheck_resp[3] = Lancheck_End_Resp;
+            resp->length = sizeof(lancheck_resp) - 1;
             goto GROUPED;
           default:
             break;
           GROUPED:
             resp->broadcast = UNICAST;
             resp->peripheral_addr = HU_ADDR;
-            resp->length = sizeof(lancheck_resp);
             resp->data = (uint8_t *)lancheck_resp;
             respond = 1;
         }
       }
-    } else if (frame->data[0] == dev_COMM_v1) {
-      if (frame->data[1] == dev_COMM_CTRL) {
+    } else if (from == dev_COMM_v1) {
+      if (to == dev_COMM_CTRL) {
         switch (frame->data[2]) {
-          case Advertise_Function:
+          case Current_Function:
             if (frame->data[3] == dev_CD_CHANGER)
               CD_Mode = stPlay;
             else
@@ -854,8 +871,10 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
     }
     // }
   } else if (frame->peripheral_addr == DEVICE_ADDR) { // unicast to CD changer
-    if (frame->data[0] == 0) {
-      switch (frame->data[1]) {
+    from = frame->data[0];
+    if (from == 0) {
+      to = frame->data[1];
+      switch (to) {
         case dev_COMM_v1:
           switch (frame->data[2]) {
             case dev_CD_CHANGER:
@@ -878,7 +897,7 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
                   answerReq = cm_CDStatus;
                   goto GROUPED2;
                 // case 0x80:
-                //   act = Inserted_CD;
+                //   act = Insertion;
                 //   goto GROUPED;
                 default:
                   break;
@@ -896,18 +915,19 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
         case dev_STATUS:
           if (frame->data[2] == dev_CD_CHANGER) {
             switch (frame->data[3]) {
-              case Request_Report:
-                cdstatus_resp[2] = Report;
+              case Initial_Report_Request:
+                cdstatus_resp[2] = Initial_Report_Response;
                 goto GROUPED3;
-              case Request_Report2:
-                cdstatus_resp[2] = Report2;
+              case Playback_Request:
+                cdstatus_resp[2] = Playback_Report;
                 goto GROUPED3;
-              case Request_Loader2:
-                cdstatus_resp[2] = Report_Loader2;
+              case Loading_Request2:
+                cdstatus_resp[2] = Loading_Response2;
                 goto GROUPED3;
               default:
                 break;
               GROUPED3:
+                cdstatus_resp[2] = to; // respond to device that requested
                 memcpy(&cdstatus_resp[3], &cd_status, sizeof(cd_status));
                 resp->broadcast = BROADCAST;
                 resp->peripheral_addr = 0x1FF;
@@ -1050,7 +1070,7 @@ void AVCLAN_updateCDStatus() {
     }
 
     if (answerReq == cm_CDStatus) {
-      cdstatus_resp[2] = Report;
+      cdstatus_resp[2] = Status_Report;
       memcpy(&cdstatus_resp[3], &cd_status, sizeof(cd_status));
 
       AVCLAN_frame_t status = {.broadcast = BROADCAST,
