@@ -284,7 +284,7 @@ local f_action = ProtoField.uint8("avclan.action", "Action", base.HEX, known_act
 local f_functions = ProtoField.bytes("avclan.functions", "Functions", base.SPACE, "Device functions")
 
 local f_ping_count = ProtoField.uint8("avclan.ping.count", "Ping count")
-local f_backlight = ProtoField.uint8("avclan.backlight.brightness", "Backlight brightness")
+local f_backlight = ProtoField.uint8("avclan.backlight.brightness", "Backlight brightness", base.HEX)
 
 local f_radio_active = ProtoField.bool("avclan.radio.active", "Radio", base.NONE, {"ON", "OFF"})
 local f_radio_status = ProtoField.uint8("avclan.radio.status", "Radio status", base.HEX,
@@ -542,7 +542,8 @@ function avclanproto.dissector(buffer, pinfo, tree)
             local action_tree = subtree:add(f_action, buffer(offset+2,1))
             local action = field_action().value
             if action == known_actions_names["BACKLIGHT_ADJUST"] then
-                subtree:add(f_backlight, buffer(offset+3,1))
+                local backlight = subtree:add(f_backlight, buffer(offset+3,1))
+                backlight:append_text(" (" .. math.floor(100*(63 - buffer(offset+3,1):uint())/63) .. ")")
             end
         elseif to_device == known_actions_names["LANCHECK_SCAN_REQ"] or
             to_device == known_actions_names["LANCHECK_REQ"] or
