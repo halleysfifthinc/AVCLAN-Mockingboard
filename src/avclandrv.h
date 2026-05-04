@@ -53,6 +53,7 @@ typedef enum {
 } commands;
 
 typedef enum {
+  dev_LAN = 0x00,
   dev_COMM_CTRL = 0x01,
   dev_COMM_v1 = 0x11,
   dev_COMM_v2 = 0x12,

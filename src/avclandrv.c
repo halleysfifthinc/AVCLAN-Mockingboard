@@ -82,7 +82,7 @@
     - The broadcast bit is `1` (floating, no effort) for normal communication
     - For acknowledge bits, the receiver extends the logical '0' of the sync
       period to the length of a normal bit `0`. Hence, a NAK (bit `1`) is
-      equivalent to no response.
+      literally the absence of an ACK.
 
   No acknowledge bits are sent for broadcast frames.
 

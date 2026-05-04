@@ -142,8 +142,8 @@ int main() {
         case 'b':
         case 'B': // Beep
           data_tmp[0] = 0x00;
-          data_tmp[1] = 0x63;
-          data_tmp[2] = 0x29;
+          data_tmp[1] = dev_CD_CHANGER;
+          data_tmp[2] = dev_BEEP_SPEAKERS;
           data_tmp[3] = 0x60;
           data_tmp[4] = 0x01;
           msg.length = 5;
@@ -155,10 +155,10 @@ int main() {
         case 'p':
           CD_Mode = stPlay;
           data_tmp[0] = 0x00;
-          data_tmp[1] = 0x01;
-          data_tmp[2] = 0x11;
-          data_tmp[3] = 0x50;
-          data_tmp[4] = 0x63;
+          data_tmp[1] = dev_COMM_CTRL;
+          data_tmp[2] = dev_COMM_v1;
+          data_tmp[3] = Insertion;
+          data_tmp[4] = dev_CD_CHANGER;
           msg.length = 5;
           msg.broadcast = UNICAST;
           msg.controller_addr = DEVICE_ADDR;
@@ -226,7 +226,7 @@ int main() {
             }
           }
       } // switch (readkey)
-    }   // if (RS232_RxCharEnd)
+    } // if (RS232_RxCharEnd)
   }
   return 0;
 }
