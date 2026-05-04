@@ -31,13 +31,6 @@
 #define sbi(port, bit) (port) |= (1 << (bit))  // Set bit (i.e. to 1)
 #define cbi(port, bit) (port) &= ~(1 << (bit)) // Clear bit (i.e. set bit to 0)
 
-#define STOPEvent                                                              \
-  cbi(RTC.PITINTCTRL, RTC_PI_bp);                                              \
-  cbi(USART0.CTRLA, USART_RXCIE_bp);
-#define STARTEvent                                                             \
-  sbi(RTC.PITINTCTRL, RTC_PI_bp);                                              \
-  sbi(USART0.CTRLA, USART_RXCIE_bp);
-
 #define MAXMSGLEN 32
 
 #define DEVICE_ADDR 0x360 // CD Changer address

@@ -103,21 +103,6 @@
 // F_CPU defined in timing.h and potentially needed by avr-libc (e.g. delay.h)
 #include "timing.h"
 
-// clang-format off
-#define AVC_SET_LOGICAL_1()                                                    \
-  __asm__ __volatile__(                                                        \
-      "cbi %[vporta_out], 4; \n\t"                                             \
-      "sbi %[vportc_out], 0; \n\t"                                             \
-      ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)),                            \
-        [vportc_out] "I"(_SFR_IO_ADDR(VPORTC_OUT)));
-#define AVC_SET_LOGICAL_0()                                                    \
-  __asm__ __volatile__(                                                        \
-      "sbi %[vporta_out], 4; \n\t"                                             \
-      "cbi %[vportc_out], 0; \n\t"                                             \
-      ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)),                            \
-        [vportc_out] "I"(_SFR_IO_ADDR(VPORTC_OUT)));
-// clang-format on
-
 // Name difference between avr-libc and Microchip pack
 #if defined(EVSYS_ASYNCCH00_bm)
   #define EVSYS_ASYNCCH0_0_bm EVSYS_ASYNCCH00_bm
@@ -178,6 +163,36 @@ uint8_t cdstatus_resp[] = {dev_CD_CHANGER,
 uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame);
 void AVCLAN_updateCDStatus();
 
+/* Disable serial and periodic interrupts during AVCLAN reads.
+  Not using cli() because AVCLAN reads depend on other interrupts. */
+static inline void stopEvent() {
+  RTC.PITINTCTRL = 0x00; // PITINTCTRL allows resetting with full zero write.
+  cbi(USART0.CTRLA, USART_RXCIE_bp);
+}
+
+// Re-enable serial and periodic interrupts.
+static inline void startEvent() {
+  sbi(RTC.PITINTCTRL, RTC_PI_bp); // Reenable PIT interrupt
+  sbi(USART0.CTRLA, USART_RXCIE_bp);
+}
+
+// clang-format off
+static inline void AVCLAN_setBusIdle() {
+  __asm__ __volatile__(
+      "cbi %[vporta_out], 4; \n\t"
+      "sbi %[vportc_out], 0; \n\t"
+      ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)),
+        [vportc_out] "I"(_SFR_IO_ADDR(VPORTC_OUT)));
+}
+static inline void AVCLAN_setBusDriven() {
+  __asm__ __volatile__(
+      "sbi %[vporta_out], 4; \n\t"
+      "cbi %[vportc_out], 0; \n\t"
+      ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)),
+        [vportc_out] "I"(_SFR_IO_ADDR(VPORTC_OUT)));
+}
+// clang-format on
+
 void AVCLAN_init() {
   // Pull-ups are disabled by default
   // Set pin 6 and 7 as input
@@ -214,8 +229,7 @@ void AVCLAN_init() {
   loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CTRLBUSY_bp);
   RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm;
 
-  // Set bus output pins to idle
-  AVC_SET_LOGICAL_1();
+  AVCLAN_setBusIdle();
 
   AVCLAN_muteDevice(0); // unmute AVCLAN bus TX
 
@@ -301,9 +315,9 @@ static inline uint8_t AVCLAN_ismuted() {
 void set_AVC_logic_for(uint8_t val, uint16_t period) {
   TCB1.CNT = 0;
   if (val) {
-    AVC_SET_LOGICAL_1();
+    AVCLAN_setBusIdle(); // idle bus is logical 1
   } else {
-    AVC_SET_LOGICAL_0();
+    AVCLAN_setBusDriven();
   }
   while (TCB1.CNT <= period) {};
 
@@ -340,11 +354,15 @@ void AVCLAN_sendbit_ACK() {
   set_AVC_logic_for(1, AVCLAN_BIT0_LOGIC_1);
 }
 
-// Returns true if an ACK bit was sent by the peripheral
+/* Returns true if the peripheral sent an ACK bit.
+  An ACK bit is a cooperative bit, where the sender starts (drives the bus) a
+  sync period, and allows the receiver to drive the bus (or not) to finish a "1"
+  bit.
+*/
 uint8_t AVCLAN_readbit_ACK() {
   TCB1.CNT = 0;
   set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0);
-  AVC_SET_LOGICAL_1(); // Stop driving bus
+  AVCLAN_setBusIdle(); // Stop driving bus
 
   while (1) {
     if (!BUS_IS_IDLE && (TCB1.CNT > AVCLAN_READBIT_THRESHOLD))
@@ -512,7 +530,7 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
 }
 
 uint8_t AVCLAN_readframe() {
-  STOPEvent; // disable timer1 interrupt
+  stopEvent(); // disable timer1 interrupt
 
   uint8_t data[MAXMSGLEN];
   AVCLAN_frame_t frame = {
@@ -525,14 +543,14 @@ uint8_t AVCLAN_readframe() {
   TCB1.CNT = 0;
   while (!BUS_IS_IDLE) {
     if (TCB1.CNT > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
-      STARTEvent;
+      startEvent();
       return 0;
     }
   }
   uint16_t startbitlen = TCB1.CNT;
   if (startbitlen < (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8)) {
     RS232_Print("ERR: 1.\n");
-    STARTEvent;
+    startEvent();
     return 0;
   }
   // Otherwise that was a start bit
@@ -552,7 +570,7 @@ uint8_t AVCLAN_readframe() {
       RS232_PrintHex4(tmp & 1);
     }
     RS232_Print(".\n");
-    STARTEvent;
+    startEvent();
     return 0;
   }
 
@@ -569,7 +587,7 @@ uint8_t AVCLAN_readframe() {
       RS232_PrintHex4(tmp & 1);
     }
     RS232_Print(".\n");
-    STARTEvent;
+    startEvent();
     return 0;
   }
 
@@ -594,7 +612,7 @@ uint8_t AVCLAN_readframe() {
       RS232_PrintHex4(tmp & 1);
     }
     RS232_Print(".\n");
-    STARTEvent;
+    startEvent();
     return 0;
   } else if (shouldACK) {
     AVCLAN_sendbit_ACK();
@@ -615,7 +633,7 @@ uint8_t AVCLAN_readframe() {
       RS232_PrintHex4(tmp & 1);
     }
     RS232_Print(".\n");
-    STARTEvent;
+    startEvent();
     return 0;
   } else if (shouldACK) {
     AVCLAN_sendbit_ACK();
@@ -627,7 +645,7 @@ uint8_t AVCLAN_readframe() {
     RS232_Print("Bad length; got 0x");
     RS232_PrintHex4(frame.length);
     RS232_Print(".\n");
-    STARTEvent;
+    startEvent();
     return 0;
   }
 
@@ -645,7 +663,7 @@ uint8_t AVCLAN_readframe() {
         RS232_PrintHex4(tmp & 1);
       }
       RS232_Print(".\n");
-      STARTEvent;
+      startEvent();
       return 0;
     } else if (shouldACK) {
       AVCLAN_sendbit_ACK();
@@ -654,7 +672,7 @@ uint8_t AVCLAN_readframe() {
     }
   }
 
-  STARTEvent;
+  startEvent();
 
   if (printAllFrames)
     AVCLAN_printframe(&frame, printBinary);
@@ -670,7 +688,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   if (AVCLAN_ismuted())
     return 1;
 
-  STOPEvent;
+  stopEvent();
 
   uint8_t parity = 0;
 
@@ -712,7 +730,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   AVCLAN_sendbit_parity(parity);
 
   if (frame->broadcast && !AVCLAN_readbit_ACK()) {
-    STARTEvent;
+    startEvent();
     RS232_Print("Error NAK: Addresses\n");
     return 1;
   }
@@ -721,7 +739,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   AVCLAN_sendbit_parity(parity);
 
   if (frame->broadcast && !AVCLAN_readbit_ACK()) {
-    STARTEvent;
+    startEvent();
     RS232_Print("Error NAK: Control\n");
     return 2;
   }
@@ -730,7 +748,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   AVCLAN_sendbit_parity(parity);
 
   if (frame->broadcast && !AVCLAN_readbit_ACK()) {
-    STARTEvent;
+    startEvent();
     RS232_Print("Error NAK: Message length\n");
     return 3;
   }
@@ -742,7 +760,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
     // necessary (i.e. This deviates from the previous broadcast specific
     // function that sent an extra `1` bit after each byte/parity)
     if (frame->broadcast && !AVCLAN_readbit_ACK()) {
-      STARTEvent;
+      startEvent();
       RS232_Print("Error NAK (Data: ");
       RS232_PrintHex8(i);
       RS232_Print(")\n");
@@ -753,7 +771,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   }
 
   // back to read mode
-  STARTEvent;
+  startEvent();
 
   if (printAllFrames)
     AVCLAN_printframe(frame, printBinary);
@@ -1090,7 +1108,7 @@ uint16_t pulses[100];
 uint16_t periods[100];
 
 void AVCLan_Measure() {
-  STOPEvent;
+  stopEvent();
 
   uint8_t tmp = 0;
 
@@ -1120,6 +1138,6 @@ void AVCLan_Measure() {
   }
   RS232_Print("\nDone.\n");
 
-  STARTEvent;
+  startEvent();
 }
 #endif
