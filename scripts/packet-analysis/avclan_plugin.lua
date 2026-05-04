@@ -20,7 +20,7 @@
 
 local iebusproto = Proto("iebus", "IEBus protocol")
 
-local f_broadcast = ProtoField.bool("iebus.broadcast", "Broadcast", base.NONE, { [2] = "false", [1] = "true" })
+local f_broadcast = ProtoField.bool("iebus.broadcast", "Broadcast", base.NONE, { [1] = "false", [2] = "true" })
 local f_controller_addr = ProtoField.uint16("iebus.controller", "Controller address", base.HEX, nil, 0x0FFF)
 local f_peripheral_addr = ProtoField.uint16("iebus.peripheral", "Peripheral address", base.HEX, nil, 0x0FFF)
 local f_control = ProtoField.uint8("iebus.control", "Control field", base.HEX)
@@ -75,7 +75,7 @@ function iebusproto.dissector(buffer, pinfo, tree)
 
     local subtree = tree:add(iebusproto, buffer(), "IEBus frame")
 
-    subtree:add_le(f_broadcast, buffer(0,1))
+    subtree:add(f_broadcast, buffer(0,1))
     pinfo.cols.src = buffer(1,2):bytes():tohex():sub(2,-1)
     pinfo.cols.dst = buffer(3,2):bytes():tohex():sub(2,-1)
 

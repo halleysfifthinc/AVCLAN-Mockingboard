@@ -2,7 +2,7 @@ include("AVCLANPipe.jl")
 
 using .AVCLANPipe, PcapTools, Dates, UnixTimes, LibSerialPort
 
-serial_port="/dev/ttyUSB0"
+serial_port="/dev/ttyUSB1"
 baud=1200000
 
 pcapstream = PcapStreamWriter(stdout; snaplen=64, linktype=162)

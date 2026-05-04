@@ -18,6 +18,19 @@ AVCLANframe() = AVCLANframe(false, 0x0000, 0x0000, 0xf, 0x0, ntuple(x -> 0x0, 32
 function Base.tryparse(::Type{AVCLANframe}, str::String)
     vals = split(str)
 
+    length(vals) < 6 && return nothing
+
+    local t
+    try
+        t = Time(first(vals), "HH:MM:SS.s")
+    catch e
+    end
+    if !(@isdefined(t))
+        t = nothing
+    else
+        popfirst!(vals)
+    end
+
     broadcast = tryparse(Bool, vals[1])
     isnothing(broadcast) && return nothing
 
@@ -39,28 +52,37 @@ function Base.tryparse(::Type{AVCLANframe}, str::String)
     _data = tryparse.(UInt8, vals[6:end])
     data = ntuple(i -> checkindex(Bool, axes(_data, 1), i) ? _data[i] : 0x0, 32)
 
-    return AVCLANframe(broadcast, controller_addr, peripheral_addr, control, len, data)
+    return t, AVCLANframe(broadcast, controller_addr, peripheral_addr, control, len, data)
 end
 
 function tobytes(frame::AVCLANframe)
     data = Vector{UInt8}(undef, 0)
     push!(data, frame.broadcast)
     append!(data, reverse(reinterpret(reshape, UInt8, [frame.controller_addr])),
-            reverse(reinterpret(reshape, UInt8, [frame.peripheral_addr])),
-            reinterpret(reshape, UInt8, [frame.control]),
-            reinterpret(reshape, UInt8, [frame.length]),
-            frame.data[1:frame.length])
+        reverse(reinterpret(reshape, UInt8, [frame.peripheral_addr])),
+        reinterpret(reshape, UInt8, [frame.control]),
+        reinterpret(reshape, UInt8, [frame.length]),
+        frame.data[1:frame.length])
 
     return data
 end
 
 function avclan_text_to_pcap(textlog::String, pcap_fn::String)
-    pcapstream = PcapStreamWriter(pcap_fn; snaplen=64, linktype = 162)
+    pcapstream = PcapStreamWriter(pcap_fn; snaplen=64, linktype=162)
     t = UnixTime(now())
 
     for line in eachline(textlog)
-        frame = tryparse(AVCLANframe, line)
-        t += Microsecond(rand(1:15))
+        tstamp_frame = tryparse(AVCLANframe, line)
+        if !isnothing(tstamp_frame)
+            tstamp, frame = tstamp_frame
+        else
+            continue
+        end
+        if !isnothing(tstamp)
+            t = UnixTime(DateTime(today(), tstamp))
+        else
+            t += Microsecond(rand(1:15))
+        end
         if !isnothing(frame)
             write(pcapstream, t, tobytes(frame))
         end

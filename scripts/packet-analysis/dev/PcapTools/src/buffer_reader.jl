@@ -43,7 +43,7 @@ function Base.close(x::PcapBufferReader)
 end
 
 Base.length(x::PcapBufferReader) = length(x.data)
-Base.position(x::PcapBufferReader) = x.offset; nothing
+Base.position(x::PcapBufferReader) = x.offset
 Base.seek(x::PcapBufferReader, pos) = x.offset = pos; nothing
 
 function Base.mark(x::PcapBufferReader)
