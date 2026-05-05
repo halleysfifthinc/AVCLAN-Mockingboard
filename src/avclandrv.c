@@ -542,10 +542,36 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
 }
 
 uint8_t AVCLAN_readframe() {
+  typedef enum : uint8_t {
+    STARTBIT_TIMEOUT = 0x01,
+    STARTBIT_LENGTH,
+    BAD_CONTROLLER_PARITY,
+    BAD_PERIPHERAL_PARITY,
+    BAD_CONTROL_PARITY,
+    BAD_LENGTH_PARITY,
+    BAD_LENGTH_RANGE,
+    BAD_DATA_PARITY
+  } errno_t;
+  struct errtype {
+    errno_t errno;
+    union {
+      uint8_t val; // BAD_LENGTH_RANGE: the out-of-range length value
+      struct {
+        uint16_t read_val;
+        uint8_t parity; // received (bad) parity bit
+      };
+    };
+  } err = {0};
+
   stopEvent(); // disable timer1 interrupt
 
-  uint8_t data[MAXMSGLEN];
+  uint8_t data[MAXMSGLEN] = {0};
   AVCLAN_frame_t frame = {
+      .broadcast = BROADCAST,
+      .controller_addr = 0x000,
+      .peripheral_addr = 0x000,
+      .control = 0xF,
+      .length = 0,
       .data = data,
   };
 
@@ -555,15 +581,14 @@ uint8_t AVCLAN_readframe() {
   TCB1.CNT = 0;
   while (!BUS_IS_IDLE) {
     if (TCB1.CNT > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
-      startEvent();
-      return 0;
+      err.errno = STARTBIT_TIMEOUT;
+      goto handle_err;
     }
   }
   uint16_t startbitlen = TCB1.CNT;
   if (startbitlen < (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8)) {
-    RS232_Print("ERR: 1.\n");
-    startEvent();
-    return 0;
+    err.errno = STARTBIT_LENGTH;
+    goto handle_err;
   }
   // Otherwise that was a start bit
 
@@ -572,35 +597,23 @@ uint8_t AVCLAN_readframe() {
   parity = AVCLAN_readbits(&frame.controller_addr, 12);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp & 1)) {
-    RS232_Print("ERR: Bad controller addr. parity");
+    err.errno = BAD_CONTROLLER_PARITY;
     if (verbose) {
-      RS232_Print("; read 0x");
-      RS232_PrintHex12(frame.controller_addr);
-      RS232_Print(" and calculated parity=");
-      RS232_PrintHex4(parity);
-      RS232_Print(" but got ");
-      RS232_PrintHex4(tmp & 1);
+      err.read_val = frame.controller_addr;
+      err.parity = tmp & 1;
     }
-    RS232_Print(".\n");
-    startEvent();
-    return 0;
+    goto handle_err;
   }
 
   parity = AVCLAN_readbits(&frame.peripheral_addr, 12);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp & 1)) {
-    RS232_Print("Bad peripheral addr. parity");
+    err.errno = BAD_PERIPHERAL_PARITY;
     if (verbose) {
-      RS232_Print("; read 0x");
-      RS232_PrintHex12(frame.peripheral_addr);
-      RS232_Print(" and calculated parity=");
-      RS232_PrintHex4(parity);
-      RS232_Print(" but got ");
-      RS232_PrintHex4(tmp & 1);
+      err.read_val = frame.peripheral_addr;
+      err.parity = tmp & 1;
     }
-    RS232_Print(".\n");
-    startEvent();
-    return 0;
+    goto handle_err;
   }
 
   uint8_t shouldACK =
@@ -614,18 +627,12 @@ uint8_t AVCLAN_readframe() {
   parity = AVCLAN_readbits(&frame.control, 4);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp & 1)) {
-    RS232_Print("Bad control parity");
+    err.errno = BAD_CONTROL_PARITY;
     if (verbose) {
-      RS232_Print("; read 0x");
-      RS232_PrintHex4(frame.control);
-      RS232_Print(" and calculated parity=");
-      RS232_PrintHex4(parity);
-      RS232_Print(" but got ");
-      RS232_PrintHex4(tmp & 1);
+      err.read_val = frame.control;
+      err.parity = tmp & 1;
     }
-    RS232_Print(".\n");
-    startEvent();
-    return 0;
+    goto handle_err;
   } else if (shouldACK) {
     AVCLAN_sendbit_ACK();
   } else {
@@ -635,18 +642,12 @@ uint8_t AVCLAN_readframe() {
   parity = AVCLAN_readbyte(&frame.length);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp & 1)) {
-    RS232_Print("Bad length parity");
+    err.errno = BAD_LENGTH_PARITY;
     if (verbose) {
-      RS232_Print("; read 0x");
-      RS232_PrintHex4(frame.length);
-      RS232_Print(" and calculated parity=");
-      RS232_PrintHex4(parity);
-      RS232_Print(" but got ");
-      RS232_PrintHex4(tmp & 1);
+      err.read_val = frame.length;
+      err.parity = tmp & 1;
     }
-    RS232_Print(".\n");
-    startEvent();
-    return 0;
+    goto handle_err;
   } else if (shouldACK) {
     AVCLAN_sendbit_ACK();
   } else {
@@ -654,29 +655,21 @@ uint8_t AVCLAN_readframe() {
   }
 
   if (frame.length == 0 || frame.length > MAXMSGLEN) {
-    RS232_Print("Bad length; got 0x");
-    RS232_PrintHex4(frame.length);
-    RS232_Print(".\n");
-    startEvent();
-    return 0;
+    err.errno = BAD_LENGTH_RANGE;
+    err.val = frame.length;
+    goto handle_err;
   }
 
   for (uint8_t i = 0; i < frame.length; i++) {
     parity = AVCLAN_readbyte(&frame.data[i]);
     AVCLAN_readbits(&tmp, 1);
     if (parity != (tmp & 1)) {
-      RS232_Print("Bad data parity");
+      err.errno = BAD_DATA_PARITY;
       if (verbose) {
-        RS232_Print("; read 0x");
-        RS232_PrintHex4(frame.data[i]);
-        RS232_Print(" and calculated parity=");
-        RS232_PrintHex4(parity);
-        RS232_Print(" but got ");
-        RS232_PrintHex4(tmp & 1);
+        err.read_val = frame.data[i];
+        err.parity = tmp & 1;
       }
-      RS232_Print(".\n");
-      startEvent();
-      return 0;
+      goto handle_err;
     } else if (shouldACK) {
       AVCLAN_sendbit_ACK();
     } else {
@@ -684,21 +677,73 @@ uint8_t AVCLAN_readframe() {
     }
   }
 
-  startEvent();
+  if (0) {
+  handle_err:;
+    startEvent();
+    RS232_Print("ERR: ");
+    switch (err.errno) {
+      case STARTBIT_TIMEOUT: break;
+      case STARTBIT_LENGTH: RS232_Print("reading start bit length\n"); break;
+      case BAD_CONTROLLER_PARITY:
+        RS232_Print("reading controller addr.");
+        goto VERBOSE;
+      case BAD_PERIPHERAL_PARITY:
+        RS232_Print("reading peripheral addr.");
+        goto VERBOSE;
+      case BAD_CONTROL_PARITY: RS232_Print("reading control"); goto VERBOSE;
+      case BAD_LENGTH_PARITY: RS232_Print("reading length"); goto VERBOSE;
+      case BAD_LENGTH_RANGE:
+        RS232_Print("bad length 0x");
+        RS232_PrintHex4(err.val);
+        RS232_Print("\n");
+        break;
+      case BAD_DATA_PARITY: RS232_Print("reading data"); goto VERBOSE;
+      default:
+        break;
+      VERBOSE:
+        if (verbose) {
+          RS232_Print("; read 0x");
+          RS232_PrintHex(err.read_val);
+          RS232_Print(" and got bad parity ");
+          RS232_PrintHex4(err.parity);
+        }
+        RS232_Print("\n");
+    }
 
-  if (printAllFrames)
+    RS232_Print("\n");
+  } else {
+    startEvent();
+  }
+
+  if (printAllFrames &&
+      (!err.errno ||
+       err.errno > STARTBIT_LENGTH)) // At least partially successful read
     AVCLAN_printframe(&frame, printBinary);
 
-  if (!AVCLAN_ismuted())
+  if (!!err.errno && !AVCLAN_ismuted()) // Only handle if successful
     AVCLAN_handleframe(&frame);
 
   answerReq = cm_Null;
-  return 1;
+
+  return err.errno;
 }
 
 uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
-  if (AVCLAN_ismuted())
-    return 1;
+  typedef enum : uint8_t {
+    MUTED = 0x01,
+    BUSY,
+    NAK_ADDRESS = 0x10,
+    NAK_CONTROL,
+    NAK_MESSAGE_LENGTH,
+    NAK_DATA
+  } errno_t;
+  struct errtype {
+    errno_t errno;
+    uint8_t val;
+  } err = {0};
+
+  if (err.errno = AVCLAN_ismuted())
+    goto handle_err;
 
   stopEvent();
 
@@ -715,7 +760,8 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   if (!BUS_IS_IDLE) {
     // Some other device started sending
     // Can't yet simultaneously send and recieve to do proper CSMA/CD
-    return 1;
+    err.errno = BUSY;
+    goto handle_err;
 
     // Beginnings of CSMA/CD
     // do {
@@ -740,27 +786,24 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   AVCLAN_sendbit(parity);
 
   if (frame->broadcast && !AVCLAN_readbit_ACK()) {
-    startEvent();
-    RS232_Print("Error NAK: Addresses\n");
-    return 1;
+    err.errno = NAK_ADDRESS;
+    goto handle_err;
   }
 
   parity = AVCLAN_sendbits(&frame->control, 4);
   AVCLAN_sendbit(parity);
 
   if (frame->broadcast && !AVCLAN_readbit_ACK()) {
-    startEvent();
-    RS232_Print("Error NAK: Control\n");
-    return 2;
+    err.errno = NAK_CONTROL;
+    goto handle_err;
   }
 
   parity = AVCLAN_sendbyte(&frame->length); // data length
   AVCLAN_sendbit(parity);
 
   if (frame->broadcast && !AVCLAN_readbit_ACK()) {
-    startEvent();
-    RS232_Print("Error NAK: Message length\n");
-    return 3;
+    err.errno = NAK_MESSAGE_LENGTH;
+    goto handle_err;
   }
 
   for (uint8_t i = 0; i < frame->length; i++) {
@@ -770,23 +813,43 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
     // necessary (i.e. This deviates from the previous broadcast specific
     // function that sent an extra `1` bit after each byte/parity)
     if (frame->broadcast && !AVCLAN_readbit_ACK()) {
-      startEvent();
-      RS232_Print("Error NAK (Data: ");
-      RS232_PrintHex8(i);
-      RS232_Print(")\n");
-      return 4;
+      err.errno = NAK_DATA;
+      err.val = i;
+      goto handle_err;
     }
     // else
     //   AVCLAN_sendbit_1();
   }
 
   // back to read mode
-  startEvent();
+  if (0) {
+  handle_err:;
+    startEvent();
+    RS232_Print("Error");
+    switch (err.errno) {
+      case MUTED: break;
+      case BUSY: RS232_Print(": Busy bus\n"); break;
+      default:
+        RS232_Print("NAK: ");
+        switch (err.errno) {
+          case NAK_CONTROL: RS232_Print("Control\n"); break;
+          case NAK_MESSAGE_LENGTH: RS232_Print("Message length\n"); break;
+          case NAK_DATA:
+            RS232_Print(" data[");
+            RS232_PrintDec(err.val);
+            RS232_Print("]\n");
+            break;
+          default:
+        }
+    }
+  } else {
+    startEvent();
+  }
 
   if (printAllFrames)
     AVCLAN_printframe(frame, printBinary);
 
-  return 0;
+  return err.errno;
 }
 
 const AVCLAN_frame_t *frameQueue[4];
