@@ -26,6 +26,7 @@
 #include <avr/xmega.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "avclandrv.h"
 #include "com232.h"
@@ -75,9 +76,7 @@ int main() {
         RS232_RxCharBegin = RS232_RxCharEnd = 0; // reset buffer
       sei();
       switch (readkey) {
-        case '?':
-          print_help();
-          break;
+        case '?': print_help(); break;
         case 'v':
           verbose ^= 1;
           RS232_Print("Verbose: ");
@@ -141,12 +140,12 @@ int main() {
           break;
         case 'b':
         case 'B': // Beep
-          data_tmp[0] = 0x00;
-          data_tmp[1] = dev_CD_CHANGER;
-          data_tmp[2] = dev_BEEP_SPEAKERS;
-          data_tmp[3] = 0x60;
-          data_tmp[4] = 0x01;
-          msg.length = 5;
+        {
+          const uint8_t beep[] = {0x00, dev_CD_CHANGER, dev_BEEP_SPEAKERS, 0x60,
+                                  0x01};
+          memcpy(data_tmp, beep, sizeof(beep));
+          msg.length = sizeof(beep);
+        }
           msg.broadcast = UNICAST;
           msg.controller_addr = DEVICE_ADDR;
           msg.peripheral_addr = HU_ADDR;
@@ -154,12 +153,12 @@ int main() {
           break;
         case 'p':
           CD_Mode = stPlay;
-          data_tmp[0] = 0x00;
-          data_tmp[1] = dev_COMM_CTRL;
-          data_tmp[2] = dev_COMM_v1;
-          data_tmp[3] = Insertion;
-          data_tmp[4] = dev_CD_CHANGER;
-          msg.length = 5;
+          {
+            const uint8_t play[] = {0x00,      dev_COMM_CTRL,  dev_COMM_v1,
+                                    Insertion, dev_CD_CHANGER, 0x01};
+            memcpy(data_tmp, play, sizeof(play));
+            msg.length = sizeof(play);
+          }
           msg.broadcast = UNICAST;
           msg.controller_addr = DEVICE_ADDR;
           msg.peripheral_addr = HU_ADDR;
@@ -167,9 +166,7 @@ int main() {
           break;
 
 #ifdef SOFTWARE_DEBUG
-        case 'M':
-          AVCLan_Measure();
-          break;
+        case 'M': AVCLan_Measure(); break;
 #endif
 
         case 0x10: // Signals binary sequence incoming
