@@ -96,12 +96,20 @@ typedef enum {
   Pwrvol_Knob_Lefthand_Turn = 0x9d,
   Track_Seek_Up = 0x94,
   Track_Seek_Down = 0x95,
+  Track_Fast_Forward = 0x98,
+  Track_Rewind = 0x99,
   CD_Enable_Scan = 0xa6,
   CD_Disable_Scan = 0xa7,
+  CD_Enable_Disk_Scan = 0xa9,
+  CD_Disable_Disk_Scan = 0xaa,
   CD_Enable_Repeat = 0xa0,
   CD_Disable_Repeat = 0xa1,
+  CD_Enable_Disk_Repeat = 0xa3,
+  CD_Disable_Disk_Repeat = 0xa4,
   CD_Enable_Random = 0xb0,
   CD_Disable_Random = 0xb1,
+  CD_Enable_Disk_Random = 0xb3,
+  CD_Disable_Disk_Random = 0xb4,
 
   // Events
   Insertion = 0x50,
@@ -142,20 +150,20 @@ typedef struct AVCLAN_CD_Status {
   _Bool cd4 : 1;
   _Bool cd5 : 1;
   _Bool cd6 : 1;
-  int : 2;
+  int : 2; // padding
   uint8_t state;
   uint8_t disc;
   uint8_t track;
   uint8_t mins;
   uint8_t secs;
-  int : 1;
+  int : 1; // padding
   _Bool disk_random : 1;
   _Bool random : 1;
   _Bool disk_repeat : 1;
   _Bool repeat : 1;
   _Bool disk_scan : 1;
   _Bool scan : 1;
-  int : 1;
+  int : 1; // padding
   uint8_t flags2;
 } AVCLAN_CD_Status_t;
 
