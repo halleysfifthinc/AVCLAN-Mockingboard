@@ -339,19 +339,31 @@ void set_AVC_logic_for(uint8_t val, uint16_t period) {
   return;
 }
 
-void AVCLAN_sendbit_start() {
-  set_AVC_logic_for(0, AVCLAN_STARTBIT_LOGIC_0);
-  set_AVC_logic_for(1, AVCLAN_STARTBIT_LOGIC_1);
-}
+typedef enum avclan_bit : uint8_t {
+  bit_zero = 0x00,
+  bit_one = 0x01,
+  bit_start = 0x10
+} avclan_bit_t;
 
-static inline void AVCLAN_sendbit_1() {
-  set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0);
-  set_AVC_logic_for(1, AVCLAN_BIT1_LOGIC_1);
-}
-
-static inline void AVCLAN_sendbit_0() {
-  set_AVC_logic_for(0, AVCLAN_BIT0_LOGIC_0);
-  set_AVC_logic_for(1, AVCLAN_BIT0_LOGIC_1);
+void AVCLAN_sendbit(avclan_bit_t bit) {
+  uint16_t zero_length, one_length;
+  switch (bit) {
+    case bit_zero:
+      zero_length = AVCLAN_BIT0_LOGIC_0;
+      one_length = AVCLAN_BIT0_LOGIC_1;
+      break;
+    case bit_one:
+      zero_length = AVCLAN_BIT1_LOGIC_0;
+      one_length = AVCLAN_BIT1_LOGIC_1;
+      break;
+    case bit_start:
+      zero_length = AVCLAN_STARTBIT_LOGIC_0;
+      one_length = AVCLAN_STARTBIT_LOGIC_1;
+      break;
+    default:
+  }
+  set_AVC_logic_for(0, zero_length);
+  set_AVC_logic_for(1, one_length);
 }
 
 void AVCLAN_sendbit_ACK() {
@@ -365,8 +377,7 @@ void AVCLAN_sendbit_ACK() {
       return;
   }
 
-  set_AVC_logic_for(0, AVCLAN_BIT0_LOGIC_0);
-  set_AVC_logic_for(1, AVCLAN_BIT0_LOGIC_1);
+  AVCLAN_sendbit(bit_zero);
 }
 
 /* Returns true if the peripheral sent an ACK bit.
@@ -391,14 +402,6 @@ uint8_t AVCLAN_readbit_ACK() {
   return 1;
 }
 
-void AVCLAN_sendbit_parity(uint8_t parity) {
-  if (parity) {
-    AVCLAN_sendbit_1();
-  } else {
-    AVCLAN_sendbit_0();
-  }
-}
-
 #define AVCLAN_sendbits(bits, len)                                             \
   _Generic((bits),                                                             \
       const uint16_t *: AVCLAN_sendbitsl,                                      \
@@ -407,7 +410,7 @@ void AVCLAN_sendbit_parity(uint8_t parity) {
       uint8_t *: AVCLAN_sendbitsi)(bits, len)
 
 // Send `len` bits on the AVCLAN bus; returns the even parity
-uint8_t AVCLAN_sendbitsi(const uint8_t *bits, int8_t len) {
+avclan_bit_t AVCLAN_sendbitsi(const uint8_t *bits, int8_t len) {
   uint8_t b = *bits;
   uint8_t parity = 0;
   int8_t len_mod8 = 8;
@@ -420,12 +423,9 @@ uint8_t AVCLAN_sendbitsi(const uint8_t *bits, int8_t len) {
   while (len > 0) {
     len -= len_mod8;
     for (; len_mod8 > 0; len_mod8--) {
-      if (b & 0x80) {
-        AVCLAN_sendbit_1();
-        parity++;
-      } else {
-        AVCLAN_sendbit_0();
-      }
+      avclan_bit_t bit = (b & 0x80) != 0;
+      parity += (uint8_t)bit;
+      AVCLAN_sendbit(bit);
       b <<= 1;
     }
     len_mod8 = 8;
@@ -435,21 +435,18 @@ uint8_t AVCLAN_sendbitsi(const uint8_t *bits, int8_t len) {
 }
 
 // Send `len` bits on the AVCLAN bus; returns the even parity
-uint8_t AVCLAN_sendbitsl(const uint16_t *bits, int8_t len) {
+avclan_bit_t AVCLAN_sendbitsl(const uint16_t *bits, int8_t len) {
   return AVCLAN_sendbitsi((const uint8_t *)bits + 1, len);
 }
 
-uint8_t AVCLAN_sendbyte(const uint8_t *byte) {
+avclan_bit_t AVCLAN_sendbyte(const uint8_t *byte) {
   uint8_t b = *byte;
   uint8_t parity = 0;
 
   for (uint8_t nbits = 8; nbits > 0; nbits--) {
-    if (b & 0x80) {
-      AVCLAN_sendbit_1();
-      parity++;
-    } else {
-      AVCLAN_sendbit_0();
-    }
+    avclan_bit_t bit = (b & 0x80) != 0;
+    parity += (uint8_t)bit;
+    AVCLAN_sendbit(bit);
     b <<= 1;
   }
   return (parity & 1);
@@ -705,8 +702,6 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
 
   stopEvent();
 
-  uint8_t parity = 0;
-
   // wait for free line
   TCB1.CNT = 0;
   while (BUS_IS_IDLE) {
@@ -734,15 +729,15 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
     // set_AVC_logic_for(1, AVCLAN_STARTBIT_LOGIC_1); // wait for end of start
     // bit
   } else {
-    AVCLAN_sendbit_start();
+    AVCLAN_sendbit(bit_start);
   }
   AVCLAN_sendbits((uint8_t *)&frame->broadcast, 1);
 
-  parity = AVCLAN_sendbits(&frame->controller_addr, 12);
-  AVCLAN_sendbit_parity(parity);
+  avclan_bit_t parity = AVCLAN_sendbits(&frame->controller_addr, 12);
+  AVCLAN_sendbit(parity);
 
   parity = AVCLAN_sendbits(&frame->peripheral_addr, 12);
-  AVCLAN_sendbit_parity(parity);
+  AVCLAN_sendbit(parity);
 
   if (frame->broadcast && !AVCLAN_readbit_ACK()) {
     startEvent();
@@ -751,7 +746,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   }
 
   parity = AVCLAN_sendbits(&frame->control, 4);
-  AVCLAN_sendbit_parity(parity);
+  AVCLAN_sendbit(parity);
 
   if (frame->broadcast && !AVCLAN_readbit_ACK()) {
     startEvent();
@@ -760,7 +755,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   }
 
   parity = AVCLAN_sendbyte(&frame->length); // data length
-  AVCLAN_sendbit_parity(parity);
+  AVCLAN_sendbit(parity);
 
   if (frame->broadcast && !AVCLAN_readbit_ACK()) {
     startEvent();
@@ -770,7 +765,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
 
   for (uint8_t i = 0; i < frame->length; i++) {
     parity = AVCLAN_sendbyte(&frame->data[i]);
-    AVCLAN_sendbit_parity(parity);
+    AVCLAN_sendbit(parity);
     // Based on the µPD6708 datasheet, ACK bit for broadcast doesn't seem
     // necessary (i.e. This deviates from the previous broadcast specific
     // function that sent an extra `1` bit after each byte/parity)
