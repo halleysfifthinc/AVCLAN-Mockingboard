@@ -275,26 +275,24 @@ void AVCLAN_init() {
 
 /* Increment packed 2-digit BCD number.
    WARNING: Overflow behavior is incorrect (e.g. `incBCD(0x99) != 0x00`) */
-uint8_t incBCD(uint8_t data) {
-  if ((data & 0x9) == 0x9)
-    return (data + 7);
-
-  return (data + 1);
+void incBCD(uint8_t *data) {
+  if ((*data & 0x9) == 0x9)
+    *data += 7;
+  else
+    *data += 1;
 }
 
 // Periodic interrupt with a 1 sec period
 ISR(RTC_PIT_vect) {
   if (CD_Mode == stPlay) {
-    uint8_t sec = *cd_Time_Sec;
-    uint8_t min = *cd_Time_Min;
-    sec = incBCD(sec);
-    if (sec == 0x60) {
+    if (*cd_Time_Sec == 0x59) {
       *cd_Time_Sec = 0;
-      min = incBCD(min);
-      if (min == 0xA0) {
+      if (*cd_Time_Min == 0x99) {
         *cd_Time_Min = 0;
-      }
-    }
+      } else
+        incBCD(cd_Time_Min);
+    } else
+      incBCD(cd_Time_Sec);
     answerReq = cm_CDStatus;
   }
   RTC.PITINTFLAGS |= RTC_PI_bm;
