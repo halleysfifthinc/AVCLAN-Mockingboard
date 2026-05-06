@@ -97,9 +97,9 @@ endif()
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_C_FLAGS_RELEASE "-Os")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O2 -save-temps -g -gdwarf-3 -gstrict-dwarf")
-set(CMAKE_C_FLAGS_DEBUG "-O0 -save-temps -g -gdwarf-3 -gstrict-dwarf")
+set(CMAKE_C_FLAGS_RELEASE "-Wall -Wswitch-enum -Werror -Os")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-Wall -Wswitch-enum -Werror -O2 -save-temps -g -gdwarf-3 -gstrict-dwarf")
+set(CMAKE_C_FLAGS_DEBUG "-Wall -Wswitch-enum -Werror -O0 -save-temps -g -gdwarf-3 -gstrict-dwarf")
 
 # Set startup time to 8 ms (0x4)
 set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -U syscfg1:w:0x4:m)

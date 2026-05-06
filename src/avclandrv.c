@@ -360,7 +360,7 @@ void AVCLAN_sendbit(avclan_bit_t bit) {
       zero_length = AVCLAN_STARTBIT_LOGIC_0;
       one_length = AVCLAN_STARTBIT_LOGIC_1;
       break;
-    default:
+    default: __builtin_unreachable();
   }
   set_AVC_logic_for(0, zero_length);
   set_AVC_logic_for(1, one_length);
@@ -542,18 +542,17 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
 }
 
 uint8_t AVCLAN_readframe() {
-  typedef enum : uint8_t {
-    STARTBIT_TIMEOUT = 0x01,
-    STARTBIT_LENGTH,
-    BAD_CONTROLLER_PARITY,
-    BAD_PERIPHERAL_PARITY,
-    BAD_CONTROL_PARITY,
-    BAD_LENGTH_PARITY,
-    BAD_LENGTH_RANGE,
-    BAD_DATA_PARITY
-  } errno_t;
   struct errtype {
-    errno_t errno;
+    enum : uint8_t {
+      STARTBIT_TIMEOUT = 0x01,
+      STARTBIT_LENGTH,
+      BAD_CONTROLLER_PARITY,
+      BAD_PERIPHERAL_PARITY,
+      BAD_CONTROL_PARITY,
+      BAD_LENGTH_PARITY,
+      BAD_LENGTH_RANGE,
+      BAD_DATA_PARITY
+    } errno;
     union {
       uint8_t val; // BAD_LENGTH_RANGE: the out-of-range length value
       struct {
@@ -729,20 +728,19 @@ uint8_t AVCLAN_readframe() {
 }
 
 uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
-  typedef enum : uint8_t {
-    MUTED = 0x01,
-    BUSY,
-    NAK_ADDRESS = 0x10,
-    NAK_CONTROL,
-    NAK_MESSAGE_LENGTH,
-    NAK_DATA
-  } errno_t;
   struct errtype {
-    errno_t errno;
+    enum : uint8_t {
+      MUTED = 0x01,
+      BUSY,
+      NAK_ADDRESS = 0x10,
+      NAK_CONTROL,
+      NAK_MESSAGE_LENGTH,
+      NAK_DATA
+    } errno;
     uint8_t val;
   } err = {0};
 
-  if (err.errno = AVCLAN_ismuted())
+  if ((err.errno = AVCLAN_ismuted()))
     goto handle_err;
 
   stopEvent();
@@ -829,9 +827,13 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
     switch (err.errno) {
       case MUTED: break;
       case BUSY: RS232_Print(": Busy bus\n"); break;
-      default:
+      case NAK_ADDRESS:
+      case NAK_CONTROL:
+      case NAK_MESSAGE_LENGTH:
+      case NAK_DATA:
         RS232_Print("NAK: ");
         switch (err.errno) {
+          case NAK_ADDRESS: RS232_Print("address\n"); break;
           case NAK_CONTROL: RS232_Print("Control\n"); break;
           case NAK_MESSAGE_LENGTH: RS232_Print("Message length\n"); break;
           case NAK_DATA:
@@ -839,8 +841,12 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
             RS232_PrintDec(err.val);
             RS232_Print("]\n");
             break;
+          case MUTED: __builtin_unreachable();
+          case BUSY: __builtin_unreachable();
           default:
         }
+        break;
+      default:
     }
   } else {
     startEvent();
@@ -1000,6 +1006,7 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
                   resp->data = (uint8_t *)&function_change_resp;
                   respond = 1;
               }
+              break;
             default:
           }
           break;
@@ -1026,14 +1033,14 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
                   goto CMD_SW_RESPONSE;
                 case Track_Seek_Up:
                   cd_status.state = cd_SEEKING_TRACK;
-                  *cd_Track++;
+                  (*cd_Track)++;
                   *cd_Time_Min = 0xff;
                   *cd_Time_Sec = 0x7f;
                   cd_status.flags2 = 0xc0;
                   goto CMD_SW_RESPONSE;
                 case Track_Seek_Down:
                   cd_status.state = cd_SEEKING_TRACK;
-                  *cd_Track--;
+                  (*cd_Track)--;
                   *cd_Time_Min = 0xff;
                   *cd_Time_Sec = 0x7f;
                   cd_status.flags2 = 0xc0;
@@ -1045,6 +1052,7 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
                   resp->peripheral_addr = frame->controller_addr;
                   respond = 1;
               }
+              break;
             default:
           }
           break;
@@ -1076,6 +1084,7 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
                   resp->peripheral_addr = frame->controller_addr;
                   respond = 1;
               }
+              break;
             default:
           }
           break;

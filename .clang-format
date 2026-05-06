@@ -6,4 +6,5 @@ AllowShortBlocksOnASingleLine: Empty
 IndentCaseLabels: true
 IndentPPDirectives: BeforeHash
 AlignConsecutiveMacros: Consecutive
+AllowShortCaseLabelsOnASingleLine: true
 ...

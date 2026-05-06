@@ -36,7 +36,7 @@ uint8_t readBinary;
 uint8_t muteBus;
 uint8_t readkey;
 
-const char const *offon[] = {"OFF", "ON"};
+const char *const offon[] = {"OFF", "ON"};
 
 void Setup();
 void general_GPIO_init();
