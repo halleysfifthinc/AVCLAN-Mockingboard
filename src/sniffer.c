@@ -178,13 +178,15 @@ int main() {
           } // else (readSeq || readBinary); fall through to default
         case '\n':
           if (readSeq && readBinary && data_tmp[s_len] == 0x17) {
-            s_len--;
-            AVCLAN_frame_t *frame = AVCLAN_parseframe(data_tmp, s_len);
-            if (frame) {
-              AVCLAN_sendframe(frame);
-              free(frame);
-              readSeq = 0;
-              readBinary = 0;
+            {
+              uint8_t tmp[MAXMSGLEN];
+              AVCLAN_frame_t frame = {.data = tmp};
+              err = AVCLAN_parseframe(data_tmp, --s_len, &frame);
+              if (!err) {
+                AVCLAN_sendframe(frame);
+                readSeq = 0;
+                readBinary = 0;
+              }
             }
             break;
           } // else (readSeq || readBinary || most recent char != 0x17);

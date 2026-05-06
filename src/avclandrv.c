@@ -1173,14 +1173,21 @@ void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary) {
   }
 }
 
-AVCLAN_frame_t *AVCLAN_parseframe(const uint8_t *bytes, uint8_t len) {
-  if (len < sizeof(AVCLAN_frame_t))
-    return NULL;
+uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
+                          AVCLAN_frame_t *frame) {
+  struct errtype {
+    enum : uint8_t {
+      TOO_SHORT = 0x01,
+      MISMATCH_LENGTH,
+    } errno;
+    uint8_t val;
+  } err = {0};
 
-  AVCLAN_frame_t *frame = malloc(sizeof(AVCLAN_frame_t) + 1);
-
-  if (!frame)
-    return NULL;
+  if (len < sizeof(AVCLAN_frame_t)) {
+    err.erno = TOO_SHORT;
+    goto handle_err;
+  }
+  uint8_t *last = bytes + len;
 
   frame->broadcast = *bytes++;
   frame->controller_addr = *(uint16_t *)bytes++;
@@ -1190,24 +1197,29 @@ AVCLAN_frame_t *AVCLAN_parseframe(const uint8_t *bytes, uint8_t len) {
   frame->control = *bytes++;
   frame->length = *bytes++;
 
-  if (frame->length <= (len - 8)) {
-    free(frame);
-    return NULL;
+  if ((bytes + frame->length) <= last) {
+    memcpy(frame->data, bytes, frame->length);
   } else {
-    AVCLAN_frame_t *framedata =
-        realloc(frame, sizeof(AVCLAN_frame_t) + frame->length);
-    if (!framedata) {
-      free(frame);
-      return NULL;
-    }
-    frame = framedata;
-    frame->data = (uint8_t *)frame + sizeof(AVCLAN_frame_t);
-    for (uint8_t i = 0; i < frame->length; i++) {
-      frame->data[i] = *bytes++;
-    }
+    err.errno = MISMATCH_LENGTH;
+    goto handle_err;
   }
 
-  return frame;
+  if (0) {
+  handle_err:;
+    RS232_Print("ERR(parse): ");
+    switch (err.errno) {
+      case TOO_SHORT:
+        RS232_Print("not enough bytes too fill AVCLAN frame");
+        break;
+      case MISMATCH_LENGTH:
+        RS232_Print("frame->length is longer than remaining data");
+        break;
+      default: break;
+    }
+    RS232_Print("\n");
+  }
+
+  return err.errno;
 }
 
 void AVCLAN_updateCDStatus() {

@@ -205,7 +205,8 @@ inline uint8_t AVCLAN_responseNeeded() { return (answerReq != 0) || !qEmpty(); }
 uint8_t AVCLAN_respond();
 
 void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary);
-AVCLAN_frame_t *AVCLAN_parseframe(const uint8_t *bytes, uint8_t len);
+uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
+                          AVCLAN_frame_t *frame);
 
 #ifdef SOFTWARE_DEBUG
 void AVCLan_Measure();
