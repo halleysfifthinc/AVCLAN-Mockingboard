@@ -677,10 +677,10 @@ uint8_t AVCLAN_readframe() {
   if (0) {
   handle_err:;
     startEvent();
-    RS232_Print("ERR: ");
+    RS232_Print("ERR(read): ");
     switch (err.errno) {
       case STARTBIT_TIMEOUT: break;
-      case STARTBIT_LENGTH: RS232_Print("reading start bit length\n"); break;
+      case STARTBIT_LENGTH: RS232_Print("bad start bit length"); break;
       case BAD_CONTROLLER_PARITY:
         RS232_Print("reading controller addr.");
         goto VERBOSE;
@@ -692,7 +692,6 @@ uint8_t AVCLAN_readframe() {
       case BAD_LENGTH_RANGE:
         RS232_Print("bad length 0x");
         RS232_PrintHex4(err.val);
-        RS232_Print("\n");
         break;
       case BAD_DATA_PARITY: RS232_Print("reading data"); goto VERBOSE;
       default:
@@ -704,7 +703,6 @@ uint8_t AVCLAN_readframe() {
           RS232_Print(" and got bad parity ");
           RS232_PrintHex4(err.parity);
         }
-        RS232_Print("\n");
     }
 
     RS232_Print("\n");
