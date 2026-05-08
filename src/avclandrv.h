@@ -75,6 +75,8 @@ typedef enum {
   Lancheck_Scan_Resp = 0x1a,
   Lancheck_Req = 0x0c,
   Lancheck_Resp = 0x1c,
+  // Lancheck_UNK_Req = 0x0d,
+  // Lancheck_UNK_Resp = 0x1d,
   Ping_Req = 0x20,
   Ping_Resp = 0x30,
 
@@ -169,6 +171,16 @@ typedef struct AVCLAN_CD_Status {
 
 typedef enum { stStop = 0, stPlay = 1 } cd_modes;
 
+typedef enum : uint8_t {
+  r_Nothing = 0x00,
+  r_Handled,             // No follow-up needed
+  r_StatusReport = 0x02, // Needs follow-up status report
+  r_NormalizeState,      // cd_status needs normalized and resent
+  r_StartPlaying,        // started playing; send current status and then
+                         // normalize
+  r_TrackChange,         // Time needs reset
+} response_t;
+
 typedef enum MSG_TYPE { BROADCAST = 0, UNICAST = 1 } MSG_TYPE_t;
 
 typedef struct AVCLAN_frame_struct {
@@ -180,33 +192,28 @@ typedef struct AVCLAN_frame_struct {
   uint8_t *data;
 } AVCLAN_frame_t;
 
+typedef struct RFrame_struct {
+  response_t r;
+  AVCLAN_frame_t *frame;
+} RFrame_t;
+
 void AVCLAN_init();
 void AVCLAN_muteDevice(uint8_t mute);
 
-uint8_t AVCLAN_readframe();
+uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame);
+response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out);
 uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame);
-
-// To allow inlining qEmpty and AVCLAN_responseNeeded
-#ifndef VAR_DECLS
-  #define _DECL extern
-  #define _INIT(x)
-#else
-  #define _DECL
-  #define _INIT(x) = x
-#endif
-_DECL uint8_t answerReq _INIT(0);
-_DECL uint8_t qWrite _INIT(0);
-_DECL uint8_t qRead _INIT(0);
-extern cd_modes CD_Mode;
-
-inline uint8_t qEmpty() { return (qWrite == qRead); }
-inline uint8_t AVCLAN_responseNeeded() { return (answerReq != 0) || !qEmpty(); }
-
-uint8_t AVCLAN_respond();
-
+uint8_t AVCLAN_tryrespond(const AVCLAN_frame_t *frame);
 void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary);
 uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
                           AVCLAN_frame_t *frame);
+AVCLAN_frame_t *AVCLAN_getStatusFrame();
+void AVCLAN_generateStatus(AVCLAN_frame_t *status);
+
+uint8_t AVCLAN_isPlaying();
+void AVCLAN_incrementTime();
+void AVCLAN_setTime(uint8_t mins, uint8_t secs);
+void AVCLAN_normalizeState();
 
 #ifdef SOFTWARE_DEBUG
 void AVCLan_Measure();

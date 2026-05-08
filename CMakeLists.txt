@@ -107,6 +107,7 @@ set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -U syscfg1:w:0x4:
 add_avr_executable(mockingboard
     src/sniffer.c
     src/com232.c
+    src/queue.c
     src/avclandrv.c)
 
 target_link_options(mockingboard PUBLIC

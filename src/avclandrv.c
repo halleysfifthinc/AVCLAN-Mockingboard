@@ -96,7 +96,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define VAR_DECLS
 #include "avclandrv.h"
 #include "com232.h"
 
@@ -130,8 +129,6 @@ uint8_t *cd_Track;
 uint8_t *cd_Time_Min;
 uint8_t *cd_Time_Sec;
 
-uint8_t answerReq;
-
 cd_modes CD_Mode;
 
 #ifdef SOFTWARE_DEBUG
@@ -148,17 +145,21 @@ const uint8_t list_functions_resp[] = {0x00, dev_COMM_CTRL, dev_COMM_v1,
 uint8_t ping_resp[] = {0x00, dev_COMM_CTRL, dev_COMM_v1, Ping_Resp, 0xFF, 0x00};
 uint8_t function_change_resp[] = {0x00, dev_CD_CHANGER, dev_COMM_v1, 0xFF,
                                   0x01};
-uint8_t cdstatus_resp[] = {dev_CD_CHANGER,
-                           dev_STATUS,
-                           Status_Report,
-                           0x01,
-                           cd_SEEKING_TRACK,
-                           0x01,
-                           0x00,
-                           0xFF,
-                           0x7F,
-                           0x00,
-                           0x80};
+
+#define STATUS_REPORT_DATA                                                     \
+  {dev_CD_CHANGER,                                                             \
+   dev_STATUS,                                                                 \
+   Status_Report,                                                              \
+   0x01,                                                                       \
+   cd_SEEKING_TRACK,                                                           \
+   0x01,                                                                       \
+   0x00,                                                                       \
+   0xFF,                                                                       \
+   0x7F,                                                                       \
+   0x00,                                                                       \
+   0x80}
+
+uint8_t cdstatus_resp[] = STATUS_REPORT_DATA;
 
 uint8_t cdinitreport_resp[] = {
     dev_CD_CHANGER, dev_STATUS, Initial_Report_Response, 0x01, 0x31, 0x10,
@@ -173,21 +174,19 @@ uint8_t cdloading_resp[] = {dev_CD_CHANGER,
                             0x01,
                             0x00,
                             0x01,
-                            0x00};
-
-uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame);
-void AVCLAN_updateCDStatus();
+                            0x02};
 
 /* Disable serial and periodic interrupts during AVCLAN reads.
   Not using cli() because AVCLAN reads depend on other interrupts. */
 static inline void stopEvent() {
-  RTC.PITINTCTRL = 0x00; // PITINTCTRL allows resetting with full zero write.
+  cbi(RTC.PITINTCTRL, RTC_PI_bp);
   cbi(USART0.CTRLA, USART_RXCIE_bp);
 }
 
 // Re-enable serial and periodic interrupts.
 static inline void startEvent() {
-  sbi(RTC.PITINTCTRL, RTC_PI_bp); // Reenable PIT interrupt
+  if (AVCLAN_isPlaying()) // Reenable PIT interrupt if currently playing
+    sbi(RTC.PITINTCTRL, RTC_PI_bp);
   sbi(USART0.CTRLA, USART_RXCIE_bp);
 }
 
@@ -207,6 +206,50 @@ static inline void AVCLAN_setBusDriven() {
         [vportc_out] "I"(_SFR_IO_ADDR(VPORTC_OUT)));
 }
 // clang-format on
+
+// Returns true if device TX is muted on AVCLAN bus
+static inline uint8_t AVCLAN_ismuted() {
+  return (((VPORTA_DIR & PIN4_bm) | (VPORTA_DIR & PIN0_bm)) == 0);
+}
+
+// Mute device TX on AVCLAN bus
+void AVCLAN_muteDevice(uint8_t mute) {
+  if (mute) {
+    // clang-format off
+    __asm__ __volatile__("cbi %[vporta_dir], 4; \n\t" // set as INPUT (output values ignored)
+                         "cbi %[vportc_dir], 0; \n\t" // set as INPUT (output values ignored)
+                         ::
+                         [vporta_dir] "I"(_SFR_IO_ADDR(VPORTA_DIR)),
+                         [vportc_dir] "I"(_SFR_IO_ADDR(VPORTC_DIR)));
+    // clang-format on
+  } else {
+    // clang-format off
+    __asm__ __volatile__("sbi %[vporta_dir], 4; \n\t"
+                         "sbi %[vportc_dir], 0; \n\t"
+                         ::
+                         [vporta_dir] "I"(_SFR_IO_ADDR(VPORTA_DIR)),
+                         [vportc_dir] "I"(_SFR_IO_ADDR(VPORTC_DIR)));
+    // clang-format on
+  }
+}
+
+// Sets CD_mode to play and resets timer count (so that the next interrupt is in
+// 1 sec)
+void AVCLAN_startPlaying() {
+  CD_Mode = stPlay;
+  cli();
+  loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CNTBUSY_bp);
+  RTC.CNT = 0;
+  sbi(RTC.PITINTCTRL, RTC_PI_bp);
+  sei();
+}
+
+// Sets CD_mode to play and resets timer count (so that the next interrupt is in
+// 1 sec)
+void AVCLAN_stopPlaying() {
+  CD_Mode = stStop;
+  cbi(RTC.PITINTCTRL, RTC_PI_bp);
+}
 
 void AVCLAN_init() {
   // Pull-ups are disabled by default
@@ -248,8 +291,6 @@ void AVCLAN_init() {
 
   AVCLAN_muteDevice(0); // unmute AVCLAN bus TX
 
-  answerReq = cm_Null;
-
   cd_status.cd1 = 1;
   cd_status.disc = 1;
   cd_status.cd2 = cd_status.cd3 = cd_status.cd4 = cd_status.cd5 =
@@ -282,46 +323,22 @@ void incBCD(uint8_t *data) {
     *data += 1;
 }
 
-// Periodic interrupt with a 1 sec period
-ISR(RTC_PIT_vect) {
-  if (CD_Mode == stPlay) {
-    if (*cd_Time_Sec == 0x59) {
-      *cd_Time_Sec = 0;
-      if (*cd_Time_Min == 0x99) {
-        *cd_Time_Min = 0;
-      } else
-        incBCD(cd_Time_Min);
+uint8_t AVCLAN_isPlaying() { return (CD_Mode == stPlay); }
+
+void AVCLAN_incrementTime() {
+  if (*cd_Time_Sec == 0x59) {
+    *cd_Time_Sec = 0;
+    if (*cd_Time_Min == 0x99) {
+      *cd_Time_Min = 0;
     } else
-      incBCD(cd_Time_Sec);
-    answerReq = cm_CDStatus;
-  }
-  RTC.PITINTFLAGS |= RTC_PI_bm;
+      incBCD(cd_Time_Min);
+  } else
+    incBCD(cd_Time_Sec);
 }
 
-// Mute device TX on AVCLAN bus
-void AVCLAN_muteDevice(uint8_t mute) {
-  if (mute) {
-    // clang-format off
-    __asm__ __volatile__("cbi %[vporta_dir], 4; \n\t"
-                         "cbi %[vportc_dir], 0; \n\t"
-                         ::
-                         [vporta_dir] "I"(_SFR_IO_ADDR(VPORTA_DIR)),
-                         [vportc_dir] "I"(_SFR_IO_ADDR(VPORTC_DIR)));
-    // clang-format on
-  } else {
-    // clang-format off
-    __asm__ __volatile__("sbi %[vporta_dir], 4; \n\t"
-                         "sbi %[vportc_dir], 0; \n\t"
-                         ::
-                         [vporta_dir] "I"(_SFR_IO_ADDR(VPORTA_DIR)),
-                         [vportc_dir] "I"(_SFR_IO_ADDR(VPORTC_DIR)));
-    // clang-format on
-  }
-}
-
-// Returns true if device TX is muted on AVCLAN bus
-static inline uint8_t AVCLAN_ismuted() {
-  return (((VPORTA_DIR & PIN4_bm) | (VPORTA_DIR & PIN0_bm)) == 0);
+void AVCLAN_setTime(uint8_t mins, uint8_t secs) {
+  *cd_Time_Min = mins;
+  *cd_Time_Sec = secs;
 }
 
 // Set AVC bus to `val` (logical 1 or 0) for `period` ticks of TCB1
@@ -539,7 +556,7 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
   return (parity & 1);
 }
 
-uint8_t AVCLAN_readframe() {
+uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
   struct errtype {
     enum : uint8_t {
       STARTBIT_TIMEOUT = 0x01,
@@ -562,16 +579,6 @@ uint8_t AVCLAN_readframe() {
 
   stopEvent(); // disable timer1 interrupt
 
-  uint8_t data[MAXMSGLEN] = {0};
-  AVCLAN_frame_t frame = {
-      .broadcast = BROADCAST,
-      .controller_addr = 0x000,
-      .peripheral_addr = 0x000,
-      .control = 0xF,
-      .length = 0,
-      .data = data,
-  };
-
   uint8_t parity = 0;
   uint8_t tmp = 0;
 
@@ -589,44 +596,44 @@ uint8_t AVCLAN_readframe() {
   }
   // Otherwise that was a start bit
 
-  AVCLAN_readbits((uint8_t *)&frame.broadcast, 1);
+  AVCLAN_readbits(&frame->broadcast, 1);
 
-  parity = AVCLAN_readbits(&frame.controller_addr, 12);
+  parity = AVCLAN_readbits(&frame->controller_addr, 12);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp & 1)) {
     err.errno = BAD_CONTROLLER_PARITY;
     if (verbose) {
-      err.read_val = frame.controller_addr;
+      err.read_val = frame->controller_addr;
       err.parity = tmp & 1;
     }
     goto handle_err;
   }
 
-  parity = AVCLAN_readbits(&frame.peripheral_addr, 12);
+  parity = AVCLAN_readbits(&frame->peripheral_addr, 12);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp & 1)) {
     err.errno = BAD_PERIPHERAL_PARITY;
     if (verbose) {
-      err.read_val = frame.peripheral_addr;
+      err.read_val = frame->peripheral_addr;
       err.parity = tmp & 1;
     }
     goto handle_err;
   }
 
   uint8_t shouldACK =
-      !AVCLAN_ismuted() && (frame.peripheral_addr == DEVICE_ADDR);
+      !AVCLAN_ismuted() && (frame->peripheral_addr == DEVICE_ADDR);
 
   if (shouldACK)
     AVCLAN_sendbit_ACK();
   else
     AVCLAN_readbits(&tmp, 1);
 
-  parity = AVCLAN_readbits(&frame.control, 4);
+  parity = AVCLAN_readbits(&frame->control, 4);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp & 1)) {
     err.errno = BAD_CONTROL_PARITY;
     if (verbose) {
-      err.read_val = frame.control;
+      err.read_val = frame->control;
       err.parity = tmp & 1;
     }
     goto handle_err;
@@ -636,12 +643,12 @@ uint8_t AVCLAN_readframe() {
     AVCLAN_readbits(&tmp, 1);
   }
 
-  parity = AVCLAN_readbyte(&frame.length);
+  parity = AVCLAN_readbyte(&frame->length);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp & 1)) {
     err.errno = BAD_LENGTH_PARITY;
     if (verbose) {
-      err.read_val = frame.length;
+      err.read_val = frame->length;
       err.parity = tmp & 1;
     }
     goto handle_err;
@@ -651,19 +658,19 @@ uint8_t AVCLAN_readframe() {
     AVCLAN_readbits(&tmp, 1);
   }
 
-  if (frame.length == 0 || frame.length > MAXMSGLEN) {
+  if (frame->length == 0 || frame->length > MAXMSGLEN) {
     err.errno = BAD_LENGTH_RANGE;
-    err.val = frame.length;
+    err.val = frame->length;
     goto handle_err;
   }
 
-  for (uint8_t i = 0; i < frame.length; i++) {
-    parity = AVCLAN_readbyte(&frame.data[i]);
+  for (uint8_t i = 0; i < frame->length; i++) {
+    parity = AVCLAN_readbyte(&frame->data[i]);
     AVCLAN_readbits(&tmp, 1);
     if (parity != (tmp & 1)) {
       err.errno = BAD_DATA_PARITY;
       if (verbose) {
-        err.read_val = frame.data[i];
+        err.read_val = frame->data[i];
         err.parity = tmp & 1;
       }
       goto handle_err;
@@ -704,7 +711,6 @@ uint8_t AVCLAN_readframe() {
           RS232_PrintHex4(err.parity);
         }
     }
-
     RS232_Print("\n");
   } else {
     startEvent();
@@ -713,12 +719,7 @@ uint8_t AVCLAN_readframe() {
   if (printAllFrames &&
       (!err.errno ||
        err.errno > STARTBIT_LENGTH)) // At least partially successful read
-    AVCLAN_printframe(&frame, printBinary);
-
-  if (!!err.errno && !AVCLAN_ismuted()) // Only handle if successful
-    AVCLAN_handleframe(&frame);
-
-  answerReq = cm_Null;
+    AVCLAN_printframe(frame, printBinary);
 
   return err.errno;
 }
@@ -736,8 +737,10 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
     uint8_t val;
   } err = {0};
 
-  if ((err.errno = AVCLAN_ismuted()))
+  if (AVCLAN_ismuted()) {
+    err.errno = MUTED;
     goto handle_err;
+  }
 
   stopEvent();
 
@@ -854,53 +857,20 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   return err.errno;
 }
 
-const AVCLAN_frame_t *frameQueue[4];
+response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *resp) {
+  response_t respond = r_Nothing;
 
-static inline uint8_t qFull() {
-  return ((qWrite - qRead) == sizeof(frameQueue));
-}
-
-static inline uint8_t qMask(uint8_t pos) {
-  return pos & (sizeof(frameQueue) - 1);
-}
-
-uint8_t qPush(const AVCLAN_frame_t *frame) {
-  if (qFull())
-    return 1;
-
-  frameQueue[qMask(qWrite++)] = frame;
-
-  return 0;
-}
-
-const AVCLAN_frame_t *qPeek() {
-  if (qEmpty())
-    return NULL;
-
-  return frameQueue[qMask(qRead)];
-}
-
-const AVCLAN_frame_t *qPop() {
-  if (qEmpty())
-    return NULL;
-
-  return frameQueue[qMask(qRead++)];
-}
-
-uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
-  uint8_t respond = 0;
-  AVCLAN_frame_t *resp = malloc(sizeof(AVCLAN_frame_t));
-  if (!resp)
-    return NULL;
+  if (AVCLAN_ismuted())
+    return respond;
 
   resp->controller_addr = DEVICE_ADDR;
   resp->control = 0xF;
 
-  uint8_t *data = frame->data;
+  uint8_t *data = in->data;
   uint8_t from;
 
   // BROADCAST
-  if (frame->broadcast == 0) {
+  if (in->broadcast == 0) {
     // skip confirming peripheral_addr, because it  will be 0xFFF or 0x1FF based
     // on all currently known examples
     switch (*data++ /* data[0] == "from" device */) {
@@ -927,8 +897,8 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
               LAN_RESPONSE:
                 resp->broadcast = UNICAST;
                 resp->peripheral_addr = HU_ADDR;
-                resp->data = (uint8_t *)lancheck_resp;
-                respond = 1;
+                memcpy(resp->data, lancheck_resp, sizeof(lancheck_resp));
+                respond = r_Handled;
             }
             break;
           default:
@@ -939,23 +909,30 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
         if (*data++ /* data[1] == "to" device */ == dev_COMM_CTRL) {
           switch (*data++ /* data[2] == device action */) {
             case Current_Function:
-              CD_Mode =
-                  (*data++ /* data[2] */ == dev_CD_CHANGER) ? stPlay : stStop;
+              if ((*data++ /* data[2] */ == dev_CD_CHANGER) &&
+                  !AVCLAN_isPlaying()) {
+                cd_status.state = cd_SEEKING | cd_SEEKING_TRACK;
+                cd_status.flags2 = 0x80;
+                AVCLAN_startPlaying();
+                AVCLAN_generateStatus(resp);
+                respond = r_NormalizeState;
+              }
               break;
             case Ping_Req:
               resp->broadcast = UNICAST;
               resp->peripheral_addr = HU_ADDR;
               resp->length = sizeof(ping_resp);
               ping_resp[4] = *data++ /* data[2] */;
-              resp->data = (uint8_t *)&ping_resp;
-              respond = 1;
+              memcpy(resp->data, ping_resp, sizeof(ping_resp));
+              respond = r_Handled;
               break;
             case List_Functions_Req:
               resp->broadcast = UNICAST;
               resp->peripheral_addr = HU_ADDR;
               resp->length = sizeof(list_functions_resp);
-              resp->data = (uint8_t *)&list_functions_resp;
-              respond = 1;
+              memcpy(resp->data, list_functions_resp,
+                     sizeof(list_functions_resp));
+              respond = r_Handled;
               break;
             // case Restart_Lan:
             //   break;
@@ -965,7 +942,7 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
         break;
       default:
     }
-  } else if (frame->peripheral_addr == DEVICE_ADDR) { // unicast to CD changer
+  } else if (in->peripheral_addr == DEVICE_ADDR) { // unicast to CD changer
     if (*data++ == 0) { // unicasts begin with a zero-byte
       from = *data++;   /* data[1] */
       switch (from) {
@@ -976,22 +953,21 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
               switch (*data++ /* data[3] == device action */) {
                 case Enable_Function_Req:
                   function_change_resp[3] = Enable_Function_Resp;
-                  cd_status.state = cd_SEEKING | cd_PLAYBACK | cd_SEEKING_TRACK;
-                  cd_status.flags2 = 0x80;
-                  *cd_Time_Min = 0xff;
-                  *cd_Time_Sec = 0x7f;
-                  CD_Mode = stPlay;
-                  // trigger regular status update after
-                  answerReq = cm_CDStatus;
+                  cd_status.state = cd_SEEKING | cd_SEEKING_TRACK;
+                  cd_status.flags2 = 0xc0;
+                  // *cd_Time_Min = 0xff;
+                  // *cd_Time_Sec = 0x7f;
+                  AVCLAN_startPlaying();
+                  respond = r_StartPlaying;
                   goto FUNCTION_CHANGE_RESPONSE;
                 case Disable_Function_Req:
+                  AVCLAN_stopPlaying();
                   function_change_resp[3] = Disable_Function_Resp;
-                  CD_Mode = stStop;
-                  cd_status.state = 0;
-                  *cd_Time_Min = 0x00;
-                  *cd_Time_Sec = 0x00;
-                  // trigger regular status update after
-                  answerReq = cm_CDStatus;
+                  cd_status.state = cd_PLAYBACK | cd_SEEKING_TRACK;
+                  // *cd_Time_Min = 0x00;
+                  // *cd_Time_Sec = 0x00;
+                  cd_status.flags2 = 0x80;
+                  respond = r_StatusReport;
                   goto FUNCTION_CHANGE_RESPONSE;
                 default:
                   break;
@@ -999,8 +975,8 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
                   resp->broadcast = UNICAST;
                   resp->peripheral_addr = HU_ADDR;
                   resp->length = sizeof(function_change_resp);
-                  resp->data = (uint8_t *)&function_change_resp;
-                  respond = 1;
+                  memcpy(resp->data, function_change_resp,
+                         sizeof(function_change_resp));
               }
               break;
             default:
@@ -1012,41 +988,47 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
               switch (*data++ /* data[3] == device action */) {
                 case Initial_Report_Request:
                   resp->length = sizeof(cdinitreport_resp);
-                  resp->data = (uint8_t *)&cdinitreport_resp;
+                  memcpy(resp->data, cdinitreport_resp,
+                         sizeof(cdinitreport_resp));
+                  resp->data[1] = from; // respond to device that requested
                   goto CMD_SW_RESPONSE;
                 case Playback_Request:
-                  cdstatus_resp[1] = from; // respond to device that requested
-                  cdstatus_resp[2] = Playback_Report;
+                  resp->data[1] = from; // respond to device that requested
+                  resp->data[2] = Playback_Report;
                   resp->length = sizeof(cdstatus_resp);
-                  memcpy(&cdstatus_resp[3], &cd_status, sizeof(cd_status));
-                  resp->data = (uint8_t *)&cdstatus_resp;
+                  memcpy(&resp->data[3], &cd_status, sizeof(cd_status));
                   goto CMD_SW_RESPONSE;
                 case Loading_Request2:
-                  cdloading_resp[1] = from;
-                  cdloading_resp[2] = Loading_Response2;
                   resp->length = sizeof(cdloading_resp);
-                  resp->data = (uint8_t *)&cdloading_resp;
+                  memcpy(&resp->data, &cdloading_resp, sizeof(cdloading_resp));
+                  resp->data[1] = from;
+                  resp->data[2] = Loading_Response2;
                   goto CMD_SW_RESPONSE;
                 case Track_Seek_Up:
                   cd_status.state = cd_SEEKING_TRACK;
                   (*cd_Track)++;
                   *cd_Time_Min = 0xff;
                   *cd_Time_Sec = 0x7f;
+                  cd_status.scan = 1;
                   cd_status.flags2 = 0xc0;
-                  goto CMD_SW_RESPONSE;
+                  respond = r_TrackChange;
+                  AVCLAN_generateStatus(resp);
+                  break;
                 case Track_Seek_Down:
                   cd_status.state = cd_SEEKING_TRACK;
                   (*cd_Track)--;
                   *cd_Time_Min = 0xff;
                   *cd_Time_Sec = 0x7f;
+                  cd_status.scan = 1;
                   cd_status.flags2 = 0xc0;
-                  goto CMD_SW_RESPONSE;
+                  respond = r_TrackChange;
+                  AVCLAN_generateStatus(resp);
+                  break;
                 default:
                   break;
                 CMD_SW_RESPONSE:
                   resp->broadcast = UNICAST;
-                  resp->peripheral_addr = frame->controller_addr;
-                  respond = 1;
+                  resp->peripheral_addr = HU_ADDR;
               }
               break;
             default:
@@ -1058,27 +1040,27 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
               switch (*data++ /* data[3] == device action */) {
                 case Initial_Report_Request:
                   resp->length = sizeof(cdinitreport_resp);
-                  resp->data = (uint8_t *)&cdinitreport_resp;
+                  memcpy(resp->data, cdinitreport_resp,
+                         sizeof(cdinitreport_resp));
+                  resp->data[1] = from; // respond to device that requested
                   goto STATUS_RESPONSE;
                 case Playback_Request:
-                  cdstatus_resp[1] = from; // respond to device that requested
-                  cdstatus_resp[2] = Playback_Report;
+                  resp->data[1] = from; // respond to device that requested
+                  resp->data[2] = Playback_Report;
                   resp->length = sizeof(cdstatus_resp);
-                  memcpy(&cdstatus_resp[3], &cd_status, sizeof(cd_status));
-                  resp->data = (uint8_t *)&cdstatus_resp;
+                  memcpy(&resp->data[3], &cd_status, sizeof(cd_status));
                   goto STATUS_RESPONSE;
                 case Loading_Request2:
-                  cdloading_resp[1] = from;
-                  cdloading_resp[2] = Loading_Response2;
                   resp->length = sizeof(cdloading_resp);
-                  resp->data = (uint8_t *)&cdloading_resp;
+                  memcpy(&resp->data, &cdloading_resp, sizeof(cdloading_resp));
+                  resp->data[1] = from;
+                  resp->data[2] = Loading_Response2;
                   goto STATUS_RESPONSE;
                 default:
                   break;
                 STATUS_RESPONSE:
                   resp->broadcast = UNICAST;
-                  resp->peripheral_addr = frame->controller_addr;
-                  respond = 1;
+                  resp->peripheral_addr = HU_ADDR;
               }
               break;
             default:
@@ -1089,40 +1071,17 @@ uint8_t AVCLAN_handleframe(const AVCLAN_frame_t *frame) {
     }
   }
 
-  if (!respond) {
-    free(resp);
-  } else {
-    qPush(resp);
-  }
-
   return respond;
 }
 
-uint8_t AVCLAN_respond() {
+uint8_t AVCLAN_tryrespond(const AVCLAN_frame_t *resp) {
   uint8_t r = 0;
-  if (!qEmpty()) {
-    const AVCLAN_frame_t *resp = qPeek();
-    for (uint8_t i = 0; i < MAX_SEND_ATTEMPTS; i++) {
-      r = AVCLAN_sendframe(resp);
-      if (!r) { // Send succeeded
-        resp = qPop();
-        free((AVCLAN_frame_t *)resp);
-        break;
-      }
-    }
-    if (r) { // Sending failed all attempts; give up sending frame
-      resp = qPop();
-      free((AVCLAN_frame_t *)resp);
-    }
-  } else {
-    switch (answerReq) {
-      case cm_Null: break;
-      case cm_CDStatus: AVCLAN_updateCDStatus(); break;
-      default:
-    }
+  for (uint8_t i = 0; i < MAX_SEND_ATTEMPTS; i++) {
+    r = AVCLAN_sendframe(resp);
+    if (!r) // Send succeeded
+      break;
   }
 
-  answerReq = cm_Null;
   return r;
 }
 
@@ -1180,10 +1139,10 @@ uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
   } err = {0};
 
   if (len < sizeof(AVCLAN_frame_t)) {
-    err.erno = TOO_SHORT;
+    err.errno = TOO_SHORT;
     goto handle_err;
   }
-  uint8_t *last = bytes + len;
+  const uint8_t *last = bytes + len;
 
   frame->broadcast = *bytes++;
   frame->controller_addr = *(uint16_t *)bytes++;
@@ -1218,30 +1177,42 @@ uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
   return err.errno;
 }
 
-void AVCLAN_updateCDStatus() {
-  if (CD_Mode) {
-    if (answerReq == cm_CDStatus) {
-      cdstatus_resp[2] = Status_Report;
-      memcpy(&cdstatus_resp[3], &cd_status, sizeof(cd_status));
+// Only used for regularly scheduled periodic updates
+AVCLAN_frame_t *AVCLAN_getStatusFrame() {
+  static uint8_t status_data[] = STATUS_REPORT_DATA;
+  static AVCLAN_frame_t status = {.broadcast = BROADCAST,
+                                  .controller_addr = DEVICE_ADDR,
+                                  .peripheral_addr = 0x1FF,
+                                  .control = 0xF,
+                                  .length = sizeof(status_data),
+                                  .data = status_data};
 
-      AVCLAN_frame_t status = {.broadcast = BROADCAST,
-                               .controller_addr = DEVICE_ADDR,
-                               .peripheral_addr = 0x1FF,
-                               .control = 0xF,
-                               .length = sizeof(cdstatus_resp),
-                               .data = (uint8_t *)&cdstatus_resp};
+  return &status;
+}
 
-      AVCLAN_sendframe(&status);
-    }
+// Used for changed status messages
+void AVCLAN_generateStatus(AVCLAN_frame_t *status) {
+  *status = (AVCLAN_frame_t){
+      .broadcast = BROADCAST,
+      .controller_addr = DEVICE_ADDR,
+      .peripheral_addr = 0x1FF,
+      .control = 0xF,
+      .length = sizeof(cdstatus_resp),
+      .data = status->data, // don't overwrite data pointer
+  };
+  status->data[0] = dev_CD_CHANGER;
+  status->data[1] = dev_STATUS;
+  status->data[2] = Status_Report;
+  memcpy(&status->data[3], &cd_status, sizeof(cd_status));
+}
 
-    if (cd_status.state != cd_PLAYBACK) {
-      cd_status.state = cd_PLAYBACK;
-      cd_status.flags2 = 0x80;
-      *cd_Time_Min = 0x00;
-      *cd_Time_Sec = 0x00;
-      answerReq = cm_CDStatus;
-    }
-  }
+void AVCLAN_normalizeState() {
+  // if (cd_status.state != cd_PLAYBACK) {
+  cd_status.state = cd_PLAYBACK;
+  cd_status.disk_scan = 0;
+  cd_status.scan = 0;
+  cd_status.flags2 = 0x80;
+  // }
 }
 
 #ifdef SOFTWARE_DEBUG

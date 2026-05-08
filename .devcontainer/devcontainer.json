@@ -3,7 +3,7 @@
 {
 	"name": "AVR toolchain",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/base:alpine-3.18",
+	"image": "mcr.microsoft.com/devcontainers/base:alpine-3.22",
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
@@ -14,12 +14,9 @@
 	"customizations": {
 		"vscode": {
 			"extensions": [
-				"ms-vscode.cpptools",
-				"ms-vscode.cmake-tools",
-				"rockcat.avr-support",
-				"harikrishnan94.cxx-compiler-explorer",
 				"ms-vscode.cpptools-extension-pack",
-				"twxs.cmake"
+				"rockcat.avr-support",
+				"harikrishnan94.cxx-compiler-explorer"
 			],
 			"settings": {
 				"editor.formatOnSave": true,
