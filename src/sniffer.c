@@ -70,6 +70,20 @@ static uint8_t push_or_return_resp(RFrame_t *resp) {
   return err;
 }
 
+static void toggle_flag(uint8_t *flag, const char *msg) {
+  *flag ^= 1;
+  RS232_Print(msg);
+  RS232_Print(offon[*flag]);
+  RS232_Print("\n");
+}
+
+static void set_flag(uint8_t *flag, uint8_t val, const char *msg) {
+  *flag = val;
+  RS232_Print(msg);
+  RS232_Print(offon[val]);
+  RS232_Print("\n");
+}
+
 int main() {
   uint8_t readSeq = 0;
   uint8_t hexChars[2];
@@ -191,46 +205,17 @@ int main() {
       sei();
       switch (readkey) {
         case '?': print_help(); break;
-        case 'v':
-          verbose ^= 1;
-          RS232_Print("Verbose: ");
-          RS232_Print(offon[verbose]);
-          RS232_Print("\n");
-          break;
-        case 'X':
-          // X/x isn't a single toggle interface because this is used
-          // programmatically and is simpler than reading the toggle
-          // state
-          printBinary = 1;
-          RS232_Print("Binary: ");
-          RS232_Print(offon[1]);
-          RS232_Print("\n");
-          break;
-        case 'x':
-          printBinary = 0;
-          RS232_Print("Binary: ");
-          RS232_Print(offon[0]);
-          RS232_Print("\n");
-          break;
-        case 'l': // Print received messages
-          printAllFrames ^= 1;
-          RS232_Print("Logging: ");
-          RS232_Print(offon[printAllFrames]);
-          RS232_Print("\n");
-          break;
-        case 'k': // Echo input
-          echoCharacters ^= 1;
-          RS232_Print("Echo characters: ");
-          RS232_Print(offon[echoCharacters]);
-          RS232_Print("\n");
-          break;
-        case 'm': // Mute mockingboard device on AVCLAN bus
-          muteBus ^= 1;
-          AVCLAN_muteDevice(muteBus);
-          RS232_Print("Mute device: ");
-          RS232_Print(offon[muteBus]);
-          RS232_Print("\n");
-          break;
+        case 'v': toggle_flag(&verbose, "Verbose: "); break;
+        case 'l': toggle_flag(&printAllFrames, "Logging: "); break;
+        case 'k': toggle_flag(&echoCharacters, "Echo characters: "); break;
+        case 'm': toggle_flag(&muteBus, "Mute device: "); break;
+
+        // X/x isn't a toggle interface because this is used
+        // programmatically and is simpler than reading back the toggle
+        // state
+        case 'X': set_flag(&printBinary, 1, "Binary: "); break;
+        case 'x': set_flag(&printBinary, 0, "Binary: "); break;
+
         case 'E': // Beep
           out = (AVCLAN_frame_t *)popQueue(&cache);
           if (out) {
@@ -279,7 +264,9 @@ int main() {
             readSeq = readBinary = 1;
             seqLen = 0;
             break;
-          } // otherwise we're reading binary and that's a data byte
+          } else
+            goto DEFAULT; // reading binary and this is a real data byte
+
         case 'U': // Send command
           RS232_Print("READ SEQUENCE (U)> \n");
           lastPrintAllFrames = printAllFrames;
