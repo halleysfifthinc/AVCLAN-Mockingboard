@@ -117,7 +117,7 @@ int main() {
   while (1) {
 
     if (!BUS_IS_IDLE) {
-      msg = (AVCLAN_frame_t *)(&cache);
+      msg = (AVCLAN_frame_t *)popQueue(&cache);
       if (!msg) {
         RS232_Print("!! Dropping an incoming message; cache is empty !!");
         continue;
@@ -126,6 +126,8 @@ int main() {
       err = AVCLAN_readframe(msg);
       if (!err)
         err = pushQueue(&incoming, msg) && pushQueue(&cache, msg);
+      else
+        pushQueue(&cache, msg);
     } else if (!isEmpty(&incoming)) {
       out = (AVCLAN_frame_t *)popQueue(&cache);
       if (!out) {
@@ -232,7 +234,8 @@ int main() {
               }
               *resp = (RFrame_t){.r = r_Handled, .frame = out};
               push_or_return_resp(resp);
-            }
+            } else
+              pushQueue(&cache, out);
           }
           break;
         case 'P':
@@ -251,7 +254,8 @@ int main() {
               }
               *resp = (RFrame_t){.r = r_Handled, .frame = out};
               push_or_return_resp(resp);
-            }
+            } else
+              pushQueue(&cache, out);
           }
           break;
 
@@ -297,8 +301,10 @@ int main() {
                     if (resp) {
                       *resp = (RFrame_t){.r = r_Handled, .frame = out};
                       push_or_return_resp(resp);
-                    }
-                  }
+                    } else
+                      pushQueue(&cache, out);
+                  } else
+                    pushQueue(&cache, out);
                 }
                 readSeq = readBinary = 0;
               } else
@@ -319,7 +325,8 @@ int main() {
                   memcpy(out->data, data_tmp, seqLen);
                   *resp = (RFrame_t){.r = r_Handled, .frame = out};
                   push_or_return_resp(resp);
-                }
+                } else
+                  pushQueue(&cache, out);
               }
               printAllFrames = lastPrintAllFrames;
             }
