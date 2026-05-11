@@ -860,14 +860,14 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   return err.errno;
 }
 
-response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *resp) {
+response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
   response_t respond = r_Nothing;
 
   if (AVCLAN_ismuted())
     return respond;
 
-  resp->controller_addr = DEVICE_ADDR;
-  resp->control = 0xF;
+  out->controller_addr = DEVICE_ADDR;
+  out->control = 0xF;
 
   uint8_t *data = in->data;
   uint8_t from;
@@ -884,23 +884,23 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *resp) {
               case Lancheck_Scan_Req:
                 lancheck_resp[3] = Lancheck_Scan_Resp;
                 lancheck_resp[4] = 0x01;
-                resp->length = sizeof(lancheck_resp);
+                out->length = sizeof(lancheck_resp);
                 goto LAN_RESPONSE;
               case Lancheck_Req:
                 lancheck_resp[3] = Lancheck_Resp;
                 lancheck_resp[4] = 0x00;
-                resp->length = sizeof(lancheck_resp);
+                out->length = sizeof(lancheck_resp);
                 goto LAN_RESPONSE;
               case Lancheck_End_Req:
                 lancheck_resp[3] = Lancheck_End_Resp;
-                resp->length = sizeof(lancheck_resp) - 1;
+                out->length = sizeof(lancheck_resp) - 1;
                 goto LAN_RESPONSE;
               default:
                 break;
               LAN_RESPONSE:
-                resp->broadcast = UNICAST;
-                resp->peripheral_addr = HU_ADDR;
-                memcpy(resp->data, lancheck_resp, sizeof(lancheck_resp));
+                out->broadcast = UNICAST;
+                out->peripheral_addr = HU_ADDR;
+                memcpy(out->data, lancheck_resp, sizeof(lancheck_resp));
                 respond = r_Handled;
             }
             break;
@@ -917,23 +917,23 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *resp) {
                 cd_status.state = cd_SEEKING | cd_SEEKING_TRACK;
                 cd_status.flags2 = 0x80;
                 AVCLAN_startPlaying();
-                AVCLAN_generateStatus(resp);
+                AVCLAN_generateStatus(out);
                 respond = r_NormalizeState;
               }
               break;
             case Ping_Req:
-              resp->broadcast = UNICAST;
-              resp->peripheral_addr = HU_ADDR;
-              resp->length = sizeof(ping_resp);
+              out->broadcast = UNICAST;
+              out->peripheral_addr = HU_ADDR;
+              out->length = sizeof(ping_resp);
               ping_resp[4] = *data++ /* data[2] */;
-              memcpy(resp->data, ping_resp, sizeof(ping_resp));
+              memcpy(out->data, ping_resp, sizeof(ping_resp));
               respond = r_Handled;
               break;
             case List_Functions_Req:
-              resp->broadcast = UNICAST;
-              resp->peripheral_addr = HU_ADDR;
-              resp->length = sizeof(list_functions_resp);
-              memcpy(resp->data, list_functions_resp,
+              out->broadcast = UNICAST;
+              out->peripheral_addr = HU_ADDR;
+              out->length = sizeof(list_functions_resp);
+              memcpy(out->data, list_functions_resp,
                      sizeof(list_functions_resp));
               respond = r_Handled;
               break;
@@ -975,10 +975,10 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *resp) {
                 default:
                   break;
                 FUNCTION_CHANGE_RESPONSE:
-                  resp->broadcast = UNICAST;
-                  resp->peripheral_addr = HU_ADDR;
-                  resp->length = sizeof(function_change_resp);
-                  memcpy(resp->data, function_change_resp,
+                  out->broadcast = UNICAST;
+                  out->peripheral_addr = HU_ADDR;
+                  out->length = sizeof(function_change_resp);
+                  memcpy(out->data, function_change_resp,
                          sizeof(function_change_resp));
               }
               break;
@@ -990,22 +990,22 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *resp) {
             case dev_CD_CHANGER:
               switch (*data++ /* data[3] == device action */) {
                 case Initial_Report_Request:
-                  resp->length = sizeof(cdinitreport_resp);
-                  memcpy(resp->data, cdinitreport_resp,
+                  out->length = sizeof(cdinitreport_resp);
+                  memcpy(out->data, cdinitreport_resp,
                          sizeof(cdinitreport_resp));
-                  resp->data[1] = from; // respond to device that requested
+                  out->data[1] = from; // respond to device that requested
                   goto CMD_SW_RESPONSE;
                 case Playback_Request:
-                  resp->data[1] = from; // respond to device that requested
-                  resp->data[2] = Playback_Report;
-                  resp->length = sizeof(cdstatus_resp);
-                  memcpy(&resp->data[3], &cd_status, sizeof(cd_status));
+                  out->data[1] = from; // respond to device that requested
+                  out->data[2] = Playback_Report;
+                  out->length = sizeof(cdstatus_resp);
+                  memcpy(&out->data[3], &cd_status, sizeof(cd_status));
                   goto CMD_SW_RESPONSE;
                 case Loading_Request2:
-                  resp->length = sizeof(cdloading_resp);
-                  memcpy(&resp->data, &cdloading_resp, sizeof(cdloading_resp));
-                  resp->data[1] = from;
-                  resp->data[2] = Loading_Response2;
+                  out->length = sizeof(cdloading_resp);
+                  memcpy(out->data, cdloading_resp, sizeof(cdloading_resp));
+                  out->data[1] = from;
+                  out->data[2] = Loading_Response2;
                   goto CMD_SW_RESPONSE;
                 case Track_Seek_Up:
                   cd_status.state = cd_SEEKING_TRACK;
@@ -1015,7 +1015,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *resp) {
                   cd_status.scan = 1;
                   cd_status.flags2 = 0xc0;
                   respond = r_TrackChange;
-                  AVCLAN_generateStatus(resp);
+                  AVCLAN_generateStatus(out);
                   break;
                 case Track_Seek_Down:
                   cd_status.state = cd_SEEKING_TRACK;
@@ -1025,13 +1025,13 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *resp) {
                   cd_status.scan = 1;
                   cd_status.flags2 = 0xc0;
                   respond = r_TrackChange;
-                  AVCLAN_generateStatus(resp);
+                  AVCLAN_generateStatus(out);
                   break;
                 default:
                   break;
                 CMD_SW_RESPONSE:
-                  resp->broadcast = UNICAST;
-                  resp->peripheral_addr = HU_ADDR;
+                  out->broadcast = UNICAST;
+                  out->peripheral_addr = HU_ADDR;
               }
               break;
             default:
@@ -1042,28 +1042,28 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *resp) {
             case dev_CD_CHANGER:
               switch (*data++ /* data[3] == device action */) {
                 case Initial_Report_Request:
-                  resp->length = sizeof(cdinitreport_resp);
-                  memcpy(resp->data, cdinitreport_resp,
+                  out->length = sizeof(cdinitreport_resp);
+                  memcpy(out->data, cdinitreport_resp,
                          sizeof(cdinitreport_resp));
-                  resp->data[1] = from; // respond to device that requested
+                  out->data[1] = from; // respond to device that requested
                   goto STATUS_RESPONSE;
                 case Playback_Request:
-                  resp->data[1] = from; // respond to device that requested
-                  resp->data[2] = Playback_Report;
-                  resp->length = sizeof(cdstatus_resp);
-                  memcpy(&resp->data[3], &cd_status, sizeof(cd_status));
+                  out->data[1] = from; // respond to device that requested
+                  out->data[2] = Playback_Report;
+                  out->length = sizeof(cdstatus_resp);
+                  memcpy(&out->data[3], &cd_status, sizeof(cd_status));
                   goto STATUS_RESPONSE;
                 case Loading_Request2:
-                  resp->length = sizeof(cdloading_resp);
-                  memcpy(&resp->data, &cdloading_resp, sizeof(cdloading_resp));
-                  resp->data[1] = from;
-                  resp->data[2] = Loading_Response2;
+                  out->length = sizeof(cdloading_resp);
+                  memcpy(out->data, cdloading_resp, sizeof(cdloading_resp));
+                  out->data[1] = from;
+                  out->data[2] = Loading_Response2;
                   goto STATUS_RESPONSE;
                 default:
                   break;
                 STATUS_RESPONSE:
-                  resp->broadcast = UNICAST;
-                  resp->peripheral_addr = HU_ADDR;
+                  out->broadcast = UNICAST;
+                  out->peripheral_addr = HU_ADDR;
               }
               break;
             default:
