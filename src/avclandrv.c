@@ -602,22 +602,22 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
 
   parity = AVCLAN_readbits(&frame->controller_addr, 12);
   AVCLAN_readbits(&tmp, 1);
-  if (parity != (tmp & 1)) {
+  if (parity != (tmp &= 1)) {
     err.errno = BAD_CONTROLLER_PARITY;
     if (verbose) {
       err.read_val = frame->controller_addr;
-      err.parity = tmp & 1;
+      err.parity = tmp;
     }
     goto handle_err;
   }
 
   parity = AVCLAN_readbits(&frame->peripheral_addr, 12);
   AVCLAN_readbits(&tmp, 1);
-  if (parity != (tmp & 1)) {
+  if (parity != (tmp &= 1)) {
     err.errno = BAD_PERIPHERAL_PARITY;
     if (verbose) {
       err.read_val = frame->peripheral_addr;
-      err.parity = tmp & 1;
+      err.parity = tmp;
     }
     goto handle_err;
   }
@@ -632,11 +632,11 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
 
   parity = AVCLAN_readbits(&frame->control, 4);
   AVCLAN_readbits(&tmp, 1);
-  if (parity != (tmp & 1)) {
+  if (parity != (tmp &= 1)) {
     err.errno = BAD_CONTROL_PARITY;
     if (verbose) {
       err.read_val = frame->control;
-      err.parity = tmp & 1;
+      err.parity = tmp;
     }
     goto handle_err;
   } else if (shouldACK) {
@@ -647,11 +647,11 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
 
   parity = AVCLAN_readbyte(&frame->length);
   AVCLAN_readbits(&tmp, 1);
-  if (parity != (tmp & 1)) {
+  if (parity != (tmp &= 1)) {
     err.errno = BAD_LENGTH_PARITY;
     if (verbose) {
       err.read_val = frame->length;
-      err.parity = tmp & 1;
+      err.parity = tmp;
     }
     goto handle_err;
   } else if (shouldACK) {
@@ -669,11 +669,11 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
   for (uint8_t i = 0; i < frame->length; i++) {
     parity = AVCLAN_readbyte(&frame->data[i]);
     AVCLAN_readbits(&tmp, 1);
-    if (parity != (tmp & 1)) {
+    if (parity != (tmp &= 1)) {
       err.errno = BAD_DATA_PARITY;
       if (verbose) {
         err.read_val = frame->data[i];
-        err.parity = tmp & 1;
+        err.parity = tmp;
       }
       goto handle_err;
     } else if (shouldACK) {
