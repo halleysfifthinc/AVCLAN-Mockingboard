@@ -66,8 +66,11 @@ static uint8_t return_resp(RFrame_t *resp) {
 }
 
 static uint8_t push_or_return_resp(RFrame_t *resp) {
-  uint8_t err = pushQueue(&outgoing, resp) && return_resp(resp);
-  return err;
+  uint8_t err = pushQueue(&outgoing, resp);
+  if (err)
+    return return_resp(resp);
+  else
+    return err;
 }
 
 static void toggle_flag(uint8_t *flag, const char *msg) {
@@ -108,6 +111,7 @@ int main() {
 
   constructQueue(&cache, frames, sizeof(AVCLAN_frame_t), CACHE_SIZE, 1);
   constructEmptyQueue(&incoming, sizeof(AVCLAN_frame_t), CACHE_SIZE);
+
   constructQueue(&rcache, responses, sizeof(RFrame_t), CACHE_SIZE, 1);
   constructEmptyQueue(&outgoing, sizeof(RFrame_t), CACHE_SIZE);
 
@@ -138,6 +142,7 @@ int main() {
       msg = (AVCLAN_frame_t *)popQueue(
           &incoming); // prior !isempty(incoming) guarantees success
       response_t respond = AVCLAN_handleframe(msg, out);
+      pushQueue(&cache, msg);
 
       if (respond) {
         resp = (RFrame_t *)popQueue(&rcache);
@@ -148,24 +153,20 @@ int main() {
           pushQueue(&cache, out);
       } else // no response needed; return to circulation
         pushQueue(&cache, out);
-
-      pushQueue(&cache, msg);
     } else if (!isEmpty(&outgoing)) {
       resp = (RFrame_t *)popQueue(
           &outgoing); // prior !isempty(outgoing) guarantees success
       out = resp->frame;
       err = AVCLAN_sendframe(out);
       if (err) {
-        RS232_Print("!! Failed to send frame; error code ");
-        RS232_PrintHex(err);
-        RS232_Print(" !!\n");
         return_resp(resp);
       } else {
         // Re-use successful resp for sequence
         switch (resp->r) {
           case r_TrackChange: AVCLAN_setTime(0x00, 0x00); // fallthrough
           case r_NormalizeState:
-            AVCLAN_normalizeState(out);
+            AVCLAN_normalizeState();
+            AVCLAN_generateStatus(out);
             resp->r = r_Handled;
             push_or_return_resp(resp);
             break;

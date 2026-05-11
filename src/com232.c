@@ -58,8 +58,7 @@ void RS232_Init(void) {
 
 ISR(USART0_RXC_vect) {
   // Store received character to the End of Buffer
-  RS232_RxCharBuffer[RS232_RxCharEnd] = USART0_RXDATAL;
-  RS232_RxCharEnd++;
+  RS232_RxCharBuffer[RS232_RxCharEnd++] = USART0_RXDATAL;
 }
 
 void RS232_SendByte(uint8_t Data) {
