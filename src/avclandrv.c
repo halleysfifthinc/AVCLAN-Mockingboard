@@ -558,15 +558,17 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
 
 uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
   struct errtype {
+    // Error enum is ordered such that a lower numeric value corresponds to more
+    // successful read
     enum : uint8_t {
-      STARTBIT_TIMEOUT = 0x01,
-      STARTBIT_LENGTH,
-      BAD_CONTROLLER_PARITY,
-      BAD_PERIPHERAL_PARITY,
-      BAD_CONTROL_PARITY,
-      BAD_LENGTH_PARITY,
+      BAD_DATA_PARITY = 0x01,
       BAD_LENGTH_RANGE,
-      BAD_DATA_PARITY
+      BAD_LENGTH_PARITY,
+      BAD_PERIPHERAL_PARITY,
+      BAD_CONTROLLER_PARITY,
+      BAD_CONTROL_PARITY,
+      STARTBIT_LENGTH,
+      STARTBIT_TIMEOUT,
     } errno;
     union {
       uint8_t val; // BAD_LENGTH_RANGE: the out-of-range length value
@@ -716,9 +718,8 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
     startEvent();
   }
 
-  if (printAllFrames &&
-      (!err.errno ||
-       err.errno > STARTBIT_LENGTH)) // At least partially successful read
+  // Only print if some data has been correctly recieved
+  if (printAllFrames && (err.errno < STARTBIT_LENGTH))
     AVCLAN_printframe(frame, printBinary);
 
   return err.errno;
@@ -726,13 +727,15 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
 
 uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
   struct errtype {
+    // Error enum is ordered such that a lower numeric value corresponds to more
+    // success
     enum : uint8_t {
-      MUTED = 0x01,
-      BUSY,
-      NAK_ADDRESS = 0x10,
-      NAK_CONTROL,
+      NAK_DATA = 0x01,
       NAK_MESSAGE_LENGTH,
-      NAK_DATA
+      NAK_CONTROL,
+      NAK_ADDRESS,
+      BUSY,
+      MUTED,
     } errno;
     uint8_t val;
   } err = {0};
@@ -830,7 +833,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
       case NAK_CONTROL:
       case NAK_MESSAGE_LENGTH:
       case NAK_DATA:
-        RS232_Print("NAK: ");
+        RS232_Print(" NAK: ");
         switch (err.errno) {
           case NAK_ADDRESS: RS232_Print("address\n"); break;
           case NAK_CONTROL: RS232_Print("Control\n"); break;
