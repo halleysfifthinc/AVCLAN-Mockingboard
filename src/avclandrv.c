@@ -869,18 +869,23 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
   out->controller_addr = DEVICE_ADDR;
   out->control = 0xF;
 
-  uint8_t *data = in->data;
+  const uint16_t peripheral_addr = in->peripheral_addr;
+  const uint8_t *data = in->data;
+  const uint8_t b0 = *data++;
+  const uint8_t b1 = *data++;
+  const uint8_t b2 = *data++;
+  const uint8_t b3 = *data++;
   uint8_t from;
 
   // BROADCAST
-  if (in->broadcast == 0) {
+  if (in->broadcast == BROADCAST) {
     // skip confirming peripheral_addr, because it  will be 0xFFF or 0x1FF based
     // on all currently known examples
-    switch (*data++ /* data[0] == "from" device */) {
+    switch (b0 /* "from" device */) {
       case dev_LAN:
-        switch (*data++ /* data[1] == "to" device */) {
+        switch (b1 /* "to" device */) {
           case dev_COMM_CTRL:
-            switch (*data++ /* data[2] == device action */) {
+            switch (b2 /* device action */) {
               case Lancheck_Scan_Req:
                 lancheck_resp[3] = Lancheck_Scan_Resp;
                 lancheck_resp[4] = 0x01;
@@ -909,11 +914,10 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         break;
       case dev_COMM_v1:
       case dev_COMM_v2:
-        if (*data++ /* data[1] == "to" device */ == dev_COMM_CTRL) {
-          switch (*data++ /* data[2] == device action */) {
+        if (b1 /* "to" device */ == dev_COMM_CTRL) {
+          switch (b2 /* device action */) {
             case Current_Function:
-              if ((*data++ /* data[2] */ == dev_CD_CHANGER) &&
-                  !AVCLAN_isPlaying()) {
+              if ((b3 == dev_CD_CHANGER) && !AVCLAN_isPlaying()) {
                 cd_status.state = cd_SEEKING | cd_SEEKING_TRACK;
                 cd_status.flags2 = 0x80;
                 AVCLAN_startPlaying();
@@ -925,7 +929,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
               out->broadcast = UNICAST;
               out->peripheral_addr = HU_ADDR;
               out->length = sizeof(ping_resp);
-              ping_resp[4] = *data++ /* data[2] */;
+              ping_resp[4] = b3;
               memcpy(out->data, ping_resp, sizeof(ping_resp));
               respond = r_Handled;
               break;
@@ -945,15 +949,15 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         break;
       default:
     }
-  } else if (in->peripheral_addr == DEVICE_ADDR) { // unicast to CD changer
-    if (*data++ == 0) { // unicasts begin with a zero-byte
-      from = *data++;   /* data[1] */
+  } else if (peripheral_addr == DEVICE_ADDR) { // unicast to CD changer
+    if (b0 == 0) { // unicasts begin with a zero-byte
+      from = b1;
       switch (from) {
         case dev_COMM_v1:
         case dev_COMM_v2:
-          switch (*data++ /* data[2] == "to" device */) {
+          switch (b2 /* "to" device */) {
             case dev_CD_CHANGER:
-              switch (*data++ /* data[3] == device action */) {
+              switch (b3 /* device action */) {
                 case Enable_Function_Req:
                   function_change_resp[3] = Enable_Function_Resp;
                   cd_status.state = cd_SEEKING | cd_SEEKING_TRACK;
@@ -986,9 +990,9 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
           }
           break;
         case dev_CMD_SW:
-          switch (*data++ /* data[2] == "to" device */) {
+          switch (b2 /* "to" device */) {
             case dev_CD_CHANGER:
-              switch (*data++ /* data[3] == device action */) {
+              switch (b3 /* device action */) {
                 case Initial_Report_Request:
                   out->length = sizeof(cdinitreport_resp);
                   memcpy(out->data, cdinitreport_resp,
@@ -1038,9 +1042,9 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
           }
           break;
         case dev_STATUS:
-          switch (*data++ /* data[2] == "to" device */) {
+          switch (b2 /* "to" device */) {
             case dev_CD_CHANGER:
-              switch (*data++ /* data[3] == device action */) {
+              switch (b3 /* device action */) {
                 case Initial_Report_Request:
                   out->length = sizeof(cdinitreport_resp);
                   memcpy(out->data, cdinitreport_resp,
