@@ -409,7 +409,10 @@ uint8_t AVCLAN_readbit_ACK() {
   }
 
   // Check/wait in case we get here before peripheral finishes ACK bit
-  while (!BUS_IS_IDLE) {}
+  while (!BUS_IS_IDLE) {
+    if (TCB1.CNT > AVCLAN_BIT_LENGTH_MAX)
+      return 0; // NAK
+  }
   return 1;
 }
 
@@ -590,6 +593,15 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   }
   if (startbitlen < (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8)) {
     err.errno = STARTBIT_TOO_SHORT;
+    // We missed the beginning of this message; wait for it to finish (bus
+    // continuously idle for >1 bit length) before returning, so we don't have
+    // multiple false-starts while the in-progress message keeps sending more
+    // bits.
+    TCB1.CNT = 0;
+    while (TCB1.CNT < (uint16_t)(AVCLAN_BIT_LENGTH_MAX * 1.2)) {
+      if (!BUS_IS_IDLE)
+        TCB1.CNT = 0;
+    }
     goto handle_err;
   }
   // Otherwise that was a start bit
