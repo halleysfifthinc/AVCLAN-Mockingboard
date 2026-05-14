@@ -37,10 +37,17 @@
 const char *const offon[] = {"OFF", "ON"};
 
 #define CACHE_SIZE 16
+_Static_assert((CACHE_SIZE & (CACHE_SIZE - 1)) == 0,
+               "CACHE_SIZE must be a power of two (qMask depends on it)");
 
 AVCLAN_frame_t frames[CACHE_SIZE];
 RFrame_t responses[CACHE_SIZE];
 uint8_t framesdata[CACHE_SIZE][MAXMSGLEN];
+
+void *cacheSlots[CACHE_SIZE];
+void *rcacheSlots[CACHE_SIZE];
+void *incomingSlots[CACHE_SIZE];
+void *outgoingSlots[CACHE_SIZE];
 
 Queue_t cache, rcache, incoming, outgoing;
 
@@ -107,11 +114,13 @@ int main() {
     frames[i].data = framesdata[i];
   }
 
-  constructQueue(&cache, frames, sizeof(AVCLAN_frame_t), CACHE_SIZE, 1);
-  constructEmptyQueue(&incoming, sizeof(AVCLAN_frame_t), CACHE_SIZE);
+  constructQueue(&cache, cacheSlots, frames, sizeof(AVCLAN_frame_t), CACHE_SIZE,
+                 1);
+  constructEmptyQueue(&incoming, incomingSlots, CACHE_SIZE);
 
-  constructQueue(&rcache, responses, sizeof(RFrame_t), CACHE_SIZE, 1);
-  constructEmptyQueue(&outgoing, sizeof(RFrame_t), CACHE_SIZE);
+  constructQueue(&rcache, rcacheSlots, responses, sizeof(RFrame_t), CACHE_SIZE,
+                 1);
+  constructEmptyQueue(&outgoing, outgoingSlots, CACHE_SIZE);
 
   Setup();
   print_help();
