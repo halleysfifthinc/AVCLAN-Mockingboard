@@ -36,12 +36,12 @@
 #define DEVICE_ADDR 0x360 // CD Changer address
 #define HU_ADDR     0x190 // Head-unit address
 
-typedef enum {
+typedef enum : uint8_t {
   cm_Null = 0,
   cm_CDStatus,
 } commands;
 
-typedef enum {
+typedef enum : uint8_t {
   dev_LAN = 0x00,
   dev_COMM_CTRL = 0x01,
   dev_COMM_v1 = 0x11,
@@ -60,7 +60,7 @@ typedef enum {
   dev_AUDIO_AMP = 0x74,
 } devices;
 
-typedef enum {
+typedef enum : uint8_t {
   // LAN related
   List_Functions_Req = 0x00,
   List_Functions_Resp = 0x10,
@@ -132,7 +132,7 @@ typedef enum {
   Report_TOC = 0xf9,
 } actions;
 
-typedef enum {
+typedef enum : uint8_t {
   cd_OPEN = 0x01,
   cd_ERR1 = 0x02,
   cd_SEEKING = 0x08,
@@ -165,7 +165,7 @@ typedef struct AVCLAN_CD_Status {
   uint8_t flags2;
 } AVCLAN_CD_Status_t;
 
-typedef enum { stStop = 0, stPlay = 1 } cd_modes;
+typedef enum : uint8_t { stStop = 0, stPlay = 1 } cd_modes;
 
 typedef enum : uint8_t {
   r_Nothing = 0x00,
@@ -177,7 +177,7 @@ typedef enum : uint8_t {
   r_TrackChange,         // Time needs reset
 } response_t;
 
-typedef enum MSG_TYPE { BROADCAST = 0, UNICAST = 1 } MSG_TYPE_t;
+typedef enum MSG_TYPE : uint8_t { BROADCAST = 0, UNICAST = 1 } MSG_TYPE_t;
 
 typedef struct print_struct {
   _Bool print : 1;   // print at all

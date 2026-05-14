@@ -125,5 +125,4 @@ target_compile_options(mockingboard PRIVATE
     --param=min-pagesize=0
     -ffunction-sections
     -fdata-sections
-    -fshort-enums
 )
