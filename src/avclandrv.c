@@ -119,10 +119,6 @@
 
 #define MAX_SEND_ATTEMPTS 3
 
-uint8_t printAllFrames;
-uint8_t verbose;
-uint8_t printBinary;
-
 AVCLAN_CD_Status_t cd_status;
 
 uint8_t *cd_Track;
@@ -556,7 +552,7 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
   return (parity & 1);
 }
 
-uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
+uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   struct errtype {
     // Error enum is ordered such that a lower numeric value corresponds to more
     // successful read
@@ -604,7 +600,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp &= 1)) {
     err.errno = BAD_CONTROLLER_PARITY;
-    if (verbose) {
+    if (print.verbose) {
       err.read_val = frame->controller_addr;
       err.parity = tmp;
     }
@@ -615,7 +611,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp &= 1)) {
     err.errno = BAD_PERIPHERAL_PARITY;
-    if (verbose) {
+    if (print.verbose) {
       err.read_val = frame->peripheral_addr;
       err.parity = tmp;
     }
@@ -634,7 +630,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp &= 1)) {
     err.errno = BAD_CONTROL_PARITY;
-    if (verbose) {
+    if (print.verbose) {
       err.read_val = frame->control;
       err.parity = tmp;
     }
@@ -649,7 +645,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp &= 1)) {
     err.errno = BAD_LENGTH_PARITY;
-    if (verbose) {
+    if (print.verbose) {
       err.read_val = frame->length;
       err.parity = tmp;
     }
@@ -671,7 +667,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
     AVCLAN_readbits(&tmp, 1);
     if (parity != (tmp &= 1)) {
       err.errno = BAD_DATA_PARITY;
-      if (verbose) {
+      if (print.verbose) {
         err.read_val = frame->data[i];
         err.parity = tmp;
       }
@@ -706,7 +702,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
       default:
         break;
       VERBOSE:
-        if (verbose) {
+        if (print.verbose) {
           RS232_Print("; read 0x");
           RS232_PrintHex(err.read_val);
           RS232_Print(" and got bad parity ");
@@ -719,13 +715,14 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame) {
   }
 
   // Only print if some data has been correctly recieved
-  if (printAllFrames && (err.errno < STARTBIT_LENGTH))
-    AVCLAN_printframe(frame, printBinary);
+  if (print.print && (err.errno < STARTBIT_LENGTH)) {
+    AVCLAN_printframe(frame, print.binary);
+  }
 
   return err.errno;
 }
 
-uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
+uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
   struct errtype {
     // Error enum is ordered such that a lower numeric value corresponds to more
     // success
@@ -854,8 +851,8 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame) {
     startEvent();
   }
 
-  if (printAllFrames)
-    AVCLAN_printframe(frame, printBinary);
+  if (print.print)
+    AVCLAN_printframe(frame, print.binary);
 
   return err.errno;
 }
@@ -1084,7 +1081,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
 uint8_t AVCLAN_tryrespond(const AVCLAN_frame_t *resp) {
   uint8_t r = 0;
   for (uint8_t i = 0; i < MAX_SEND_ATTEMPTS; i++) {
-    r = AVCLAN_sendframe(resp);
+    r = AVCLAN_sendframe(resp, (log_t){0});
     if (!r) // Send succeeded
       break;
   }

@@ -34,11 +34,6 @@
 #include "com232.h"
 #include "queue.h"
 
-uint8_t echoCharacters;
-uint8_t readBinary;
-uint8_t muteBus;
-uint8_t readkey;
-
 const char *const offon[] = {"OFF", "ON"};
 
 #define CACHE_SIZE 16
@@ -95,18 +90,21 @@ int main() {
   MSG_TYPE_t seqBroadcast = BROADCAST;
   uint8_t lastPrintAllFrames = 1;
 
+  uint8_t verbose = 1;
+  uint8_t printAllFrames = 1;
+  uint8_t printBinary = 0;
+  uint8_t echoCharacters = 1;
+  uint8_t readBinary = 0;
+  uint8_t muteBus = 0;
+
   uint8_t data_tmp[MAXMSGLEN];
   uint8_t seqLen = 0; // current length written to data_tmp
 
   uint8_t err = 0;
 
-  AVCLAN_frame_t *msg, *out;
-  RFrame_t *resp;
-  AVCLAN_frame_t *status = AVCLAN_getStatusFrame();
-
   for (uint8_t i = 0; i < CACHE_SIZE; ++i) {
-    frames[i].data = framesdata[i];
     frames[i].control = 0x0f;
+    frames[i].data = framesdata[i];
   }
 
   constructQueue(&cache, frames, sizeof(AVCLAN_frame_t), CACHE_SIZE, 1);
@@ -121,43 +119,43 @@ int main() {
   while (1) {
 
     if (!BUS_IS_IDLE) {
-      msg = (AVCLAN_frame_t *)popQueue(&cache);
-      if (!msg) {
-        RS232_Print("!! Dropping an incoming message; cache is empty !!");
-        continue;
+      if (AVCLAN_frame_t *msg = popQueue(&cache)) {
+        err = AVCLAN_readframe(msg, (log_t){.print = printAllFrames,
+                                            .binary = printBinary,
+                                            .verbose = verbose});
+        if (!err)
+          err = pushQueue(&incoming, msg);
+
+        if (err)
+          pushQueue(&cache, msg);
+      } else {
+        RS232_Print("!! Dropping an incoming message; cache is empty !!\n");
       }
+    }
 
-      err = AVCLAN_readframe(msg);
-      if (!err)
-        err = pushQueue(&incoming, msg) && pushQueue(&cache, msg);
-      else
-        pushQueue(&cache, msg);
-    } else if (!isEmpty(&incoming)) {
-      out = (AVCLAN_frame_t *)popQueue(&cache);
-      if (!out) {
-        RS232_Print("!! Unable to respond; cache is empty !!");
-        continue;
-      }
+    if (AVCLAN_frame_t *in = peekQueue(&incoming)) {
+      if (AVCLAN_frame_t *out = popQueue(&cache)) {
+        response_t respond = AVCLAN_handleframe(in, out);
+        incrementRead(&incoming);
+        pushQueue(&cache, in);
 
-      msg = (AVCLAN_frame_t *)popQueue(
-          &incoming); // prior !isempty(incoming) guarantees success
-      response_t respond = AVCLAN_handleframe(msg, out);
-      pushQueue(&cache, msg);
-
-      if (respond) {
-        resp = (RFrame_t *)popQueue(&rcache);
-        if (resp) {
-          *resp = (RFrame_t){.r = respond, .frame = out};
-          push_or_return_resp(resp);
-        } else
+        if (respond) {
+          if (RFrame_t *resp = popQueue(&rcache)) {
+            *resp = (RFrame_t){.r = respond, .frame = out};
+            push_or_return_resp(resp);
+          } else
+            pushQueue(&cache, out); // rcache exhausted — don't leak the frame
+        } else                      // no response needed; return to circulation
           pushQueue(&cache, out);
-      } else // no response needed; return to circulation
-        pushQueue(&cache, out);
-    } else if (!isEmpty(&outgoing)) {
-      resp = (RFrame_t *)popQueue(
-          &outgoing); // prior !isempty(outgoing) guarantees success
-      out = resp->frame;
-      err = AVCLAN_sendframe(out);
+      } else {
+        RS232_Print("!! Unable to respond; cache is empty !!\n");
+      }
+    }
+
+    if (RFrame_t *resp = popQueue(&outgoing)) {
+      AVCLAN_frame_t *out = resp->frame;
+      err = AVCLAN_sendframe(
+          out, (log_t){.print = printAllFrames, .binary = printBinary});
       if (err) {
         return_resp(resp);
       } else {
@@ -185,13 +183,13 @@ int main() {
         }
       }
     } else if (enqueueStatus) {
+      AVCLAN_frame_t *status = AVCLAN_getStatusFrame();
       AVCLAN_generateStatus(status);
-      resp = (RFrame_t *)popQueue(&rcache);
-      if (resp) {
+      if (RFrame_t *resp = (RFrame_t *)popQueue(&rcache)) {
         *resp = (RFrame_t){.r = r_Handled, .frame = status};
         err = pushQueue(&outgoing, resp);
         if (err) {
-          RS232_Print("Outgoing queue full; unable to send status update");
+          RS232_Print("Outgoing queue full; unable to send status update\n");
           pushQueue(&rcache, resp);
         } else
           enqueueStatus = 0; // Only clear if successful
@@ -202,13 +200,13 @@ int main() {
     // Key handler
     if (RS232_RxCharEnd) {
       cli();
-      readkey = RS232_RxCharBuffer[RS232_RxCharBegin++];
+      char readkey = RS232_RxCharBuffer[RS232_RxCharBegin++];
       if (RS232_RxCharBegin == RS232_RxCharEnd)  // if buffer is consumed
         RS232_RxCharBegin = RS232_RxCharEnd = 0; // reset buffer
       sei();
       switch (readkey) {
         case '?': print_help(); break;
-        case 'v': toggle_flag(&verbose, "Verbose: "); break;
+        case 'v': toggle_flag(&verbose, "Verbose errors: "); break;
         case 'l': toggle_flag(&printAllFrames, "Logging: "); break;
         case 'k': toggle_flag(&echoCharacters, "Echo characters: "); break;
         case 'm': toggle_flag(&muteBus, "Mute device: "); break;
@@ -220,10 +218,8 @@ int main() {
         case 'x': set_flag(&printBinary, 0, "Binary: "); break;
 
         case 'E': // Beep
-          out = (AVCLAN_frame_t *)popQueue(&cache);
-          if (out) {
-            resp = (RFrame_t *)popQueue(&rcache);
-            if (resp) {
+          if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
+            if (RFrame_t *resp = popQueue(&rcache)) {
               out->broadcast = UNICAST;
               out->controller_addr = DEVICE_ADDR;
               out->peripheral_addr = HU_ADDR;
@@ -240,10 +236,8 @@ int main() {
           }
           break;
         case 'P':
-          out = (AVCLAN_frame_t *)popQueue(&cache);
-          if (out) {
-            resp = (RFrame_t *)popQueue(&rcache);
-            if (resp) {
+          if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
+            if (RFrame_t *resp = popQueue(&rcache)) {
               out->broadcast = UNICAST;
               out->controller_addr = DEVICE_ADDR;
               out->peripheral_addr = HU_ADDR;
@@ -294,12 +288,9 @@ int main() {
           if (readSeq) {
             if (readBinary) {
               if (data_tmp[seqLen] == 0x17) {
-                out = (AVCLAN_frame_t *)popQueue(&cache);
-                if (out) {
-                  err = AVCLAN_parseframe(data_tmp, --seqLen, out);
-                  if (!err) {
-                    resp = (RFrame_t *)popQueue(&rcache);
-                    if (resp) {
+                if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
+                  if (!AVCLAN_parseframe(data_tmp, --seqLen, out)) {
+                    if (RFrame_t *resp = popQueue(&rcache)) {
                       *resp = (RFrame_t){.r = r_Handled, .frame = out};
                       push_or_return_resp(resp);
                     } else
@@ -312,10 +303,8 @@ int main() {
                 goto DEFAULT; // reading binary and this is a real data byte;
                               // fall through to default
             } else {
-              out = (AVCLAN_frame_t *)popQueue(&cache);
-              if (out) {
-                resp = (RFrame_t *)popQueue(&rcache);
-                if (resp) {
+              if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
+                if (RFrame_t *resp = popQueue(&rcache)) {
                   out->broadcast = seqBroadcast;
                   out->controller_addr = DEVICE_ADDR;
                   switch (seqBroadcast) {
@@ -369,10 +358,6 @@ int main() {
 }
 
 void Setup() {
-  printAllFrames = 1;
-  echoCharacters = 1;
-  readBinary = 0;
-  printBinary = 0;
 
   _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, (CLK_PRESCALE | CLK_PRESCALE_DIV));
 
@@ -420,12 +405,12 @@ void print_help() {
   RS232_Print("W - begin reading for unicast message\n"
               "Q - begin reading for broadcast message\n"
               "m - Toggle mute for mockingboard bus activity\n"
+              "v - Toggle verbose error logging\n"
               "l - Toggle message logging\n"
+              "X/x - Turn binary logging ON or OFF, respectively\n"
               "k - Toggle character echo\n"
-              "X/x - Turn binary printing ON or OFF, respectively\n"
               "E - Beep\n"
               "P - Play\n"
-              "v - Toggle verbose logging\n"
 #ifdef SOFTWARE_DEBUG
               "M - Measure bit-timing (pulse-widths and periods)\n"
 #endif

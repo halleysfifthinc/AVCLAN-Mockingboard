@@ -36,10 +36,6 @@
 #define DEVICE_ADDR 0x360 // CD Changer address
 #define HU_ADDR     0x190 // Head-unit address
 
-extern uint8_t printAllFrames;
-extern uint8_t verbose;
-extern uint8_t printBinary;
-
 typedef enum {
   cm_Null = 0,
   cm_CDStatus,
@@ -183,6 +179,12 @@ typedef enum : uint8_t {
 
 typedef enum MSG_TYPE { BROADCAST = 0, UNICAST = 1 } MSG_TYPE_t;
 
+typedef struct print_struct {
+  _Bool print : 1;   // print at all
+  _Bool binary : 1;  // when also printing, format as binary instead of text
+  _Bool verbose : 1; // include extra context in error reports
+} log_t;
+
 typedef struct AVCLAN_frame_struct {
   MSG_TYPE_t broadcast;     // 0 for broadcast messages
   uint16_t controller_addr; // formerly "master"
@@ -200,9 +202,9 @@ typedef struct RFrame_struct {
 void AVCLAN_init();
 void AVCLAN_muteDevice(uint8_t mute);
 
-uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame);
+uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print);
 response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out);
-uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame);
+uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print);
 uint8_t AVCLAN_tryrespond(const AVCLAN_frame_t *frame);
 void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary);
 uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
