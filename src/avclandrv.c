@@ -135,7 +135,7 @@ uint16_t period = 0;
 uint16_t pulsewidth;
 
 // answers
-uint8_t lancheck_resp[] = {0x00, 0x01, 0x00, 0xFF, 0xFF};
+uint8_t lancheck_resp[] = {0x00, dev_COMM_CTRL, dev_LAN, 0xFF, 0xFF};
 const uint8_t list_functions_resp[] = {0x00, dev_COMM_CTRL, dev_COMM_v1,
                                        List_Functions_Resp, dev_CD_CHANGER};
 uint8_t ping_resp[] = {0x00, dev_COMM_CTRL, dev_COMM_v1, Ping_Resp, 0xFF, 0x00};
@@ -557,14 +557,15 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
     // Error enum is ordered such that a lower numeric value corresponds to more
     // successful read
     enum : uint8_t {
+      NO_ERROR = 0x00,
       BAD_DATA_PARITY = 0x01,
       BAD_LENGTH_RANGE,
       BAD_LENGTH_PARITY,
       BAD_PERIPHERAL_PARITY,
       BAD_CONTROLLER_PARITY,
       BAD_CONTROL_PARITY,
-      STARTBIT_LENGTH,
-      STARTBIT_TIMEOUT,
+      STARTBIT_TOO_SHORT,
+      STARTBIT_TOO_LONG,
     } errno;
     union {
       uint8_t val; // BAD_LENGTH_RANGE: the out-of-range length value
@@ -577,26 +578,25 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
 
   stopEvent(); // disable timer1 interrupt
 
-  uint8_t parity = 0;
   uint8_t tmp = 0;
 
-  TCB1.CNT = 0;
+  uint16_t startbitlen = TCB1.CNT = 0;
   while (!BUS_IS_IDLE) {
-    if (TCB1.CNT > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
-      err.errno = STARTBIT_TIMEOUT;
+    startbitlen = TCB1.CNT;
+    if (startbitlen > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
+      err.errno = STARTBIT_TOO_LONG;
       goto handle_err;
     }
   }
-  uint16_t startbitlen = TCB1.CNT;
   if (startbitlen < (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8)) {
-    err.errno = STARTBIT_LENGTH;
+    err.errno = STARTBIT_TOO_SHORT;
     goto handle_err;
   }
   // Otherwise that was a start bit
 
   AVCLAN_readbits(&frame->broadcast, 1);
 
-  parity = AVCLAN_readbits(&frame->controller_addr, 12);
+  uint8_t parity = AVCLAN_readbits(&frame->controller_addr, 12);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp &= 1)) {
     err.errno = BAD_CONTROLLER_PARITY;
@@ -684,8 +684,8 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
     startEvent();
     RS232_Print("ERR(read): ");
     switch (err.errno) {
-      case STARTBIT_TIMEOUT: break;
-      case STARTBIT_LENGTH: RS232_Print("bad start bit length"); break;
+      case STARTBIT_TOO_SHORT: RS232_Print("start bit too short"); break;
+      case STARTBIT_TOO_LONG: RS232_Print("start bit too long"); break;
       case BAD_CONTROLLER_PARITY:
         RS232_Print("reading controller addr.");
         goto VERBOSE;
@@ -699,8 +699,8 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
         RS232_PrintHex4(err.val);
         break;
       case BAD_DATA_PARITY: RS232_Print("reading data"); goto VERBOSE;
-      default:
-        break;
+      case NO_ERROR:
+        __builtin_unreachable();
       VERBOSE:
         if (print.verbose) {
           RS232_Print("; read 0x");
@@ -715,7 +715,9 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   }
 
   // Only print if some data has been correctly recieved
-  if (print.print && (err.errno < STARTBIT_LENGTH)) {
+  if (print.print && (err.errno < STARTBIT_TOO_SHORT)) {
+    if (err.errno > BAD_DATA_PARITY)
+      frame->length = 0;
     AVCLAN_printframe(frame, print.binary);
   }
 
@@ -727,6 +729,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
     // Error enum is ordered such that a lower numeric value corresponds to more
     // success
     enum : uint8_t {
+      NO_ERROR = 0x00,
       NAK_DATA = 0x01,
       NAK_MESSAGE_LENGTH,
       NAK_CONTROL,
@@ -824,29 +827,30 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
     startEvent();
     RS232_Print("Error");
     switch (err.errno) {
-      case MUTED: break;
-      case BUSY: RS232_Print(": Busy bus\n"); break;
+      case MUTED: RS232_Print(": Device muted"); break;
+      case BUSY: RS232_Print(": Busy bus"); break;
       case NAK_ADDRESS:
       case NAK_CONTROL:
       case NAK_MESSAGE_LENGTH:
       case NAK_DATA:
         RS232_Print(" NAK: ");
         switch (err.errno) {
-          case NAK_ADDRESS: RS232_Print("address\n"); break;
-          case NAK_CONTROL: RS232_Print("Control\n"); break;
-          case NAK_MESSAGE_LENGTH: RS232_Print("Message length\n"); break;
+          case NAK_ADDRESS: RS232_Print("address"); break;
+          case NAK_CONTROL: RS232_Print("Control"); break;
+          case NAK_MESSAGE_LENGTH: RS232_Print("Message length"); break;
           case NAK_DATA:
             RS232_Print(" data[");
             RS232_PrintDec(err.val);
-            RS232_Print("]\n");
+            RS232_Print("]");
             break;
-          case MUTED: __builtin_unreachable();
+          case NO_ERROR:
+          case MUTED:
           case BUSY: __builtin_unreachable();
-          default:
         }
         break;
-      default:
+      case NO_ERROR: __builtin_unreachable();
     }
+    RS232_Print("\n");
   } else {
     startEvent();
   }
@@ -860,7 +864,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
 response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
   response_t respond = r_Nothing;
 
-  if (AVCLAN_ismuted())
+  if (AVCLAN_ismuted() || in->length < 3)
     return respond;
 
   out->controller_addr = DEVICE_ADDR;
@@ -871,7 +875,9 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
   const uint8_t b0 = *data++;
   const uint8_t b1 = *data++;
   const uint8_t b2 = *data++;
-  const uint8_t b3 = *data++;
+  uint8_t b3;
+  if (in->length > 3) // the shortest known/valid messages are 3 bytes long
+    b3 = *data++;
   uint8_t from;
 
   // BROADCAST
