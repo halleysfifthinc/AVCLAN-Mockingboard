@@ -128,11 +128,11 @@ uint8_t *cd_Time_Sec;
 cd_modes CD_Mode;
 
 #ifdef SOFTWARE_DEBUG
-uint8_t pulse_count = 0;
-uint16_t period = 0;
+volatile uint8_t pulse_count = 0;
+volatile uint16_t period = 0;
 #endif
 
-uint16_t pulsewidth;
+volatile uint16_t pulsewidth;
 
 // answers
 uint8_t lancheck_resp[] = {0x00, dev_COMM_CTRL, dev_LAN, 0xFF, 0xFF};
