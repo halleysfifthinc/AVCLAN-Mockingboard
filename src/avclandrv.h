@@ -28,9 +28,6 @@
 // PA7 AINN1 -
 #define BUS_IS_IDLE (bit_is_clear(AC2_STATUS, AC_STATE_bp))
 
-#define sbi(port, bit) (port) |= (1 << (bit))  // Set bit (i.e. to 1)
-#define cbi(port, bit) (port) &= ~(1 << (bit)) // Clear bit (i.e. set bit to 0)
-
 #define MAXMSGLEN 32
 
 #define DEVICE_ADDR 0x360 // CD Changer address

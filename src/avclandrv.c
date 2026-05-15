@@ -176,15 +176,15 @@ uint8_t cdloading_resp[] = {dev_CD_CHANGER,
 /* Disable serial and periodic interrupts during AVCLAN reads.
   Not using cli() because AVCLAN reads depend on other interrupts. */
 static inline void stopEvent() {
-  cbi(RTC.PITINTCTRL, RTC_PI_bp);
-  cbi(USART0.CTRLA, USART_RXCIE_bp);
+  RTC.PITINTCTRL &= ~(1 << RTC_PI_bp);
+  USART0.CTRLA &= ~(1 << USART_RXCIE_bp);
 }
 
 // Re-enable serial and periodic interrupts.
 static inline void startEvent() {
   if (AVCLAN_isPlaying()) // Reenable PIT interrupt if currently playing
-    sbi(RTC.PITINTCTRL, RTC_PI_bp);
-  sbi(USART0.CTRLA, USART_RXCIE_bp);
+    RTC.PITINTCTRL |= (1 << RTC_PI_bp);
+  USART0.CTRLA |= (1 << USART_RXCIE_bp);
 }
 
 // clang-format off
@@ -237,7 +237,7 @@ void AVCLAN_startPlaying() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CNTBUSY_bp);
     RTC.CNT = 0;
-    sbi(RTC.PITINTCTRL, RTC_PI_bp);
+    RTC.PITINTCTRL |= (1 << RTC_PI_bp);
   }
 }
 
@@ -245,7 +245,7 @@ void AVCLAN_startPlaying() {
 // 1 sec)
 void AVCLAN_stopPlaying() {
   CD_Mode = stStop;
-  cbi(RTC.PITINTCTRL, RTC_PI_bp);
+  RTC.PITINTCTRL &= ~(1 << RTC_PI_bp);
 }
 
 void AVCLAN_init() {
