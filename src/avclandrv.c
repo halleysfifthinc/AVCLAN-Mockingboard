@@ -310,26 +310,38 @@ void AVCLAN_init() {
   CD_Mode = stStop;
 }
 
-/* Increment packed 2-digit BCD number.
-   WARNING: Overflow behavior is incorrect (e.g. `incBCD(0x99) != 0x00`) */
-void incBCD(uint8_t *data) {
-  if ((*data & 0x9) == 0x9)
-    *data += 7;
-  else
-    *data += 1;
+/* Pack a 0–99 count into 2-digit BCD. Values >99 (sentinels such as 0xFF /
+   0x7F meaning "no time") pass through unchanged so they survive the wire
+   round-trip. */
+static uint8_t toBCD(uint8_t x) {
+  if (x > 99)
+    return x;
+  return (uint8_t)(((x / 10) << 4) | (x % 10));
+}
+
+// Copy cd_status to a wire response, applying BCD conversion to time fields.
+static void serializeCDStatus(uint8_t *dst) {
+  AVCLAN_CD_Status_t wire = cd_status;
+  wire.mins = toBCD(wire.mins);
+  wire.secs = toBCD(wire.secs);
+  memcpy(dst, &wire, sizeof(wire));
 }
 
 uint8_t AVCLAN_isPlaying() { return (CD_Mode == stPlay); }
 
 void AVCLAN_incrementTime() {
-  if (*cd_Time_Sec == 0x59) {
+  // Sentinel values (>99) mean "no time"; leave them alone until setTime()
+  // replaces them with a real count.
+  if (*cd_Time_Sec > 99)
+    return;
+  if (*cd_Time_Sec == 59) {
     *cd_Time_Sec = 0;
-    if (*cd_Time_Min == 0x99) {
+    if (*cd_Time_Min == 99)
       *cd_Time_Min = 0;
-    } else
-      incBCD(cd_Time_Min);
+    else
+      (*cd_Time_Min)++;
   } else
-    incBCD(cd_Time_Sec);
+    (*cd_Time_Sec)++;
 }
 
 void AVCLAN_setTime(uint8_t mins, uint8_t secs) {
@@ -887,7 +899,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
   const uint8_t b0 = *data++;
   const uint8_t b1 = *data++;
   const uint8_t b2 = *data++;
-  uint8_t b3;
+  uint8_t b3 = 0;
   if (in->length > 3) // the shortest known/valid messages are 3 bytes long
     b3 = *data++;
   uint8_t from;
@@ -1018,7 +1030,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
                   out->data[1] = from; // respond to device that requested
                   out->data[2] = Playback_Report;
                   out->length = sizeof(cdstatus_resp);
-                  memcpy(&out->data[3], &cd_status, sizeof(cd_status));
+                  serializeCDStatus(&out->data[3]);
                   goto CMD_SW_RESPONSE;
                 case Loading_Request2:
                   out->length = sizeof(cdloading_resp);
@@ -1070,7 +1082,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
                   out->data[1] = from; // respond to device that requested
                   out->data[2] = Playback_Report;
                   out->length = sizeof(cdstatus_resp);
-                  memcpy(&out->data[3], &cd_status, sizeof(cd_status));
+                  serializeCDStatus(&out->data[3]);
                   goto STATUS_RESPONSE;
                 case Loading_Request2:
                   out->length = sizeof(cdloading_resp);
@@ -1225,7 +1237,7 @@ void AVCLAN_generateStatus(AVCLAN_frame_t *status) {
   status->data[0] = dev_CD_CHANGER;
   status->data[1] = dev_STATUS;
   status->data[2] = Status_Report;
-  memcpy(&status->data[3], &cd_status, sizeof(cd_status));
+  serializeCDStatus(&status->data[3]);
 }
 
 void AVCLAN_normalizeState() {
