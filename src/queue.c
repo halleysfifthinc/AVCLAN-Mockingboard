@@ -1,4 +1,3 @@
-#include <stddef.h>
 #include <stdint.h>
 
 #include "avclandrv.h"
@@ -22,7 +21,7 @@ void constructQueue(Queue_t *q, void **slots, void *items, uint8_t itemSize,
 }
 
 void constructEmptyQueue(Queue_t *q, void **slots, uint8_t len) {
-  constructQueue(q, slots, NULL, 0, len, 0);
+  constructQueue(q, slots, nullptr, 0, len, 0);
 }
 
 uint8_t isEmpty(const Queue_t *q) { return (q->write == q->read); }
@@ -36,7 +35,7 @@ static inline uint8_t qMask(const Queue_t *q, uint8_t pos) {
 }
 
 uint8_t pushQueue(Queue_t *q, void *x) {
-  if (isFull(q))
+  if (x == nullptr || isFull(q))
     return 1;
 
   q->buf[qMask(q, q->write++)] = x;
@@ -46,14 +45,14 @@ uint8_t pushQueue(Queue_t *q, void *x) {
 
 void *peekQueue(const Queue_t *q) {
   if (isEmpty(q))
-    return NULL;
+    return nullptr;
 
   return q->buf[qMask(q, q->read)];
 }
 
 void *popQueue(Queue_t *q) {
   if (isEmpty(q))
-    return NULL;
+    return nullptr;
 
   return q->buf[qMask(q, q->read++)];
 }
