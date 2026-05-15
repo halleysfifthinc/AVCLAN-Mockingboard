@@ -104,7 +104,9 @@ int main() {
   uint8_t readBinary = 0;
   uint8_t muteBus = 0;
 
-  uint8_t data_tmp[MAXMSGLEN];
+  // Binary-mode REPL includes the full wire preamble (broadcast + 2*addr +
+  // control + length), so size for the worst case.
+  uint8_t data_tmp[MAXMSGLEN + sizeof(AVCLAN_frame_t)];
   uint8_t seqLen = 0; // current length written to data_tmp
 
   uint8_t err = 0;

@@ -1168,6 +1168,7 @@ uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
     enum : uint8_t {
       TOO_SHORT = 0x01,
       MISMATCH_LENGTH,
+      LENGTH_TOO_BIG,
     } errno;
     uint8_t val;
   } err = {0};
@@ -1186,6 +1187,12 @@ uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
   frame->control = *bytes++;
   frame->length = *bytes++;
 
+  if (frame->length > MAXMSGLEN) {
+    err.errno = LENGTH_TOO_BIG;
+    err.val = frame->length;
+    goto handle_err;
+  }
+
   if ((bytes + frame->length) <= last) {
     memcpy(frame->data, bytes, frame->length);
   } else {
@@ -1202,6 +1209,10 @@ uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
         break;
       case MISMATCH_LENGTH:
         RS232_Print("frame->length is longer than remaining data");
+        break;
+      case LENGTH_TOO_BIG:
+        RS232_Print("frame->length exceeds MAXMSGLEN: 0x");
+        RS232_PrintHex8(err.val);
         break;
       default: break;
     }
