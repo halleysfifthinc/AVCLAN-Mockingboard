@@ -3,7 +3,7 @@ include(CMakeDependentOption)
 
 set(WITH_MCU OFF) # Disable target name modification setting from toolchain
 set(AVR_MCU "attiny3216")
-set(AVR_UPLOADTOOL_PORT /dev/ttyUSB1)
+set(AVR_UPLOADTOOL_PORT /dev/ttyUSB0)
 set(AVR_PROGRAMMER serialupdi)
 set(AVR_UPLOADTOOL_BAUDRATE 230400)
 
@@ -21,6 +21,9 @@ else()
 set(FREQSEL 16000000L)
 set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -U osccfg:w:0x1:m)
 endif()
+
+# Set startup time to 8 ms (0x4)
+set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -U syscfg1:w:0x4:m)
 
 option(CLK_PRESCALE "Enable the main clock prescaler")
 cmake_dependent_option(CLK_PRESCALE_DIV "Prescaler divisor" CLKCTRL_PDIV_2X_gc STRING "CLK_PRESCALE")
@@ -55,11 +58,24 @@ set_property(CACHE USART_RXMODE PROPERTY STRINGS
     USART_RXMODE_NORMAL_gc
 )
 
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+set(CMAKE_C_FLAGS_RELEASE "-Wall -Wswitch-enum -Werror -Os")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-Wall -Wswitch-enum -Werror -O2 -save-temps -g -gdwarf-3 -gstrict-dwarf")
+set(CMAKE_C_FLAGS_DEBUG "-Wall -Wswitch-enum -Werror -fanalyzer -O0 -save-temps -g -gdwarf-3 -gstrict-dwarf")
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "8.3")
-    message(FATAL_ERROR "Insufficient AVR-GCC version; Support for ATtiny3216 was added in GCC v8")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "13")
+    message(FATAL_ERROR "This project requires at least GCC v13")
   endif()
 endif()
+
+add_avr_executable(mockingboard
+    src/sniffer.c
+    src/com232.c
+    src/queue.c
+    src/avclandrv.c)
 
 # Handle libc versioning
 try_compile(LIBC_VERSION_TEST
@@ -86,33 +102,14 @@ if(NOT LIBC_VERSION_TEST)
     if(NOT LIBC_VERSION_TEST)
         message(FATAL_ERROR "Insufficient AVR-LIBC/Microchip pack for chosen MCU '${AVR_MCU}'")
     else()
-        include_directories(SYSTEM "${attiny_atpack_SOURCE_DIR}/include")
-        add_compile_options(
+        target_include_directories(mockingboard SYSTEM 
+            PUBLIC "${attiny_atpack_SOURCE_DIR}/include")
+        target_link_options(mockingboard PUBLIC
             -B "${attiny_atpack_SOURCE_DIR}/gcc/dev/${AVR_MCU}"
         )
     endif()
 endif()
 
-
-set(CMAKE_C_STANDARD 17)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-set(CMAKE_C_FLAGS_RELEASE "-Wall -Wswitch-enum -Werror -Os")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "-Wall -Wswitch-enum -Werror -O2 -save-temps -g -gdwarf-3 -gstrict-dwarf")
-set(CMAKE_C_FLAGS_DEBUG "-Wall -Wswitch-enum -Werror -O0 -save-temps -g -gdwarf-3 -gstrict-dwarf")
-
-# Set startup time to 8 ms (0x4)
-set(AVR_UPLOADTOOL_BASE_OPTIONS ${AVR_UPLOADTOOL_BASE_OPTIONS} -U syscfg1:w:0x4:m)
-
-add_avr_executable(mockingboard
-    src/sniffer.c
-    src/com232.c
-    src/queue.c
-    src/avclandrv.c)
-
-target_link_options(mockingboard PUBLIC
-    -B "${attiny_atpack_SOURCE_DIR}/gcc/dev/${AVR_MCU}"
-)
 target_compile_definitions(mockingboard PRIVATE
     FREQSEL=${FREQSEL}
     CLK_PRESCALE=$<IF:$<BOOL:${CLK_PRESCALE}>,0x01,0x00>
