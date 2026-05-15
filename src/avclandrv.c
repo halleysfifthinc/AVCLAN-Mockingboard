@@ -293,16 +293,10 @@ void AVCLAN_init() {
 
   AVCLAN_muteDevice(0); // unmute AVCLAN bus TX
 
-  cd_status.cd1 = 1;
+  cd_status.cds = cd_CD1;
   cd_status.disc = 1;
-  cd_status.cd2 = cd_status.cd3 = cd_status.cd4 = cd_status.cd5 =
-      cd_status.cd6 = 0;
   cd_status.state = cd_SEEKING_TRACK;
-  cd_status.disk_random = 0;
-  cd_status.random = 0;
-  cd_status.disk_repeat = 0;
-  cd_status.repeat = 0;
-  cd_status.scan = 0;
+  cd_status.flags = 0;
   cd_status.flags2 = 0xC0;
 
   cd_status.track = 1;
@@ -325,12 +319,13 @@ static uint8_t toBCD(uint8_t x) {
   return (uint8_t)(((x / 10) << 4) | (x % 10));
 }
 
-// Copy cd_status to a wire response, applying BCD conversion to time fields.
+// Serialize cd_status into the wire format. The struct layout mirrors the wire
+// format byte-for-byte, except for mins/secs, which need converted from integer
+// to BCD
 static void serializeCDStatus(uint8_t *dst) {
-  AVCLAN_CD_Status_t wire = cd_status;
-  wire.mins = toBCD(wire.mins);
-  wire.secs = toBCD(wire.secs);
-  memcpy(dst, &wire, sizeof(wire));
+  memcpy(dst, &cd_status, sizeof(cd_status));
+  dst[4] = toBCD(cd_status.mins);
+  dst[5] = toBCD(cd_status.secs);
 }
 
 uint8_t AVCLAN_isPlaying() { return (CD_Mode == stPlay); }
@@ -1055,7 +1050,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
                   (*cd_Track)++;
                   *cd_Time_Min = 0xff;
                   *cd_Time_Sec = 0x7f;
-                  cd_status.scan = 1;
+                  cd_status.flags |= cd_SCAN;
                   cd_status.flags2 = 0xc0;
                   respond = r_TrackChange;
                   AVCLAN_generateStatus(out);
@@ -1065,7 +1060,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
                   (*cd_Track)--;
                   *cd_Time_Min = 0xff;
                   *cd_Time_Sec = 0x7f;
-                  cd_status.scan = 1;
+                  cd_status.flags |= cd_SCAN;
                   cd_status.flags2 = 0xc0;
                   respond = r_TrackChange;
                   AVCLAN_generateStatus(out);
@@ -1266,8 +1261,7 @@ void AVCLAN_generateStatus(AVCLAN_frame_t *status) {
 void AVCLAN_normalizeState() {
   // if (cd_status.state != cd_PLAYBACK) {
   cd_status.state = cd_PLAYBACK;
-  cd_status.disk_scan = 0;
-  cd_status.scan = 0;
+  cd_status.flags &= (uint8_t)~(cd_DISK_SCAN | cd_SCAN);
   cd_status.flags2 = 0x80;
   // }
 }

@@ -133,27 +133,32 @@ typedef enum : uint8_t {
   cd_LOADING = 0x80,
 } cd_state;
 
+typedef enum : uint8_t {
+  cd_CD1 = 1 << 0,
+  cd_CD2 = 1 << 1,
+  cd_CD3 = 1 << 2,
+  cd_CD4 = 1 << 3,
+  cd_CD5 = 1 << 4,
+  cd_CD6 = 1 << 5,
+} cd_present_t;
+
+typedef enum : uint8_t {
+  cd_DISK_RANDOM = 1 << 1,
+  cd_RANDOM = 1 << 2,
+  cd_DISK_REPEAT = 1 << 3,
+  cd_REPEAT = 1 << 4,
+  cd_DISK_SCAN = 1 << 5,
+  cd_SCAN = 1 << 6,
+} cd_flag_t;
+
 typedef struct AVCLAN_CD_Status {
-  _Bool cd1 : 1;
-  _Bool cd2 : 1;
-  _Bool cd3 : 1;
-  _Bool cd4 : 1;
-  _Bool cd5 : 1;
-  _Bool cd6 : 1;
-  int : 2; // padding
+  uint8_t cds;
   uint8_t state;
   uint8_t disc;
   uint8_t track;
   uint8_t mins;
   uint8_t secs;
-  int : 1; // padding
-  _Bool disk_random : 1;
-  _Bool random : 1;
-  _Bool disk_repeat : 1;
-  _Bool repeat : 1;
-  _Bool disk_scan : 1;
-  _Bool scan : 1;
-  int : 1; // padding
+  uint8_t flags;
   uint8_t flags2;
 } AVCLAN_CD_Status_t;
 
@@ -170,9 +175,9 @@ typedef enum : uint8_t {
 } response_t;
 
 typedef struct print_struct {
-  _Bool print : 1;   // print at all
-  _Bool binary : 1;  // when also printing, format as binary instead of text
-  _Bool verbose : 1; // include extra context in error reports
+  bool print : 1;   // print at all
+  bool binary : 1;  // when also printing, format as binary instead of text
+  bool verbose : 1; // include extra context in error reports
 } log_t;
 
 typedef struct AVCLAN_frame_struct {
