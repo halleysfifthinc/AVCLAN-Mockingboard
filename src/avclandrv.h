@@ -34,11 +34,6 @@
 #define HU_ADDR     0x190 // Head-unit address
 
 typedef enum : uint8_t {
-  cm_Null = 0,
-  cm_CDStatus,
-} commands;
-
-typedef enum : uint8_t {
   dev_LAN = 0x00,
   dev_COMM_CTRL = 0x01,
   dev_COMM_v1 = 0x11,
