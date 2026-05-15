@@ -174,8 +174,6 @@ typedef enum : uint8_t {
   r_TrackChange,         // Time needs reset
 } response_t;
 
-typedef enum MSG_TYPE : uint8_t { BROADCAST = 0, UNICAST = 1 } MSG_TYPE_t;
-
 typedef struct print_struct {
   _Bool print : 1;   // print at all
   _Bool binary : 1;  // when also printing, format as binary instead of text
@@ -183,7 +181,7 @@ typedef struct print_struct {
 } log_t;
 
 typedef struct AVCLAN_frame_struct {
-  MSG_TYPE_t broadcast;     // 0 for broadcast messages
+  bool is_unicast;
   uint16_t controller_addr; // formerly "master"
   uint16_t peripheral_addr; // formerly "slave"
   uint8_t control;

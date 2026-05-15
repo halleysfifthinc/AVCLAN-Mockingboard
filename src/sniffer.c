@@ -94,7 +94,7 @@ int main() {
   uint8_t hexChars[2];
   uint8_t hexDigit = 0; // current digit being written to hexChars
 
-  MSG_TYPE_t seqBroadcast = BROADCAST;
+  bool seqIsUnicast = false;
   uint8_t lastPrintAllFrames = 1;
 
   uint8_t verbose = 1;
@@ -231,7 +231,7 @@ int main() {
         case 'E': // Beep
           if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
             if (RFrame_t *resp = popQueue(&rcache)) {
-              out->broadcast = UNICAST;
+              out->is_unicast = true;
               out->controller_addr = DEVICE_ADDR;
               out->peripheral_addr = HU_ADDR;
               {
@@ -249,7 +249,7 @@ int main() {
         case 'P':
           if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
             if (RFrame_t *resp = popQueue(&rcache)) {
-              out->broadcast = UNICAST;
+              out->is_unicast = true;
               out->controller_addr = DEVICE_ADDR;
               out->peripheral_addr = HU_ADDR;
               {
@@ -284,7 +284,7 @@ int main() {
           readSeq = 1;
           seqLen = hexDigit = 0;
           hexChars[0] = hexChars[1] = 0;
-          seqBroadcast = UNICAST;
+          seqIsUnicast = true;
           break;
         case 'B': // Send broadcast
           RS232_Print("READ SEQUENCE (B)> \n");
@@ -293,7 +293,7 @@ int main() {
           readSeq = 1;
           seqLen = hexDigit = 0;
           hexChars[0] = hexChars[1] = 0;
-          seqBroadcast = BROADCAST;
+          seqIsUnicast = false;
           break;
         case '\n':
           if (readSeq) {
@@ -316,12 +316,9 @@ int main() {
             } else {
               if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
                 if (RFrame_t *resp = popQueue(&rcache)) {
-                  out->broadcast = seqBroadcast;
+                  out->is_unicast = seqIsUnicast;
                   out->controller_addr = DEVICE_ADDR;
-                  switch (seqBroadcast) {
-                    case UNICAST: out->peripheral_addr = HU_ADDR; break;
-                    case BROADCAST: out->peripheral_addr = 0x1FF; break;
-                  }
+                  out->peripheral_addr = seqIsUnicast ? HU_ADDR : 0x1FF;
                   out->length = seqLen;
                   memcpy(out->data, data_tmp, seqLen);
                   *resp = (RFrame_t){.r = r_Handled, .frame = out};

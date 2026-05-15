@@ -619,7 +619,8 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   }
   // Otherwise that was a start bit
 
-  AVCLAN_readbits(&frame->broadcast, 1);
+  AVCLAN_readbits(&tmp, 1);
+  frame->is_unicast = tmp;
 
   uint8_t parity = AVCLAN_readbits(&frame->controller_addr, 12);
   AVCLAN_readbits(&tmp, 1);
@@ -802,7 +803,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
   } else {
     AVCLAN_sendbit(bit_start);
   }
-  AVCLAN_sendbits((uint8_t *)&frame->broadcast, 1);
+  AVCLAN_sendbits(&(uint8_t){frame->is_unicast}, 1);
 
   avclan_bit_t parity = AVCLAN_sendbits(&frame->controller_addr, 12);
   AVCLAN_sendbit(parity);
@@ -810,7 +811,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
   parity = AVCLAN_sendbits(&frame->peripheral_addr, 12);
   AVCLAN_sendbit(parity);
 
-  if (frame->broadcast && !AVCLAN_readbit_ACK()) {
+  if (frame->is_unicast && !AVCLAN_readbit_ACK()) {
     err.errno = NAK_ADDRESS;
     goto handle_err;
   }
@@ -818,7 +819,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
   parity = AVCLAN_sendbits(&frame->control, 4);
   AVCLAN_sendbit(parity);
 
-  if (frame->broadcast && !AVCLAN_readbit_ACK()) {
+  if (frame->is_unicast && !AVCLAN_readbit_ACK()) {
     err.errno = NAK_CONTROL;
     goto handle_err;
   }
@@ -826,7 +827,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
   parity = AVCLAN_sendbyte(&frame->length); // data length
   AVCLAN_sendbit(parity);
 
-  if (frame->broadcast && !AVCLAN_readbit_ACK()) {
+  if (frame->is_unicast && !AVCLAN_readbit_ACK()) {
     err.errno = NAK_MESSAGE_LENGTH;
     goto handle_err;
   }
@@ -837,7 +838,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
     // Based on the µPD6708 datasheet, ACK bit for broadcast doesn't seem
     // necessary (i.e. This deviates from the previous broadcast specific
     // function that sent an extra `1` bit after each byte/parity)
-    if (frame->broadcast && !AVCLAN_readbit_ACK()) {
+    if (frame->is_unicast && !AVCLAN_readbit_ACK()) {
       err.errno = NAK_DATA;
       err.val = i;
       goto handle_err;
@@ -906,7 +907,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
   uint8_t from;
 
   // BROADCAST
-  if (in->broadcast == BROADCAST) {
+  if (!in->is_unicast) {
     // skip confirming peripheral_addr, because it  will be 0xFFF or 0x1FF based
     // on all currently known examples
     switch (b0 /* "from" device */) {
@@ -931,7 +932,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
               default:
                 break;
               LAN_RESPONSE:
-                out->broadcast = UNICAST;
+                out->is_unicast = true;
                 out->peripheral_addr = HU_ADDR;
                 memcpy(out->data, lancheck_resp, sizeof(lancheck_resp));
                 respond = r_Handled;
@@ -954,7 +955,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
               }
               break;
             case Ping_Req:
-              out->broadcast = UNICAST;
+              out->is_unicast = true;
               out->peripheral_addr = HU_ADDR;
               out->length = sizeof(ping_resp);
               ping_resp[4] = b3;
@@ -962,7 +963,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
               respond = r_Handled;
               break;
             case List_Functions_Req:
-              out->broadcast = UNICAST;
+              out->is_unicast = true;
               out->peripheral_addr = HU_ADDR;
               out->length = sizeof(list_functions_resp);
               memcpy(out->data, list_functions_resp,
@@ -1007,7 +1008,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
                 default:
                   break;
                 FUNCTION_CHANGE_RESPONSE:
-                  out->broadcast = UNICAST;
+                  out->is_unicast = true;
                   out->peripheral_addr = HU_ADDR;
                   out->length = sizeof(function_change_resp);
                   memcpy(out->data, function_change_resp,
@@ -1062,7 +1063,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
                 default:
                   break;
                 CMD_SW_RESPONSE:
-                  out->broadcast = UNICAST;
+                  out->is_unicast = true;
                   out->peripheral_addr = HU_ADDR;
               }
               break;
@@ -1094,7 +1095,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
                 default:
                   break;
                 STATUS_RESPONSE:
-                  out->broadcast = UNICAST;
+                  out->is_unicast = true;
                   out->peripheral_addr = HU_ADDR;
               }
               break;
@@ -1124,7 +1125,7 @@ void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary) {
   if (binary) {
     uint8_t buffer[8];
     buffer[0] = 0x10; // Data Link Escape, signaling binary data forthcoming
-    buffer[1] = frame->broadcast;
+    buffer[1] = frame->is_unicast;
 
     // Send addresses in big-endian order
     buffer[2] = (uint8_t)(frame->controller_addr >> 8);
@@ -1142,7 +1143,7 @@ void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary) {
     buffer[2] = 0x0A; // \n
     RS232_sendbytes((uint8_t *)&buffer, 3);
   } else {
-    RS232_PrintHex4(frame->broadcast);
+    RS232_PrintHex4(frame->is_unicast);
 
     RS232_Print(" 0x");
     RS232_PrintHex12(frame->controller_addr);
@@ -1180,7 +1181,7 @@ uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
   }
   const uint8_t *last = bytes + len;
 
-  frame->broadcast = *bytes++;
+  frame->is_unicast = *bytes++;
   frame->controller_addr = bytes[0] | ((uint16_t)bytes[1] << 8);
   bytes += 2;
   frame->peripheral_addr = bytes[0] | ((uint16_t)bytes[1] << 8);
@@ -1226,7 +1227,7 @@ uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
 // Only used for regularly scheduled periodic updates
 AVCLAN_frame_t *AVCLAN_getStatusFrame() {
   static uint8_t status_data[] = STATUS_REPORT_DATA;
-  static AVCLAN_frame_t status = {.broadcast = BROADCAST,
+  static AVCLAN_frame_t status = {.is_unicast = false,
                                   .controller_addr = DEVICE_ADDR,
                                   .peripheral_addr = 0x1FF,
                                   .control = 0xF,
@@ -1239,7 +1240,7 @@ AVCLAN_frame_t *AVCLAN_getStatusFrame() {
 // Used for changed status messages
 void AVCLAN_generateStatus(AVCLAN_frame_t *status) {
   *status = (AVCLAN_frame_t){
-      .broadcast = BROADCAST,
+      .is_unicast = false,
       .controller_addr = DEVICE_ADDR,
       .peripheral_addr = 0x1FF,
       .control = 0xF,
