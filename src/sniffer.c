@@ -413,8 +413,8 @@ void general_GPIO_init() {
 
 void print_help() {
   RS232_Print("AVCLAN Mockingboard v1\n");
-  RS232_Print("W - begin reading for unicast message\n"
-              "Q - begin reading for broadcast message\n"
+  RS232_Print("U - begin reading for unicast message\n"
+              "B - begin reading for broadcast message\n"
               "m - Toggle mute for mockingboard bus activity\n"
               "v - Toggle verbose error logging\n"
               "l - Toggle message logging\n"
