@@ -92,10 +92,10 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
-#include <util/atomic.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <util/atomic.h>
 
 #include "avclandrv.h"
 #include "com232.h"
@@ -136,12 +136,17 @@ volatile uint16_t period = 0;
 volatile uint16_t pulsewidth;
 
 // answers
-uint8_t lancheck_resp[] = {0x00, dev_COMM_CTRL, dev_LAN, 0xFF, 0xFF};
-const uint8_t list_functions_resp[] = {0x00, dev_COMM_CTRL, dev_COMM_v1,
-                                       List_Functions_Resp, dev_CD_CHANGER};
-uint8_t ping_resp[] = {0x00, dev_COMM_CTRL, dev_COMM_v1, Ping_Resp, 0xFF, 0x00};
-uint8_t function_change_resp[] = {0x00, dev_CD_CHANGER, dev_COMM_v1, 0xFF,
-                                  0x01};
+//
+// 0xFF placeholders are variant bytes filled in by callers writing directly
+// into out->data[N] after memcpy.
+static const uint8_t lancheck_resp[] = {0x00, dev_COMM_CTRL, dev_LAN, 0xFF,
+                                        0xFF};
+static const uint8_t list_functions_resp[] = {
+    0x00, dev_COMM_CTRL, dev_COMM_v1, List_Functions_Resp, dev_CD_CHANGER};
+static const uint8_t ping_resp[] = {0x00,      dev_COMM_CTRL, dev_COMM_v1,
+                                    Ping_Resp, 0xFF,          0x00};
+static const uint8_t function_change_resp[] = {0x00, dev_CD_CHANGER,
+                                               dev_COMM_v1, 0xFF, 0x01};
 
 #define STATUS_REPORT_DATA                                                     \
   {dev_CD_CHANGER,                                                             \
@@ -156,22 +161,22 @@ uint8_t function_change_resp[] = {0x00, dev_CD_CHANGER, dev_COMM_v1, 0xFF,
    0x00,                                                                       \
    0x80}
 
-uint8_t cdstatus_resp[] = STATUS_REPORT_DATA;
+static const uint8_t cdstatus_resp[] = STATUS_REPORT_DATA;
 
-uint8_t cdinitreport_resp[] = {
+static const uint8_t cdinitreport_resp[] = {
     dev_CD_CHANGER, dev_STATUS, Initial_Report_Response, 0x01, 0x31, 0x10,
     0x01,           0x01};
 
-uint8_t cdloading_resp[] = {dev_CD_CHANGER,
-                            dev_STATUS,
-                            Loading_Status_Report,
-                            0x00,
-                            0x01,
-                            0x00,
-                            0x01,
-                            0x00,
-                            0x01,
-                            0x02};
+static const uint8_t cdloading_resp[] = {dev_CD_CHANGER,
+                                         dev_STATUS,
+                                         Loading_Status_Report,
+                                         0x00,
+                                         0x01,
+                                         0x00,
+                                         0x01,
+                                         0x00,
+                                         0x01,
+                                         0x02};
 
 /* Disable serial and periodic interrupts during AVCLAN reads.
   Not using cli() because AVCLAN reads depend on other interrupts. */
@@ -916,25 +921,27 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
           case dev_COMM_CTRL:
             switch (b2 /* device action */) {
               case Lancheck_Scan_Req:
-                lancheck_resp[3] = Lancheck_Scan_Resp;
-                lancheck_resp[4] = 0x01;
                 out->length = sizeof(lancheck_resp);
+                memcpy(out->data, lancheck_resp, sizeof(lancheck_resp));
+                out->data[3] = Lancheck_Scan_Resp;
+                out->data[4] = 0x01;
                 goto LAN_RESPONSE;
               case Lancheck_Req:
-                lancheck_resp[3] = Lancheck_Resp;
-                lancheck_resp[4] = 0x00;
                 out->length = sizeof(lancheck_resp);
+                memcpy(out->data, lancheck_resp, sizeof(lancheck_resp));
+                out->data[3] = Lancheck_Resp;
+                out->data[4] = 0x00;
                 goto LAN_RESPONSE;
               case Lancheck_End_Req:
-                lancheck_resp[3] = Lancheck_End_Resp;
                 out->length = sizeof(lancheck_resp) - 1;
+                memcpy(out->data, lancheck_resp, out->length);
+                out->data[3] = Lancheck_End_Resp;
                 goto LAN_RESPONSE;
               default:
                 break;
               LAN_RESPONSE:
                 out->is_unicast = true;
                 out->peripheral_addr = HU_ADDR;
-                memcpy(out->data, lancheck_resp, sizeof(lancheck_resp));
                 respond = r_Handled;
             }
             break;
@@ -958,8 +965,8 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
               out->is_unicast = true;
               out->peripheral_addr = HU_ADDR;
               out->length = sizeof(ping_resp);
-              ping_resp[4] = b3;
               memcpy(out->data, ping_resp, sizeof(ping_resp));
+              out->data[4] = b3;
               respond = r_Handled;
               break;
             case List_Functions_Req:
@@ -988,7 +995,10 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
             case dev_CD_CHANGER:
               switch (b3 /* device action */) {
                 case Enable_Function_Req:
-                  function_change_resp[3] = Enable_Function_Resp;
+                  out->length = sizeof(function_change_resp);
+                  memcpy(out->data, function_change_resp,
+                         sizeof(function_change_resp));
+                  out->data[3] = Enable_Function_Resp;
                   cd_status.state = cd_SEEKING | cd_SEEKING_TRACK;
                   cd_status.flags2 = 0xc0;
                   // *cd_Time_Min = 0xff;
@@ -998,7 +1008,10 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
                   goto FUNCTION_CHANGE_RESPONSE;
                 case Disable_Function_Req:
                   AVCLAN_stopPlaying();
-                  function_change_resp[3] = Disable_Function_Resp;
+                  out->length = sizeof(function_change_resp);
+                  memcpy(out->data, function_change_resp,
+                         sizeof(function_change_resp));
+                  out->data[3] = Disable_Function_Resp;
                   cd_status.state = cd_PLAYBACK | cd_SEEKING_TRACK;
                   // *cd_Time_Min = 0x00;
                   // *cd_Time_Sec = 0x00;
@@ -1010,9 +1023,6 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
                 FUNCTION_CHANGE_RESPONSE:
                   out->is_unicast = true;
                   out->peripheral_addr = HU_ADDR;
-                  out->length = sizeof(function_change_resp);
-                  memcpy(out->data, function_change_resp,
-                         sizeof(function_change_resp));
               }
               break;
             default:
