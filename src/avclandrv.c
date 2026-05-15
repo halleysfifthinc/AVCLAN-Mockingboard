@@ -1126,10 +1126,10 @@ void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary) {
     buffer[1] = frame->broadcast;
 
     // Send addresses in big-endian order
-    buffer[2] = *(((uint8_t *)&frame->controller_addr) + 1);
-    buffer[3] = *(((uint8_t *)&frame->controller_addr) + 0);
-    buffer[4] = *(((uint8_t *)&frame->peripheral_addr) + 1);
-    buffer[5] = *(((uint8_t *)&frame->peripheral_addr) + 0);
+    buffer[2] = (uint8_t)(frame->controller_addr >> 8);
+    buffer[3] = (uint8_t)frame->controller_addr;
+    buffer[4] = (uint8_t)(frame->peripheral_addr >> 8);
+    buffer[5] = (uint8_t)frame->peripheral_addr;
 
     buffer[6] = frame->control;
     buffer[7] = frame->length;
@@ -1180,10 +1180,10 @@ uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
   const uint8_t *last = bytes + len;
 
   frame->broadcast = *bytes++;
-  frame->controller_addr = *(uint16_t *)bytes++;
-  bytes++;
-  frame->peripheral_addr = *(uint16_t *)bytes++;
-  bytes++;
+  frame->controller_addr = bytes[0] | ((uint16_t)bytes[1] << 8);
+  bytes += 2;
+  frame->peripheral_addr = bytes[0] | ((uint16_t)bytes[1] << 8);
+  bytes += 2;
   frame->control = *bytes++;
   frame->length = *bytes++;
 
@@ -1282,15 +1282,15 @@ void AVCLan_Measure() {
 
   RS232_Print("Pulses:\n");
   for (uint8_t i = 0; i < 100; i++) {
-    RS232_PrintHex8(*(((uint8_t *)&pulses[i]) + 1));
-    RS232_PrintHex8(*(((uint8_t *)&pulses[i]) + 0));
+    RS232_PrintHex8((uint8_t)(pulses[i] >> 8));
+    RS232_PrintHex8((uint8_t)pulses[i]);
     RS232_Print("\n");
   }
 
   RS232_Print("Periods:\n");
   for (uint8_t i = 0; i < 100; i++) {
-    RS232_PrintHex8(*(((uint8_t *)&periods[i]) + 1));
-    RS232_PrintHex8(*(((uint8_t *)&periods[i]) + 0));
+    RS232_PrintHex8((uint8_t)(periods[i] >> 8));
+    RS232_PrintHex8((uint8_t)periods[i]);
     RS232_Print("\n");
   }
   RS232_Print("\nDone.\n");
