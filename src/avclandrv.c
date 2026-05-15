@@ -92,6 +92,7 @@
 #include <avr/interrupt.h>
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
+#include <util/atomic.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -233,11 +234,11 @@ void AVCLAN_muteDevice(uint8_t mute) {
 // 1 sec)
 void AVCLAN_startPlaying() {
   CD_Mode = stPlay;
-  cli();
-  loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CNTBUSY_bp);
-  RTC.CNT = 0;
-  sbi(RTC.PITINTCTRL, RTC_PI_bp);
-  sei();
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CNTBUSY_bp);
+    RTC.CNT = 0;
+    sbi(RTC.PITINTCTRL, RTC_PI_bp);
+  }
 }
 
 // Sets CD_mode to play and resets timer count (so that the next interrupt is in
