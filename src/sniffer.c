@@ -107,7 +107,7 @@ int main() {
   // Binary-mode REPL includes the full wire preamble (broadcast + 2*addr +
   // control + length), so size for the worst case.
   uint8_t data_tmp[MAXMSGLEN + sizeof(AVCLAN_frame_t)];
-  uint8_t seqLen = 0; // current length written to data_tmp
+  uint8_t seqIdx = 0; // current index in data_tmp
 
   uint8_t err = 0;
 
@@ -272,7 +272,7 @@ int main() {
         case 0x10: // Signals binary sequence incoming
           if (!readSeq && !readBinary) {
             readSeq = readBinary = 1;
-            seqLen = 0;
+            seqIdx = 0;
             break;
           } else
             goto DEFAULT; // reading binary and this is a real data byte
@@ -282,7 +282,7 @@ int main() {
           lastPrintAllFrames = printAllFrames;
           printAllFrames = 0;
           readSeq = 1;
-          seqLen = hexDigit = 0;
+          seqIdx = hexDigit = 0;
           hexChars[0] = hexChars[1] = 0;
           seqIsUnicast = true;
           break;
@@ -291,16 +291,16 @@ int main() {
           lastPrintAllFrames = printAllFrames;
           printAllFrames = 0;
           readSeq = 1;
-          seqLen = hexDigit = 0;
+          seqIdx = hexDigit = 0;
           hexChars[0] = hexChars[1] = 0;
           seqIsUnicast = false;
           break;
         case '\n':
           if (readSeq) {
             if (readBinary) {
-              if (data_tmp[seqLen] == 0x17) {
+              if (data_tmp[seqIdx] == 0x17) {
                 if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
-                  if (!AVCLAN_parseframe(data_tmp, --seqLen, out)) {
+                  if (!AVCLAN_parseframe(data_tmp, --seqIdx, out)) {
                     if (RFrame_t *resp = popQueue(&rcache)) {
                       *resp = (RFrame_t){.r = r_Handled, .frame = out};
                       push_or_return_resp(resp);
@@ -319,8 +319,8 @@ int main() {
                   out->is_unicast = seqIsUnicast;
                   out->controller_addr = DEVICE_ADDR;
                   out->peripheral_addr = seqIsUnicast ? HU_ADDR : 0x1FF;
-                  out->length = seqLen;
-                  memcpy(out->data, data_tmp, seqLen);
+                  out->length = seqIdx;
+                  memcpy(out->data, data_tmp, seqIdx);
                   *resp = (RFrame_t){.r = r_Handled, .frame = out};
                   push_or_return_resp(resp);
                 } else
@@ -334,7 +334,7 @@ int main() {
         default:
           if (readSeq) {
             if (readBinary) {
-              data_tmp[seqLen++] = readkey;
+              data_tmp[seqIdx++] = readkey;
             } else {
               hexChars[hexDigit++] = readkey;
 
@@ -346,12 +346,12 @@ int main() {
                 l = toupper(hexChars[1]);
                 l += (l < ':') ? 0xd0 : 0xc9;
 
-                data_tmp[seqLen++] = (h << 4) | l;
+                data_tmp[seqIdx++] = (h << 4) | l;
                 hexDigit = hexChars[0] = hexChars[1] = 0;
               }
               if (echoCharacters) {
                 RS232_Print("CURRENT SEQUENCE > ");
-                for (uint8_t i = 0; i < seqLen; i++) {
+                for (uint8_t i = 0; i < seqIdx; i++) {
                   RS232_PrintHex8(data_tmp[i]);
                   RS232_SendByte(' ');
                 }
