@@ -13,7 +13,7 @@ void constructQueue(Queue_t *q, void **slots, void *items, uint8_t itemSize,
                     uint8_t len, uint8_t constructFull);
 void constructEmptyQueue(Queue_t *q, void **slots, uint8_t len);
 uint8_t isEmpty(const Queue_t *q);
-inline void incrementRead(Queue_t *q) { q->read++; };
+static inline void incrementRead(Queue_t *q) { q->read++; }
 uint8_t pushQueue(Queue_t *q, void *x);
 void *peekQueue(const Queue_t *q);
 void *popQueue(Queue_t *q);
