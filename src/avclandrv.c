@@ -897,6 +897,10 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
   out->controller_addr = DEVICE_ADDR;
   out->control = 0xF;
 
+  // Guard: if caller specified a data_capacity, ensure it can hold any response
+  if (out->data_capacity != 0 && out->data_capacity < MAXMSGLEN)
+    return respond;
+
   const uint8_t *data = in->data;
   const uint8_t b0 = *data++;
   const uint8_t b1 = *data++;

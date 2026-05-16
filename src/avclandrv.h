@@ -186,6 +186,7 @@ typedef struct AVCLAN_frame_struct {
   uint16_t peripheral_addr; // formerly "slave"
   uint8_t control;
   uint8_t length;
+  uint8_t data_capacity; // allocated capacity of data buffer in bytes (0 = unchecked)
   uint8_t *data;
 } AVCLAN_frame_t;
 
