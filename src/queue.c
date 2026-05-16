@@ -4,11 +4,11 @@
 #include "queue.h"
 
 void constructQueue(Queue_t *q, void **slots, void *items, uint8_t itemSize,
-                    uint8_t len, uint8_t constructFull) {
+                    uint8_t len, bool constructFull) {
   q->read = 0;
   q->size = len;
   q->buf = slots;
-  if (!!constructFull) {
+  if (constructFull) {
     q->write = len;
 
     for (uint8_t i = 0; i < len; ++i) {
@@ -21,12 +21,12 @@ void constructQueue(Queue_t *q, void **slots, void *items, uint8_t itemSize,
 }
 
 void constructEmptyQueue(Queue_t *q, void **slots, uint8_t len) {
-  constructQueue(q, slots, nullptr, 0, len, 0);
+  constructQueue(q, slots, nullptr, 0, len, false);
 }
 
-uint8_t isEmpty(const Queue_t *q) { return (q->write == q->read); }
+bool isEmpty(const Queue_t *q) { return (q->write == q->read); }
 
-static inline uint8_t isFull(const Queue_t *q) {
+static inline bool isFull(const Queue_t *q) {
   return ((q->write - q->read) == q->size);
 }
 

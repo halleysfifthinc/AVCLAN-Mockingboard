@@ -37,19 +37,19 @@
 const char *const offon[] = {"OFF", "ON"};
 
 #define CACHE_SIZE 16
-_Static_assert((CACHE_SIZE & (CACHE_SIZE - 1)) == 0,
-               "CACHE_SIZE must be a power of two (qMask depends on it)");
+static_assert((CACHE_SIZE & (CACHE_SIZE - 1)) == 0,
+              "CACHE_SIZE must be a power of two (qMask depends on it)");
 
-AVCLAN_frame_t frames[CACHE_SIZE];
-RFrame_t responses[CACHE_SIZE];
-uint8_t framesdata[CACHE_SIZE][MAXMSGLEN];
+static AVCLAN_frame_t frames[CACHE_SIZE];
+static RFrame_t responses[CACHE_SIZE];
+static uint8_t framesdata[CACHE_SIZE][MAXMSGLEN];
 
-void *cacheSlots[CACHE_SIZE];
-void *rcacheSlots[CACHE_SIZE];
-void *incomingSlots[CACHE_SIZE];
-void *outgoingSlots[CACHE_SIZE];
+static void *cacheSlots[CACHE_SIZE];
+static void *rcacheSlots[CACHE_SIZE];
+static void *incomingSlots[CACHE_SIZE];
+static void *outgoingSlots[CACHE_SIZE];
 
-Queue_t cache, rcache, incoming, outgoing;
+static Queue_t cache, rcache, incoming, outgoing;
 
 volatile uint8_t enqueueStatus = 0;
 
@@ -75,14 +75,14 @@ static uint8_t push_or_return_resp(RFrame_t *resp) {
     return err;
 }
 
-static void toggle_flag(uint8_t *flag, const char *msg) {
-  *flag ^= 1;
+static void toggle_flag(bool *flag, const char *msg) {
+  *flag = !*flag;
   RS232_Print(msg);
   RS232_Print(offon[*flag]);
   RS232_Print("\n");
 }
 
-static void set_flag(uint8_t *flag, uint8_t val, const char *msg) {
+static void set_flag(bool *flag, bool val, const char *msg) {
   *flag = val;
   RS232_Print(msg);
   RS232_Print(offon[val]);
@@ -95,14 +95,14 @@ int main() {
   uint8_t hexDigit = 0; // current digit being written to hexChars
 
   bool seqIsUnicast = false;
-  uint8_t lastPrintAllFrames = 1;
+  bool lastPrintAllFrames = 1;
 
-  uint8_t verbose = 1;
-  uint8_t printAllFrames = 1;
-  uint8_t printBinary = 0;
-  uint8_t echoCharacters = 1;
-  uint8_t readBinary = 0;
-  uint8_t muteBus = 0;
+  bool verbose = 1;
+  bool printAllFrames = 1;
+  bool printBinary = 0;
+  bool echoCharacters = 1;
+  bool readBinary = 0;
+  bool muteBus = 0;
 
   // Binary-mode REPL includes the full wire preamble (broadcast + 2*addr +
   // control + length), so size for the worst case.
@@ -117,17 +117,17 @@ int main() {
   }
 
   constructQueue(&cache, cacheSlots, frames, sizeof(AVCLAN_frame_t), CACHE_SIZE,
-                 1);
+                 true);
   constructEmptyQueue(&incoming, incomingSlots, CACHE_SIZE);
 
   constructQueue(&rcache, rcacheSlots, responses, sizeof(RFrame_t), CACHE_SIZE,
-                 1);
+                 true);
   constructEmptyQueue(&outgoing, outgoingSlots, CACHE_SIZE);
 
   Setup();
   print_help();
 
-  while (1) {
+  while (true) {
 
     if (!BUS_IS_IDLE) {
       if (AVCLAN_frame_t *msg = popQueue(&cache)) {

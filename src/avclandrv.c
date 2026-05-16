@@ -210,12 +210,12 @@ static inline void AVCLAN_setBusDriven() {
 // clang-format on
 
 // Returns true if device TX is muted on AVCLAN bus
-static inline uint8_t AVCLAN_ismuted() {
+static inline bool AVCLAN_ismuted() {
   return (((VPORTA_DIR & PIN4_bm) | (VPORTA_DIR & PIN0_bm)) == 0);
 }
 
 // Mute device TX on AVCLAN bus
-void AVCLAN_muteDevice(uint8_t mute) {
+void AVCLAN_muteDevice(bool mute) {
   if (mute) {
     // clang-format off
     __asm__ __volatile__("cbi %[vporta_dir], 4; \n\t" // set as INPUT (output values ignored)
@@ -291,7 +291,7 @@ void AVCLAN_init() {
 
   AVCLAN_setBusIdle();
 
-  AVCLAN_muteDevice(0); // unmute AVCLAN bus TX
+  AVCLAN_muteDevice(false); // unmute AVCLAN bus TX
 
   cd_status.cds = cd_CD1;
   cd_status.disc = 1;
@@ -328,7 +328,7 @@ static void serializeCDStatus(uint8_t *dst) {
   dst[5] = toBCD(cd_status.secs);
 }
 
-uint8_t AVCLAN_isPlaying() { return (CD_Mode == stPlay); }
+bool AVCLAN_isPlaying() { return (CD_Mode == stPlay); }
 
 void AVCLAN_incrementTime() {
   // Sentinel values (>99) mean "no time"; leave them alone until setTime()
@@ -414,7 +414,7 @@ uint8_t AVCLAN_readbit_ACK() {
   set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0);
   AVCLAN_setBusIdle(); // Stop driving bus
 
-  while (1) {
+  while (true) {
     if (!BUS_IS_IDLE && (TCB1.CNT > AVCLAN_READBIT_THRESHOLD))
       break; // ACK
     if (TCB1.CNT > AVCLAN_BIT_LENGTH_MAX)
@@ -512,7 +512,7 @@ uint8_t AVCLAN_readbitsi(uint8_t *bits, uint8_t len) {
   sei();
 
   TCB1.CNT = 0;
-  while (READING_NBITS != 0) {
+  while (READING_NBITS) {
     // 200% the duration of `len` bits
     if (TCB1.CNT > ((uint16_t)AVCLAN_BIT_LENGTH_MAX * 2 * len)) {
       READING_BYTE = 0;
@@ -551,7 +551,7 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
   sei();
 
   TCB1.CNT = 0;
-  while (READING_NBITS != 0) {
+  while (READING_NBITS) {
     // 200% the length of a byte
     if (TCB1.CNT > ((uint16_t)AVCLAN_BIT_LENGTH_MAX * 2 * 8)) {
       READING_BYTE = 0;
@@ -644,8 +644,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
     goto handle_err;
   }
 
-  uint8_t shouldACK =
-      !AVCLAN_ismuted() && (frame->peripheral_addr == DEVICE_ADDR);
+  bool shouldACK = !AVCLAN_ismuted() && (frame->peripheral_addr == DEVICE_ADDR);
 
   if (shouldACK)
     AVCLAN_sendbit_ACK();
@@ -705,7 +704,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
     }
   }
 
-  if (0) {
+  if (false) {
   handle_err:;
     startEvent();
     RS232_Print("ERR(read): ");
@@ -740,7 +739,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
     startEvent();
   }
 
-  // Only print if some data has been correctly recieved
+  // Only print if some data has been correctly received
   if (print.print && (err.errno < STARTBIT_TOO_SHORT)) {
     if (err.errno > BAD_DATA_PARITY)
       frame->length = 0;
@@ -848,7 +847,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
   }
 
   // back to read mode
-  if (0) {
+  if (false) {
   handle_err:;
     startEvent();
     RS232_Print("Error");
@@ -1057,7 +1056,7 @@ uint8_t AVCLAN_tryrespond(const AVCLAN_frame_t *resp) {
   return r;
 }
 
-void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary) {
+void AVCLAN_printframe(const AVCLAN_frame_t *frame, bool binary) {
   if (binary) {
     uint8_t buffer[8];
     buffer[0] = 0x10; // Data Link Escape, signaling binary data forthcoming
@@ -1138,7 +1137,7 @@ uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
     goto handle_err;
   }
 
-  if (0) {
+  if (false) {
   handle_err:;
     RS232_Print("ERR(parse): ");
     switch (err.errno) {

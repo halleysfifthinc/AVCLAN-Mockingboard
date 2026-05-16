@@ -10,9 +10,9 @@ typedef struct Queue_struct {
 } Queue_t;
 
 void constructQueue(Queue_t *q, void **slots, void *items, uint8_t itemSize,
-                    uint8_t len, uint8_t constructFull);
+                    uint8_t len, bool constructFull);
 void constructEmptyQueue(Queue_t *q, void **slots, uint8_t len);
-uint8_t isEmpty(const Queue_t *q);
+bool isEmpty(const Queue_t *q);
 static inline void incrementRead(Queue_t *q) { q->read++; }
 uint8_t pushQueue(Queue_t *q, void *x);
 void *peekQueue(const Queue_t *q);

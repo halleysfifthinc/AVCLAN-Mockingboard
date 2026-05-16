@@ -195,7 +195,7 @@ typedef struct RFrame_struct {
 } RFrame_t;
 
 void AVCLAN_init();
-void AVCLAN_muteDevice(uint8_t mute);
+void AVCLAN_muteDevice(bool mute);
 
 uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print);
 response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out);
@@ -207,7 +207,7 @@ uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
 AVCLAN_frame_t *AVCLAN_getStatusFrame();
 void AVCLAN_generateStatus(AVCLAN_frame_t *status);
 
-uint8_t AVCLAN_isPlaying();
+bool AVCLAN_isPlaying();
 void AVCLAN_incrementTime();
 void AVCLAN_setTime(uint8_t mins, uint8_t secs);
 void AVCLAN_normalizeState();
