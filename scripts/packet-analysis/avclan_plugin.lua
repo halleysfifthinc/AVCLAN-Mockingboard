@@ -20,7 +20,7 @@
 
 local iebusproto = Proto("iebus", "IEBus protocol")
 
-local f_broadcast = ProtoField.bool("iebus.broadcast", "Broadcast", base.NONE, { [1] = "false", [2] = "true" })
+local f_unicast = ProtoField.bool("iebus.unicast", "Unicast", base.NONE, { [1] = "false", [2] = "true" })
 local f_controller_addr = ProtoField.uint16("iebus.controller", "Controller address", base.HEX, nil, 0x0FFF)
 local f_peripheral_addr = ProtoField.uint16("iebus.peripheral", "Peripheral address", base.HEX, nil, 0x0FFF)
 local f_control = ProtoField.uint8("iebus.control", "Control field", base.HEX)
@@ -28,7 +28,7 @@ local f_length = ProtoField.uint8("iebus.length", "Data length", base.DEC)
 local f_data = ProtoField.bytes("iebus.data", "Frame data", base.SPACE)
 
 iebusproto.fields = {
-    f_broadcast,
+    f_unicast,
     f_controller_addr,
     f_peripheral_addr,
     f_control,
@@ -75,7 +75,7 @@ function iebusproto.dissector(buffer, pinfo, tree)
 
     local subtree = tree:add(iebusproto, buffer(), "IEBus frame")
 
-    subtree:add(f_broadcast, buffer(0,1))
+    subtree:add(f_unicast, buffer(0,1))
     pinfo.cols.src = buffer(1,2):bytes():tohex():sub(2,-1)
     pinfo.cols.dst = buffer(3,2):bytes():tohex():sub(2,-1)
 
@@ -310,7 +310,10 @@ local f_radio_band = ProtoField.uint8("avclan.radio.band", "Radio band", base.HE
 local f_radio_bandnumber = ProtoField.int8("avclan.radio.bandnumber", "Radio band number", base.DEC, nil, 0x0F)
 local f_radio_freq = ProtoField.uint16("avclan.radio.freq", "Radio frequency")
 
+-- Volume is BCD encoded
 local f_amp_volume = ProtoField.uint8("avclan.amp.volume", "Volume", base.DEC)
+
+-- Amp bass, mid, treble, fade, and balance are offset-binary (offset-16) encoded
 local f_amp_bass = ProtoField.uint8("avclan.amp.bass", "Bass", base.HEX, {
     [0x0B] = "-5", [0x0C] = "-4", [0x0D] = "-3", [0x0E] = "-2", [0x0F] = "-1",
     [0x10] = "0",
@@ -554,7 +557,8 @@ function avclanproto.dissector(buffer, pinfo, tree)
         else
             subtree:add_proto_expert_info(pe_unhandled_msg)
         end
-    elseif from_device == known_devices_names["STATUS"] then
+    elseif from_device == known_devices_names["STATUS"] and
+        known_devices[to_device] ~= nil then
         subtree:add(f_action, buffer(offset+2,1))
     elseif from_device == known_devices_names["TUNER"] then
         subtree:add(f_action, buffer(offset+2,1))
@@ -584,19 +588,21 @@ function avclanproto.dissector(buffer, pinfo, tree)
         subtree:add(f_action, buffer(offset+2,1))
         local amptree = subtree:add(avclanproto, buffer(offset,10), "Device: Audio amplifier")
         
-        amptree:add(f_amp_volume, buffer(offset+4,1))
+        local vol_raw = buffer(offset+4,1):uint()
+        local vol_bcd = bit.rshift(vol_raw, 4) * 10 + bit.band(vol_raw, 0x0F)
+        amptree:add(f_amp_volume, buffer(offset+4,1), vol_bcd)
         amptree:add(f_amp_balance, buffer(offset+5,1))
         amptree:add(f_amp_fade, buffer(offset+6,1))
         amptree:add(f_amp_bass, buffer(offset+7,1))
         amptree:add(f_amp_mid, buffer(offset+8,1))
         amptree:add(f_amp_treble, buffer(offset+9,1))
     elseif from_device == known_devices_names["CD"] or
-      from_device == known_devices_names["CD_CHANGER"] or
-      from_device == known_devices_names["CD_CHANGER2"] then
+      from_device == known_devices_names["CD_CHANGER"] then
         subtree:add(f_action, buffer(offset+2,1))
         local action = field_action().value
 
-        if action == known_actions_names["STATUS_REPORT"] then
+        if action == known_actions_names["STATUS_REPORT"] or
+            action == known_actions_names["PLAYBACK_REPORT"] then
             local cdtree = subtree:add(avclanproto, buffer(offset,9), "Device: CD player")
             local cd_slots = cdtree:add(f_cd_slots, buffer(offset+3,1))
             cd_slots:add(f_cd_slot1, buffer(offset+3,1))
