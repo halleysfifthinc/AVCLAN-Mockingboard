@@ -96,6 +96,7 @@ udlt:add(wtap.USER15, iebusproto)
 local avclanproto = Proto("avclan", "AVCLAN protocol")
 
 local known_devices_names = {
+    ["LAN"] = 0x00,
     ["COMM_CTRL"] = 0x01,
     ["COMMUNICATION v1"] = 0x11,
     ["COMMUNICATION v2"] = 0x12,
@@ -127,6 +128,7 @@ local known_devices_names = {
 }
 
 local known_devices = {
+    [0x00] = "LAN",
     [0x01] = "COMM_CTRL",
     [0x11] = "COMMUNICATION v1",
     [0x12] = "COMMUNICATION v2",
@@ -181,8 +183,12 @@ local known_actions_names = {
     ["ENABLE_FUNCTION_REQ"] = 0x42,
     ["ENABLE_FUNCTION_RESP"] = 0x52,
 
+    -- ADVERTISE_FUNCTION is named Current_Function in src/avclandrv.h
     ["ADVERTISE_FUNCTION"] = 0x45,
     ["GENERAL_QUERY"] = 0x46,
+
+    ["SCREEN_PRESS"] = 0x78,
+    ["BEEP"] = 0x60, 
 
     -- Physical interface
     ["BACKLIGHT_ADJUST"] = 0x59,
@@ -193,12 +199,22 @@ local known_actions_names = {
     ["PWRVOL_KNOB_LEFTHAND_TURN"] = 0x9d,
     ["TRACK_SEEK_UP"] = 0x94,
     ["TRACK_SEEK_DOWN"] = 0x95,
+    ["TRACK_FAST_FORWARD"] = 0x98,
+    ["TRACK_REWIND"] = 0x99,
     ["CD_ENABLE_SCAN"] = 0xa6,
     ["CD_DISABLE_SCAN"] = 0xa7,
+    ["CD_ENABLE_DISK_SCAN"] = 0xa9,
+    ["CD_DISABLE_DISK_SCAN"] = 0xaa,
     ["CD_ENABLE_REPEAT"] = 0xa0,
     ["CD_DISABLE_REPEAT"] = 0xa1,
+    ["CD_ENABLE_DISK_REPEAT"] = 0xa3,
+    ["CD_DISABLE_DISK_REPEAT"] = 0xa4,
     ["CD_ENABLE_RANDOM"] = 0xb0,
     ["CD_DISABLE_RANDOM"] = 0xb1,
+    ["CD_ENABLE_DISK_RANDOM"] = 0xb3,
+    ["CD_DISABLE_DISK_RANDOM"] = 0xb4,
+
+    ["TAPE_NOT_READY"] = 0x9f, -- Uncertain guess by @marcin
 
     -- CD functions
     -- Events
@@ -243,6 +259,9 @@ local known_actions = {
     [0x45] = "ADVERTISE_FUNCTION",
     [0x46] = "GENERAL_QUERY",
 
+    [0x78] = "SCREEN_PRESS",
+    [0x60] = "BEEP",
+
     -- Physical interface
     [0x59] = "BACKLIGHT_ADJUST",
     [0x80] = "EJECT",
@@ -252,12 +271,22 @@ local known_actions = {
     [0x9d] = "PWRVOL_KNOB_LEFTHAND_TURN",
     [0x94] = "TRACK_SEEK_UP",
     [0x95] = "TRACK_SEEK_DOWN",
+    [0x98] = "TRACK_FAST_FORWARD",
+    [0x99] = "TRACK_REWIND",
     [0xa6] = "CD_ENABLE_SCAN",
     [0xa7] = "CD_DISABLE_SCAN",
+    [0xa9] = "CD_ENABLE_DISK_SCAN",
+    [0xaa] = "CD_DISABLE_DISK_SCAN",
     [0xa0] = "CD_ENABLE_REPEAT",
     [0xa1] = "CD_DISABLE_REPEAT",
+    [0xa3] = "CD_ENABLE_DISK_REPEAT",
+    [0xa4] = "CD_DISABLE_DISK_REPEAT",
     [0xb0] = "CD_ENABLE_RANDOM",
     [0xb1] = "CD_DISABLE_RANDOM",
+    [0xb3] = "CD_ENABLE_DISK_RANDOM",
+    [0xb4] = "CD_DISABLE_DISK_RANDOM",
+
+    [0x9f] = "TAPE_NOT_READY",
 
     -- CD functions
     -- Events
@@ -285,6 +314,13 @@ local f_functions = ProtoField.bytes("avclan.functions", "Functions", base.SPACE
 
 local f_ping_count = ProtoField.uint8("avclan.ping.count", "Ping count")
 local f_backlight = ProtoField.uint8("avclan.backlight.brightness", "Backlight brightness", base.HEX)
+
+-- Beep request (AUDIO_DRAWING -> BEEP_SPEAKERS, action 0x60): duration parameter
+local f_beep_duration = ProtoField.uint8("avclan.beep.duration", "Beep duration", base.DEC)
+
+-- Touch-screen press (SW -> SW_CONVERTING, action 0x78): x,y position
+local f_touch_x = ProtoField.uint8("avclan.touch.x", "Touch X", base.HEX)
+local f_touch_y = ProtoField.uint8("avclan.touch.y", "Touch Y", base.HEX)
 
 local f_radio_active = ProtoField.bool("avclan.radio.active", "Radio", base.NONE, {"ON", "OFF"})
 local f_radio_status = ProtoField.uint8("avclan.radio.status", "Radio status", base.HEX,
@@ -394,6 +430,9 @@ avclanproto.fields = {
     f_functions,
     f_ping_count,
     f_backlight,
+    f_beep_duration,
+    f_touch_x,
+    f_touch_y,
     f_radio_active,
     f_radio_status,
     f_radio_flags,
@@ -477,6 +516,13 @@ local field_cd_track = Field.new("avclan.cd.track")
 local field_cd_min = Field.new("avclan.cd.mins")
 local field_cd_sec = Field.new("avclan.cd.secs")
 
+-- Attach the "not decoded" expert warning to a specific byte range rather than
+-- the whole message, so Wireshark highlights exactly the bytes we don't yet
+-- understand.
+local function mark_undecoded(tree, range)
+    tree:add(range, "Undecoded bytes"):add_proto_expert_info(pe_unhandled_msg)
+end
+
 function avclanproto.dissector(buffer, pinfo, tree)
     local length = buffer:len()
     if length == 0 then
@@ -501,6 +547,26 @@ function avclanproto.dissector(buffer, pinfo, tree)
 
     if from_device == known_devices_names["CMD_SW"] then
         subtree:add(f_action, buffer(offset+2,1))
+        local action = field_action().value
+        if to_device == known_devices_names["AUDIO_AMP"] then
+            local amptree = subtree:add(avclanproto, buffer(offset+2,-1), "Device: Audio amplifier control")
+            local param = buffer(offset+3,1)
+            if action == 0x90 then -- VOLUME (BCD)
+                local vol_raw = param:uint()
+                local vol_bcd = bit.rshift(vol_raw, 4) * 10 + bit.band(vol_raw, 0x0F)
+                amptree:add(f_amp_volume, param, vol_bcd):append_text(" (VOLUME)")
+            elseif action == 0x91 then
+                amptree:add(f_amp_balance, param)
+            elseif action == 0x92 then
+                amptree:add(f_amp_fade, param)
+            elseif action == 0x93 then
+                amptree:add(f_amp_bass, param)
+            elseif action == 0x94 then
+                amptree:add(f_amp_mid, param)
+            elseif action == 0x95 then
+                amptree:add(f_amp_treble, param)
+            end
+        end
     elseif from_device == known_devices_names["COMMUNICATION v1"] or
       from_device == known_devices_names["COMMUNICATION v2"] then
         if to_device == known_devices_names["COMM_CTRL"] then
@@ -516,7 +582,7 @@ function avclanproto.dissector(buffer, pinfo, tree)
                 subtree:add_proto_expert_info(pe_unhandled_msg)
             end
         else
-            subtree:add_proto_expert_info(pe_unhandled_msg)
+            subtree:add(f_action, buffer(offset+2,1))
         end
     elseif from_device == known_devices_names["COMM_CTRL"] then
         if to_device == known_devices_names["COMMUNICATION v1"] or
@@ -554,6 +620,14 @@ function avclanproto.dissector(buffer, pinfo, tree)
             subtree:add(f_action, buffer(offset+1,1))
         elseif to_device == 0x00 then
             subtree:add(f_action, buffer(offset+2,1))
+        else
+            subtree:add_proto_expert_info(pe_unhandled_msg)
+        end
+    elseif to_device == known_devices_names["BEEP_SPEAKERS"] then
+        subtree:add(f_action, buffer(offset+2,1))
+        local action = field_action().value
+        if action == known_actions_names["BEEP"] then
+            subtree:add(f_beep_duration, buffer(offset+3,1))
         else
             subtree:add_proto_expert_info(pe_unhandled_msg)
         end
@@ -635,7 +709,8 @@ function avclanproto.dissector(buffer, pinfo, tree)
             cd_flags:add(f_cd_flag_repeat, buffer(offset+9,1))
             cd_flags:add(f_cd_flag_disk_scan, buffer(offset+9,1))
             cd_flags:add(f_cd_flag_scan, buffer(offset+9,1))
-        elseif action == known_actions_names["LOADING_STATUS_REPORT"] then
+        elseif action == known_actions_names["LOADING_STATUS_REPORT"] or
+            action == known_actions_names["LOADING_RESPONSE2"] then
             local cdtree = subtree:add(avclanproto, buffer(offset,9), "Device: CD player")
             local available_slots = cdtree:add(f_cd_slots, buffer(offset+4,1))
             available_slots:add(f_cd_slot1, buffer(offset+4,1))
@@ -668,6 +743,13 @@ function avclanproto.dissector(buffer, pinfo, tree)
             cd_state:add(f_cd_playback, buffer(offset+9,1))
             cd_state:add(f_cd_seeking_track, buffer(offset+9,1))
             cd_state:add(f_cd_loading, buffer(offset+9,1))
+        elseif action == known_actions_names["ENABLE_FUNCTION_RESP"] or
+            action == known_actions_names["DISABLE_FUNCTION_RESP"] then
+        elseif buffer:len() > offset+3 then
+            -- Recognized CD action (initial report 0xf0, TOC 0xf9, track name
+            -- 0xfd, ...) whose payload layout isn't understood yet. Flag just the
+            -- undecoded bytes, not the whole (correctly-named) message.
+            mark_undecoded(subtree, buffer(offset+3))
         end
     elseif from_device == known_devices_names["TAPE_DECK"] then
         subtree:add(f_action, buffer(offset+2,1))
@@ -692,6 +774,19 @@ function avclanproto.dissector(buffer, pinfo, tree)
             tape_flags:add(f_tape_flag2, buffer(offset+5,2))
             tape_flags:add(f_tape_flag3, buffer(offset+5,2))
             tape_flags:add(f_tape_flag4, buffer(offset+5,2))
+        end
+    elseif from_device == known_devices_names["SW"] then
+        subtree:add(f_action, buffer(offset+2,1))
+        local action = field_action().value
+        if action == known_actions_names["SCREEN_PRESS"] then
+            subtree:add(f_touch_x, buffer(offset+3,1))
+            subtree:add(f_touch_y, buffer(offset+4,1))
+            if buffer:len() > offset+6 then
+                subtree:add(f_touch_x, buffer(offset+5,1)):append_text(" (2)")
+                subtree:add(f_touch_y, buffer(offset+6,1)):append_text(" (2)")
+            end
+        else
+            subtree:add_proto_expert_info(pe_unhandled_msg)
         end
     else
         subtree:add_proto_expert_info(pe_unhandled_msg)
