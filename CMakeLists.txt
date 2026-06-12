@@ -3,7 +3,6 @@ include(CMakeDependentOption)
 
 set(WITH_MCU OFF) # Disable target name modification setting from toolchain
 set(AVR_MCU "attiny3216")
-set(AVR_UPLOADTOOL_PORT /dev/ttyUSB0)
 set(AVR_PROGRAMMER serialupdi)
 set(AVR_UPLOADTOOL_BAUDRATE 230400)
 

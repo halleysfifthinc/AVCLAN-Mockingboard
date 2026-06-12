@@ -2,9 +2,25 @@
     "version": 2,
     "configurePresets": [
         {
-            "name": "default",
-            "displayName": "Debug",
-            "description": "Configure with Debug build settings",
+            "name": "usb0",
+            "hidden": true,
+            "description": "Program over /dev/ttyUSB0",
+            "cacheVariables": {
+                "AVR_UPLOADTOOL_PORT": "/dev/ttyUSB0"
+            }
+        },
+        {
+            "name": "usb1",
+            "hidden": true,
+            "description": "Program over /dev/ttyUSB1",
+            "cacheVariables": {
+                "AVR_UPLOADTOOL_PORT": "/dev/ttyUSB1"
+            }
+        },
+        {
+            "name": "debug-base",
+            "hidden": true,
+            "description": "Debug build settings",
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
@@ -14,18 +30,50 @@
             }
         },
         {
-            "name": "relwithdebinfo",
-            "displayName": "RelWithDebInfo",
-            "description": "Configure with RelWithDebInfo build settings",
-            "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/build",
-            "inherits": "default",
+            "name": "relwithdebinfo-base",
+            "hidden": true,
+            "description": "RelWithDebInfo build settings",
+            "inherits": "debug-base",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "FREQSEL": "20MHz",
-                "TCB_CLKSEL": "TCB_CLKSEL_CLKDIV1_gc",
                 "USART_RXMODE": "USART_RXMODE_CLK2X_gc"
             }
+        },
+        {
+            "name": "default",
+            "displayName": "Debug (ttyUSB0)",
+            "description": "Debug build, program over /dev/ttyUSB0",
+            "inherits": [
+                "debug-base",
+                "usb0"
+            ]
+        },
+        {
+            "name": "default-usb1",
+            "displayName": "Debug (ttyUSB1)",
+            "description": "Debug build, program over /dev/ttyUSB1",
+            "inherits": [
+                "debug-base",
+                "usb1"
+            ]
+        },
+        {
+            "name": "relwithdebinfo",
+            "displayName": "RelWithDebInfo (ttyUSB1)",
+            "description": "RelWithDebInfo build, program over /dev/ttyUSB1",
+            "inherits": [
+                "relwithdebinfo-base",
+                "usb1"
+            ]
+        },
+        {
+            "name": "relwithdebinfo-usb0",
+            "displayName": "RelWithDebInfo (ttyUSB0)",
+            "description": "RelWithDebInfo build, program over /dev/ttyUSB0",
+            "inherits": [
+                "relwithdebinfo-base",
+                "usb0"
+            ]
         }
     ]
 }
