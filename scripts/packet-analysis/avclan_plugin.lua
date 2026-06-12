@@ -95,37 +95,16 @@ udlt:add(wtap.USER15, iebusproto)
 
 local avclanproto = Proto("avclan", "AVCLAN protocol")
 
-local known_devices_names = {
-    ["LAN"] = 0x00,
-    ["COMM_CTRL"] = 0x01,
-    ["COMMUNICATION v1"] = 0x11,
-    ["COMMUNICATION v2"] = 0x12,
-    ["SW"] = 0x21,
-    ["SW_NAME"] = 0x23,
-    ["SW_CONVERTING"] = 0x24,
-    ["CMD_SW"] = 0x25,
-    ["STATUS"] = 0x31,
-    ["BEEP_HU"] = 0x28,
-    ["BEEP_SPEAKERS"] = 0x29,
-    ["FRONT_PSNG_MONITOR"] = 0x34,
-    ["CD_CHANGER2"] = 0x43,
-    ["BLUETOOTH_TEL"] = 0x55,
-    ["INFO_DRAWING"] = 0x56,
-    ["NAV_ECU"] = 0x58,
-    ["CAMERA"] = 0x5C,
-    ["CLIMATE_DRAWING"] = 0x5D,
-    ["AUDIO_DRAWING"] = 0x5E,
-    ["TRIP_INFO_DRAWING"] = 0x5F,
-    ["TUNER"] = 0x60,
-    ["TAPE_DECK"] = 0x61,
-    ["CD"] = 0x62,
-    ["CD_CHANGER"] = 0x63,
-    ["AUDIO_AMP"] = 0x74,
-    ["GPS"] = 0x80,
-    ["VOICE_CTRL"] = 0x85,
-    ["CLIMATE_CTRL_DEV"] = 0xE0,
-    ["TRIP_INFO"] = 0xE5,
-}
+-- Build a reverse {value = key} lookup from a {key = value} table. Lets us keep
+-- a single source-of-truth value->name table (also used as the ProtoField
+-- valuestring) and derive the name->value lookup instead of hand-maintaining two.
+local function invert(t)
+    local r = {}
+    for k, v in pairs(t) do
+        r[v] = k
+    end
+    return r
+end
 
 local known_devices = {
     [0x00] = "LAN",
@@ -158,84 +137,12 @@ local known_devices = {
     [0xE0] = "CLIMATE_CTRL_DEV",
     [0xE5] = "TRIP_INFO",
 }
+local known_devices_names = invert(known_devices)
 
 local f_from_device = ProtoField.uint8("avclan.from_device", "From device", base.HEX, known_devices)
 local f_to_device = ProtoField.uint8("avclan.to_device", "To device", base.HEX, known_devices)
 local f_active_device = ProtoField.uint8("avclan.active_device", "Active device", base.HEX, known_devices)
 
-local known_actions_names = {
-    -- LAN related
-    ["LIST_FUNCTIONS_REQ"] = 0x00,
-    ["LIST_FUNCTIONS_RESP"] = 0x10,
-    ["RESTART_LAN"] = 0x01,
-    ["LANCHECK_END_REQ"] = 0x08,
-    ["LANCHECK_END_RESP"] = 0x18,
-    ["LANCHECK_SCAN_REQ"] = 0x0a,
-    ["LANCHECK_SCAN_RESP"] = 0x1a,
-    ["LANCHECK_REQ"] = 0x0c,
-    ["LANCHECK_RESP"] = 0x1c,
-    ["PING_REQ"] = 0x20,
-    ["PING_RESP"] = 0x30,
-
-    -- Device switching
-    ["DISABLE_FUNCTION_REQ"] = 0x43,
-    ["DISABLE_FUNCTION_RESP"] = 0x53,
-    ["ENABLE_FUNCTION_REQ"] = 0x42,
-    ["ENABLE_FUNCTION_RESP"] = 0x52,
-
-    -- ADVERTISE_FUNCTION is named Current_Function in src/avclandrv.h
-    ["ADVERTISE_FUNCTION"] = 0x45,
-    ["GENERAL_QUERY"] = 0x46,
-
-    ["SCREEN_PRESS"] = 0x78,
-    ["BEEP"] = 0x60, 
-
-    -- Physical interface
-    ["BACKLIGHT_ADJUST"] = 0x59,
-    ["EJECT"] = 0x80,
-    ["DISC_UP"] = 0x90,
-    ["DISC_DOWN"] = 0x91,
-    ["PWRVOL_KNOB_RIGHTHAND_TURN"] = 0x9c,
-    ["PWRVOL_KNOB_LEFTHAND_TURN"] = 0x9d,
-    ["TRACK_SEEK_UP"] = 0x94,
-    ["TRACK_SEEK_DOWN"] = 0x95,
-    ["TRACK_FAST_FORWARD"] = 0x98,
-    ["TRACK_REWIND"] = 0x99,
-    ["CD_ENABLE_SCAN"] = 0xa6,
-    ["CD_DISABLE_SCAN"] = 0xa7,
-    ["CD_ENABLE_DISK_SCAN"] = 0xa9,
-    ["CD_DISABLE_DISK_SCAN"] = 0xaa,
-    ["CD_ENABLE_REPEAT"] = 0xa0,
-    ["CD_DISABLE_REPEAT"] = 0xa1,
-    ["CD_ENABLE_DISK_REPEAT"] = 0xa3,
-    ["CD_DISABLE_DISK_REPEAT"] = 0xa4,
-    ["CD_ENABLE_RANDOM"] = 0xb0,
-    ["CD_DISABLE_RANDOM"] = 0xb1,
-    ["CD_ENABLE_DISK_RANDOM"] = 0xb3,
-    ["CD_DISABLE_DISK_RANDOM"] = 0xb4,
-
-    ["TAPE_NOT_READY"] = 0x9f, -- Uncertain guess by @marcin
-
-    -- CD functions
-    -- Events
-    ["INSERTION"] = 0x50,
-    ["EJECTION"] = 0x51,
-
-    -- Requests
-    ["INITIAL_REPORT_REQUEST"] = 0xe0,
-    ["PLAYBACK_REQUEST"] = 0xe2,
-    ["LOADING_REQUEST2"] = 0xe4,
-    ["REQUEST_TRACK_NAME"] = 0xed,
-
-    -- Reports
-    ["INITIAL_REPORT_RESPONSE"] = 0xf0,
-    ["STATUS_REPORT"] = 0xf1,
-    ["PLAYBACK_REPORT"] = 0xf2,
-    ["LOADING_STATUS_REPORT"] = 0xf3,
-    ["LOADING_RESPONSE2"] = 0xf4,
-    ["REPORT_TOC"] = 0xf9,
-    ["REPORT_TRACK_NAME"] = 0xfd,
-}
 local known_actions = {
     -- LAN related
     [0x00] = "LIST_FUNCTIONS_REQ",
@@ -308,6 +215,7 @@ local known_actions = {
     [0xf9] = "REPORT_TOC",
     [0xfd] = "REPORT_TRACK_NAME",
 }
+local known_actions_names = invert(known_actions)
 
 local f_action = ProtoField.uint8("avclan.action", "Action", base.HEX, known_actions)
 local f_functions = ProtoField.bytes("avclan.functions", "Functions", base.SPACE, "Device functions")
@@ -523,6 +431,289 @@ local function mark_undecoded(tree, range)
     tree:add(range, "Undecoded bytes"):add_proto_expert_info(pe_unhandled_msg)
 end
 
+-- ---------------------------------------------------------------------------
+-- Per-message decoders.
+--
+-- Each decoder receives the message `subtree`, the `buffer`, and `offset` (the
+-- index of the `from` byte, accounting for the leading 0x00 on unicast frames).
+-- Device-state decoders also receive the resolved `action`. The dissector body
+-- below is just a router that selects one of these based on from/to/action,
+-- preserving the historical precedence order.
+-- ---------------------------------------------------------------------------
+
+-- CMD_SW source. Sub-commands to the amplifier (actions 0x90-0x95) set a
+-- tone/level control; these codes collide with physical-interface actions, so
+-- the CMD_SW -> AUDIO_AMP device pair disambiguates them.
+local function decode_cmd_sw(subtree, buffer, offset, to_device)
+    subtree:add(f_action, buffer(offset+2,1))
+    local action = field_action().value
+    if to_device == known_devices_names["AUDIO_AMP"] then
+        local amptree = subtree:add(avclanproto, buffer(offset+2,-1), "Device: Audio amplifier control")
+        local param = buffer(offset+3,1)
+        if action == 0x90 then -- VOLUME (BCD)
+            local vol_raw = param:uint()
+            local vol_bcd = bit.rshift(vol_raw, 4) * 10 + bit.band(vol_raw, 0x0F)
+            amptree:add(f_amp_volume, param, vol_bcd):append_text(" (VOLUME)")
+        elseif action == 0x91 then
+            amptree:add(f_amp_balance, param)
+        elseif action == 0x92 then
+            amptree:add(f_amp_fade, param)
+        elseif action == 0x93 then
+            amptree:add(f_amp_bass, param)
+        elseif action == 0x94 then
+            amptree:add(f_amp_mid, param)
+        elseif action == 0x95 then
+            amptree:add(f_amp_treble, param)
+        end
+    end
+end
+
+-- COMMUNICATION v1/v2 source.
+local function decode_from_comm(subtree, buffer, offset, to_device)
+    if to_device == known_devices_names["COMM_CTRL"] then
+        subtree:add(f_action, buffer(offset+2,1))
+        local action = field_action().value
+        if action == known_actions_names["ADVERTISE_FUNCTION"] then
+            subtree:add(f_active_device, buffer(offset+3,1))
+        elseif action == known_actions_names["PING_REQ"] then
+            subtree:add(f_ping_count, buffer(offset+3,1))
+            subtree:add_proto_expert_info(pe_ping_req, "Ping request " .. buffer(offset+3,1):uint())
+        elseif known_actions[action] then
+        else
+            subtree:add_proto_expert_info(pe_unhandled_msg)
+        end
+    else
+        -- Control actions addressed to a peripheral rather than COMM_CTRL, e.g.
+        -- function enable/disable (COMM_v1/v2 -> CD_CHANGER, 0x42/0x43). These
+        -- are understood apart from a trailing 0x01 of unknown meaning.
+        subtree:add(f_action, buffer(offset+2,1))
+    end
+end
+
+-- COMM_CTRL source.
+local function decode_from_commctrl(subtree, buffer, offset, to_device)
+    if to_device == known_devices_names["COMMUNICATION v1"] or
+    to_device == known_devices_names["COMMUNICATION v2"] then
+        local action_tree = subtree:add(f_action, buffer(offset+2,1))
+        local action = field_action().value
+        if action == known_actions_names["PING_RESP"] then
+            subtree:add(f_ping_count, buffer(offset+3,1))
+            subtree:add_proto_expert_info(pe_ping_resp, "Ping response " .. buffer(offset+3,1):uint())
+        elseif action == known_actions_names["LIST_FUNCTIONS_RESP"] then
+            local functions = action_tree:add(f_functions, buffer(offset+3))
+            functions:append_text(" (")
+            for v = 0,(buffer:bytes(offset+3)):len()-1 do
+                if known_devices[buffer(offset+3+v,1):uint()] then
+                    functions:append_text(" " .. known_devices[buffer(offset+3+v,1):uint()])
+                else
+                    functions:append_text(" UNKNOWN_DEVICE")
+                end
+            end
+            functions:append_text(" ) ")
+        elseif known_actions[action] then
+        else
+            subtree:add_proto_expert_info(pe_unhandled_msg)
+        end
+    elseif to_device == known_devices_names["COMM_CTRL"] then
+        local action_tree = subtree:add(f_action, buffer(offset+2,1))
+        local action = field_action().value
+        if action == known_actions_names["BACKLIGHT_ADJUST"] then
+            local backlight = subtree:add(f_backlight, buffer(offset+3,1))
+            backlight:append_text(" (" .. math.floor(100*(63 - buffer(offset+3,1):uint())/63) .. ")")
+        end
+    elseif to_device == known_actions_names["LANCHECK_SCAN_REQ"] or
+        to_device == known_actions_names["LANCHECK_REQ"] or
+        to_device == known_actions_names["LANCHECK_END_REQ"] then
+        subtree:add(f_action, buffer(offset+1,1))
+    elseif to_device == 0x00 then
+        subtree:add(f_action, buffer(offset+2,1))
+    else
+        subtree:add_proto_expert_info(pe_unhandled_msg)
+    end
+end
+
+-- Beep request (any source -> BEEP_SPEAKERS), action 0x60 with a duration byte.
+local function decode_beep(subtree, buffer, offset)
+    subtree:add(f_action, buffer(offset+2,1))
+    local action = field_action().value
+    if action == known_actions_names["BEEP"] then
+        subtree:add(f_beep_duration, buffer(offset+3,1))
+    else
+        subtree:add_proto_expert_info(pe_unhandled_msg)
+    end
+end
+
+-- TUNER source: radio state dump (regardless of action).
+local function decode_radio(subtree, buffer, offset, action)
+    local radiotree = subtree:add(avclanproto, buffer(offset,10), "Device: Radio")
+    radiotree:add_le(f_radio_active, buffer(offset+3,1))
+    radiotree:add_le(f_radio_status, buffer(offset+4,1))
+    radiotree:add_le(f_radio_band, buffer(offset+5,1))
+    radiotree:add(f_radio_bandnumber, buffer(offset+5,1))
+    local freqtree = radiotree:add(f_radio_freq, buffer(offset+6,2))
+    local radio_band = buffer(offset+5,1):uint()
+    local freq = field_radio_freq().value
+    if bit.band(radio_band, 0xF0) == 0x80 then
+        freqtree:append_text(" (" .. 87.5+(freq-1)*.05 .. " MHz)")
+    elseif bit.band(radio_band, 0xF0) == 0xC0 then
+        freqtree:append_text(" (" .. 153+(freq-1)*1 .. " kHz)")
+    elseif bit.band(radio_band, 0xF0) == 0x00 then
+        freqtree:append_text(" (" .. 522+(freq-1)*9 .. " kHz)")
+    end
+
+    local flags = radiotree:add(f_radio_flags, buffer(15,1))
+    flags:add(f_radioflag_st, buffer(15,1))
+    flags:add(f_radioflag_ta, buffer(15,1))
+    flags:add(f_radioflag_reg, buffer(15,1))
+    flags:add(f_radioflag_af, buffer(15,1))
+    radiotree:add(f_radio_flags2, buffer(16,1))
+end
+
+-- AUDIO_AMP source: amplifier state dump (regardless of action).
+local function decode_amp(subtree, buffer, offset, action)
+    local amptree = subtree:add(avclanproto, buffer(offset,10), "Device: Audio amplifier")
+
+    local vol_raw = buffer(offset+4,1):uint()
+    local vol_bcd = bit.rshift(vol_raw, 4) * 10 + bit.band(vol_raw, 0x0F)
+    amptree:add(f_amp_volume, buffer(offset+4,1), vol_bcd)
+    amptree:add(f_amp_balance, buffer(offset+5,1))
+    amptree:add(f_amp_fade, buffer(offset+6,1))
+    amptree:add(f_amp_bass, buffer(offset+7,1))
+    amptree:add(f_amp_mid, buffer(offset+8,1))
+    amptree:add(f_amp_treble, buffer(offset+9,1))
+end
+
+-- CD / CD_CHANGER source: payload depends on the report action.
+local function decode_cd(subtree, buffer, offset, action)
+    if action == known_actions_names["STATUS_REPORT"] or
+        action == known_actions_names["PLAYBACK_REPORT"] then
+        local cdtree = subtree:add(avclanproto, buffer(offset,9), "Device: CD player")
+        local cd_slots = cdtree:add(f_cd_slots, buffer(offset+3,1))
+        cd_slots:add(f_cd_slot1, buffer(offset+3,1))
+        cd_slots:add(f_cd_slot2, buffer(offset+3,1))
+        cd_slots:add(f_cd_slot3, buffer(offset+3,1))
+        cd_slots:add(f_cd_slot4, buffer(offset+3,1))
+        cd_slots:add(f_cd_slot5, buffer(offset+3,1))
+        cd_slots:add(f_cd_slot6, buffer(offset+3,1))
+
+        local cd_state = cdtree:add(f_cd_state, buffer(offset+4,1))
+        cd_state:add(f_cd_open, buffer(offset+4,1))
+        cd_state:add(f_cd_err1, buffer(offset+4,1))
+        cd_state:add(f_cd_seeking, buffer(offset+4,1))
+        cd_state:add(f_cd_playback, buffer(offset+4,1))
+        cd_state:add(f_cd_seeking_track, buffer(offset+4,1))
+        cd_state:add(f_cd_loading, buffer(offset+4,1))
+        local cd_status = cdtree:add(avclanproto, buffer(offset+5,-1), "")
+        cd_status:add(f_cd_disc, buffer(offset+5,1))
+        cd_status:add(f_cd_track, buffer(offset+6,1))
+        cd_status:add(f_cd_min, buffer(offset+7,1))
+        cd_status:add(f_cd_sec, buffer(offset+8,1))
+        cd_status:append_text("Disc " .. field_cd_disc().value .. ", ")
+        cd_status:append_text("track " .. tostring(buffer(offset+6,1)):gsub("(.)(.)", "%1%2") .. ", ")
+        cd_status:append_text("time " .. tostring(buffer(offset+7,1)):gsub("0x(.)(.)", "%1%2") .. ":")
+        cd_status:append_text(tostring(buffer(offset+8,1)):gsub("(.)(.)", "%1%2"))
+        local cd_flags = cdtree:add(f_cd_flags, buffer(offset+9,1))
+        cd_flags:add(f_cd_flag_disk_random, buffer(offset+9,1))
+        cd_flags:add(f_cd_flag_random, buffer(offset+9,1))
+        cd_flags:add(f_cd_flag_disk_repeat, buffer(offset+9,1))
+        cd_flags:add(f_cd_flag_repeat, buffer(offset+9,1))
+        cd_flags:add(f_cd_flag_disk_scan, buffer(offset+9,1))
+        cd_flags:add(f_cd_flag_scan, buffer(offset+9,1))
+    elseif action == known_actions_names["LOADING_STATUS_REPORT"] or
+        action == known_actions_names["LOADING_RESPONSE2"] then
+        local cdtree = subtree:add(avclanproto, buffer(offset,9), "Device: CD player")
+        local available_slots = cdtree:add(f_cd_slots, buffer(offset+4,1))
+        available_slots:add(f_cd_slot1, buffer(offset+4,1))
+        available_slots:add(f_cd_slot2, buffer(offset+4,1))
+        available_slots:add(f_cd_slot3, buffer(offset+4,1))
+        available_slots:add(f_cd_slot4, buffer(offset+4,1))
+        available_slots:add(f_cd_slot5, buffer(offset+4,1))
+        available_slots:add(f_cd_slot6, buffer(offset+4,1))
+
+        local occupied_slots = cdtree:add(f_cd_slots, buffer(offset+6,1))
+        occupied_slots:add(f_cd_slot1, buffer(offset+6,1))
+        occupied_slots:add(f_cd_slot2, buffer(offset+6,1))
+        occupied_slots:add(f_cd_slot3, buffer(offset+6,1))
+        occupied_slots:add(f_cd_slot4, buffer(offset+6,1))
+        occupied_slots:add(f_cd_slot5, buffer(offset+6,1))
+        occupied_slots:add(f_cd_slot6, buffer(offset+6,1))
+
+        local redundant_slots = cdtree:add(f_cd_slots, buffer(offset+8,1))
+        redundant_slots:add(f_cd_slot1, buffer(offset+8,1))
+        redundant_slots:add(f_cd_slot2, buffer(offset+8,1))
+        redundant_slots:add(f_cd_slot3, buffer(offset+8,1))
+        redundant_slots:add(f_cd_slot4, buffer(offset+8,1))
+        redundant_slots:add(f_cd_slot5, buffer(offset+8,1))
+        redundant_slots:add(f_cd_slot6, buffer(offset+8,1))
+
+        local cd_state = cdtree:add(f_cd_state, buffer(offset+9,1))
+        cd_state:add(f_cd_open, buffer(offset+9,1))
+        cd_state:add(f_cd_err1, buffer(offset+9,1))
+        cd_state:add(f_cd_seeking, buffer(offset+9,1))
+        cd_state:add(f_cd_playback, buffer(offset+9,1))
+        cd_state:add(f_cd_seeking_track, buffer(offset+9,1))
+        cd_state:add(f_cd_loading, buffer(offset+9,1))
+    elseif action == known_actions_names["ENABLE_FUNCTION_RESP"] or
+        action == known_actions_names["DISABLE_FUNCTION_RESP"] then
+        -- Understood apart from a trailing 0x01 of unknown meaning; not flagged.
+    elseif buffer:len() > offset+3 then
+        -- Recognized CD action (initial report 0xf0, TOC 0xf9, track name
+        -- 0xfd, ...) whose payload layout isn't understood yet. Flag just the
+        -- undecoded bytes, not the whole (correctly-named) message.
+        mark_undecoded(subtree, buffer(offset+3))
+    end
+end
+
+-- TAPE_DECK source: tape state dump on STATUS_REPORT.
+local function decode_tape(subtree, buffer, offset, action)
+    if action == known_actions_names["STATUS_REPORT"] then
+        local tapetree = subtree:add(avclanproto, buffer(offset,4), "Device: Tape deck")
+        tapetree:add(f_tape_present, buffer(offset+3,1))
+
+        local tape_state = tapetree:add(f_tape_state, buffer(offset+4,1))
+        tape_state:add(f_tape_seeking_rev, buffer(offset+4,1))
+        tape_state:add(f_tape_err1, buffer(offset+4,1))
+        tape_state:add(f_tape_playback, buffer(offset+4,1))
+        tape_state:add(f_tape_seeking, buffer(offset+4,1))
+        tape_state:add(f_tape_state1, buffer(offset+4,1))
+        tape_state:add(f_tape_random, buffer(offset+4,1))
+
+        local tape_flags = tapetree:add(f_tape_flags, buffer(offset+5,2))
+        tape_flags:add(f_tape_stereo, buffer(offset+5,2))
+        tape_flags:add(f_tape_dolby, buffer(offset+5,2))
+        tape_flags:add(f_tape_flag1, buffer(offset+5,2))
+        tape_flags:add(f_tape_flag2, buffer(offset+5,2))
+        tape_flags:add(f_tape_flag3, buffer(offset+5,2))
+        tape_flags:add(f_tape_flag4, buffer(offset+5,2))
+    end
+end
+
+-- SW source: touch-screen press (action 0x78) with x,y position pairs.
+local function decode_touch(subtree, buffer, offset, action)
+    if action == known_actions_names["SCREEN_PRESS"] then
+        subtree:add(f_touch_x, buffer(offset+3,1))
+        subtree:add(f_touch_y, buffer(offset+4,1))
+        if buffer:len() > offset+6 then
+            subtree:add(f_touch_x, buffer(offset+5,1)):append_text(" (2)")
+            subtree:add(f_touch_y, buffer(offset+6,1)):append_text(" (2)")
+        end
+    else
+        subtree:add_proto_expert_info(pe_unhandled_msg)
+    end
+end
+
+-- Device-state report decoders, keyed by the originating device. For these,
+-- the from_device determines the payload format; the action (passed through)
+-- only matters within CD/tape/touch.
+local device_decoders = {
+    [known_devices_names["TUNER"]]      = decode_radio,
+    [known_devices_names["AUDIO_AMP"]]  = decode_amp,
+    [known_devices_names["CD"]]         = decode_cd,
+    [known_devices_names["CD_CHANGER"]] = decode_cd,
+    [known_devices_names["TAPE_DECK"]]  = decode_tape,
+    [known_devices_names["SW"]]         = decode_touch,
+}
+
 function avclanproto.dissector(buffer, pinfo, tree)
     local length = buffer:len()
     if length == 0 then
@@ -532,262 +723,33 @@ function avclanproto.dissector(buffer, pinfo, tree)
     iebusproto.dissector(buffer, pinfo, tree)
 
     local subtree = tree:add(avclanproto, buffer(7,-1), "AVCLAN message")
+    -- Unicast device-to-device frames carry a leading 0x00 before the from/to
+    -- bytes; skip it so `offset` always points at the `from` byte.
     local offset = 7
     if buffer(7,1):uint() == 0 then
         offset = 8
-        subtree:add(f_from_device, buffer(offset+0,1))
-        subtree:add(f_to_device, buffer(offset+1,1))
-    else
-        subtree:add(f_from_device, buffer(offset+0,1))
-        subtree:add(f_to_device, buffer(offset+1,1))
     end
+    subtree:add(f_from_device, buffer(offset+0,1))
+    subtree:add(f_to_device, buffer(offset+1,1))
 
     local from_device = field_from_device().value
     local to_device = field_to_device().value
 
     if from_device == known_devices_names["CMD_SW"] then
-        subtree:add(f_action, buffer(offset+2,1))
-        local action = field_action().value
-        if to_device == known_devices_names["AUDIO_AMP"] then
-            local amptree = subtree:add(avclanproto, buffer(offset+2,-1), "Device: Audio amplifier control")
-            local param = buffer(offset+3,1)
-            if action == 0x90 then -- VOLUME (BCD)
-                local vol_raw = param:uint()
-                local vol_bcd = bit.rshift(vol_raw, 4) * 10 + bit.band(vol_raw, 0x0F)
-                amptree:add(f_amp_volume, param, vol_bcd):append_text(" (VOLUME)")
-            elseif action == 0x91 then
-                amptree:add(f_amp_balance, param)
-            elseif action == 0x92 then
-                amptree:add(f_amp_fade, param)
-            elseif action == 0x93 then
-                amptree:add(f_amp_bass, param)
-            elseif action == 0x94 then
-                amptree:add(f_amp_mid, param)
-            elseif action == 0x95 then
-                amptree:add(f_amp_treble, param)
-            end
-        end
+        decode_cmd_sw(subtree, buffer, offset, to_device)
     elseif from_device == known_devices_names["COMMUNICATION v1"] or
       from_device == known_devices_names["COMMUNICATION v2"] then
-        if to_device == known_devices_names["COMM_CTRL"] then
-            subtree:add(f_action, buffer(offset+2,1))
-            local action = field_action().value
-            if action == known_actions_names["ADVERTISE_FUNCTION"] then
-                subtree:add(f_active_device, buffer(offset+3,1))
-            elseif action == known_actions_names["PING_REQ"] then
-                subtree:add(f_ping_count, buffer(offset+3,1))
-                subtree:add_proto_expert_info(pe_ping_req, "Ping request " .. buffer(offset+3,1):uint())
-            elseif known_actions[action] then
-            else
-                subtree:add_proto_expert_info(pe_unhandled_msg)
-            end
-        else
-            subtree:add(f_action, buffer(offset+2,1))
-        end
+        decode_from_comm(subtree, buffer, offset, to_device)
     elseif from_device == known_devices_names["COMM_CTRL"] then
-        if to_device == known_devices_names["COMMUNICATION v1"] or
-        to_device == known_devices_names["COMMUNICATION v2"] then
-            local action_tree = subtree:add(f_action, buffer(offset+2,1))
-            local action = field_action().value
-            if action == known_actions_names["PING_RESP"] then
-                subtree:add(f_ping_count, buffer(offset+3,1))
-                subtree:add_proto_expert_info(pe_ping_resp, "Ping response " .. buffer(offset+3,1):uint())
-            elseif action == known_actions_names["LIST_FUNCTIONS_RESP"] then
-                local functions = action_tree:add(f_functions, buffer(offset+3))
-                functions:append_text(" (")
-                for v = 0,(buffer:bytes(offset+3)):len()-1 do
-                    if known_devices[buffer(offset+3+v,1):uint()] then
-                        functions:append_text(" " .. known_devices[buffer(offset+3+v,1):uint()])
-                    else
-                        functions:append_text(" UNKNOWN_DEVICE")
-                    end
-                end
-                functions:append_text(" ) ")
-            elseif known_actions[action] then
-            else
-                subtree:add_proto_expert_info(pe_unhandled_msg)
-            end
-        elseif to_device == known_devices_names["COMM_CTRL"] then
-            local action_tree = subtree:add(f_action, buffer(offset+2,1))
-            local action = field_action().value
-            if action == known_actions_names["BACKLIGHT_ADJUST"] then
-                local backlight = subtree:add(f_backlight, buffer(offset+3,1))
-                backlight:append_text(" (" .. math.floor(100*(63 - buffer(offset+3,1):uint())/63) .. ")")
-            end
-        elseif to_device == known_actions_names["LANCHECK_SCAN_REQ"] or
-            to_device == known_actions_names["LANCHECK_REQ"] or
-            to_device == known_actions_names["LANCHECK_END_REQ"] then
-            subtree:add(f_action, buffer(offset+1,1))
-        elseif to_device == 0x00 then
-            subtree:add(f_action, buffer(offset+2,1))
-        else
-            subtree:add_proto_expert_info(pe_unhandled_msg)
-        end
+        decode_from_commctrl(subtree, buffer, offset, to_device)
     elseif to_device == known_devices_names["BEEP_SPEAKERS"] then
-        subtree:add(f_action, buffer(offset+2,1))
-        local action = field_action().value
-        if action == known_actions_names["BEEP"] then
-            subtree:add(f_beep_duration, buffer(offset+3,1))
-        else
-            subtree:add_proto_expert_info(pe_unhandled_msg)
-        end
+        decode_beep(subtree, buffer, offset)
     elseif from_device == known_devices_names["STATUS"] and
         known_devices[to_device] ~= nil then
         subtree:add(f_action, buffer(offset+2,1))
-    elseif from_device == known_devices_names["TUNER"] then
+    elseif device_decoders[from_device] then
         subtree:add(f_action, buffer(offset+2,1))
-        local radiotree = subtree:add(avclanproto, buffer(offset,10), "Device: Radio")
-        radiotree:add_le(f_radio_active, buffer(offset+3,1))
-        radiotree:add_le(f_radio_status, buffer(offset+4,1))
-        radiotree:add_le(f_radio_band, buffer(offset+5,1))
-        radiotree:add(f_radio_bandnumber, buffer(offset+5,1))
-        local freqtree = radiotree:add(f_radio_freq, buffer(offset+6,2))
-        local radio_band = buffer(offset+5,1):uint()
-        local freq = field_radio_freq().value
-        if bit.band(radio_band, 0xF0) == 0x80 then
-            freqtree:append_text(" (" .. 87.5+(freq-1)*.05 .. " MHz)")
-        elseif bit.band(radio_band, 0xF0) == 0xC0 then
-            freqtree:append_text(" (" .. 153+(freq-1)*1 .. " kHz)")
-        elseif bit.band(radio_band, 0xF0) == 0x00 then
-            freqtree:append_text(" (" .. 522+(freq-1)*9 .. " kHz)")
-        end
-
-        local flags = radiotree:add(f_radio_flags, buffer(15,1))
-        flags:add(f_radioflag_st, buffer(15,1))
-        flags:add(f_radioflag_ta, buffer(15,1))
-        flags:add(f_radioflag_reg, buffer(15,1))
-        flags:add(f_radioflag_af, buffer(15,1))
-        radiotree:add(f_radio_flags2, buffer(16,1))
-    elseif from_device == known_devices_names["AUDIO_AMP"] then
-        subtree:add(f_action, buffer(offset+2,1))
-        local amptree = subtree:add(avclanproto, buffer(offset,10), "Device: Audio amplifier")
-        
-        local vol_raw = buffer(offset+4,1):uint()
-        local vol_bcd = bit.rshift(vol_raw, 4) * 10 + bit.band(vol_raw, 0x0F)
-        amptree:add(f_amp_volume, buffer(offset+4,1), vol_bcd)
-        amptree:add(f_amp_balance, buffer(offset+5,1))
-        amptree:add(f_amp_fade, buffer(offset+6,1))
-        amptree:add(f_amp_bass, buffer(offset+7,1))
-        amptree:add(f_amp_mid, buffer(offset+8,1))
-        amptree:add(f_amp_treble, buffer(offset+9,1))
-    elseif from_device == known_devices_names["CD"] or
-      from_device == known_devices_names["CD_CHANGER"] then
-        subtree:add(f_action, buffer(offset+2,1))
-        local action = field_action().value
-
-        if action == known_actions_names["STATUS_REPORT"] or
-            action == known_actions_names["PLAYBACK_REPORT"] then
-            local cdtree = subtree:add(avclanproto, buffer(offset,9), "Device: CD player")
-            local cd_slots = cdtree:add(f_cd_slots, buffer(offset+3,1))
-            cd_slots:add(f_cd_slot1, buffer(offset+3,1))
-            cd_slots:add(f_cd_slot2, buffer(offset+3,1))
-            cd_slots:add(f_cd_slot3, buffer(offset+3,1))
-            cd_slots:add(f_cd_slot4, buffer(offset+3,1))
-            cd_slots:add(f_cd_slot5, buffer(offset+3,1))
-            cd_slots:add(f_cd_slot6, buffer(offset+3,1))
-    
-            local cd_state = cdtree:add(f_cd_state, buffer(offset+4,1))
-            cd_state:add(f_cd_open, buffer(offset+4,1))
-            cd_state:add(f_cd_err1, buffer(offset+4,1))
-            cd_state:add(f_cd_seeking, buffer(offset+4,1))
-            cd_state:add(f_cd_playback, buffer(offset+4,1))
-            cd_state:add(f_cd_seeking_track, buffer(offset+4,1))
-            cd_state:add(f_cd_loading, buffer(offset+4,1))
-            local cd_status = cdtree:add(avclanproto, buffer(offset+5,-1), "")
-            cd_status:add(f_cd_disc, buffer(offset+5,1))
-            cd_status:add(f_cd_track, buffer(offset+6,1))
-            cd_status:add(f_cd_min, buffer(offset+7,1))
-            cd_status:add(f_cd_sec, buffer(offset+8,1))
-            cd_status:append_text("Disc " .. field_cd_disc().value .. ", ")
-            cd_status:append_text("track " .. tostring(buffer(offset+6,1)):gsub("(.)(.)", "%1%2") .. ", ")
-            cd_status:append_text("time " .. tostring(buffer(offset+7,1)):gsub("0x(.)(.)", "%1%2") .. ":")
-            cd_status:append_text(tostring(buffer(offset+8,1)):gsub("(.)(.)", "%1%2"))
-            local cd_flags = cdtree:add(f_cd_flags, buffer(offset+9,1))
-            cd_flags:add(f_cd_flag_disk_random, buffer(offset+9,1))
-            cd_flags:add(f_cd_flag_random, buffer(offset+9,1))
-            cd_flags:add(f_cd_flag_disk_repeat, buffer(offset+9,1))
-            cd_flags:add(f_cd_flag_repeat, buffer(offset+9,1))
-            cd_flags:add(f_cd_flag_disk_scan, buffer(offset+9,1))
-            cd_flags:add(f_cd_flag_scan, buffer(offset+9,1))
-        elseif action == known_actions_names["LOADING_STATUS_REPORT"] or
-            action == known_actions_names["LOADING_RESPONSE2"] then
-            local cdtree = subtree:add(avclanproto, buffer(offset,9), "Device: CD player")
-            local available_slots = cdtree:add(f_cd_slots, buffer(offset+4,1))
-            available_slots:add(f_cd_slot1, buffer(offset+4,1))
-            available_slots:add(f_cd_slot2, buffer(offset+4,1))
-            available_slots:add(f_cd_slot3, buffer(offset+4,1))
-            available_slots:add(f_cd_slot4, buffer(offset+4,1))
-            available_slots:add(f_cd_slot5, buffer(offset+4,1))
-            available_slots:add(f_cd_slot6, buffer(offset+4,1))
-
-            local occupied_slots = cdtree:add(f_cd_slots, buffer(offset+6,1))
-            occupied_slots:add(f_cd_slot1, buffer(offset+6,1))
-            occupied_slots:add(f_cd_slot2, buffer(offset+6,1))
-            occupied_slots:add(f_cd_slot3, buffer(offset+6,1))
-            occupied_slots:add(f_cd_slot4, buffer(offset+6,1))
-            occupied_slots:add(f_cd_slot5, buffer(offset+6,1))
-            occupied_slots:add(f_cd_slot6, buffer(offset+6,1))
-
-            local redundant_slots = cdtree:add(f_cd_slots, buffer(offset+8,1))
-            redundant_slots:add(f_cd_slot1, buffer(offset+8,1))
-            redundant_slots:add(f_cd_slot2, buffer(offset+8,1))
-            redundant_slots:add(f_cd_slot3, buffer(offset+8,1))
-            redundant_slots:add(f_cd_slot4, buffer(offset+8,1))
-            redundant_slots:add(f_cd_slot5, buffer(offset+8,1))
-            redundant_slots:add(f_cd_slot6, buffer(offset+8,1))
-
-            local cd_state = cdtree:add(f_cd_state, buffer(offset+9,1))
-            cd_state:add(f_cd_open, buffer(offset+9,1))
-            cd_state:add(f_cd_err1, buffer(offset+9,1))
-            cd_state:add(f_cd_seeking, buffer(offset+9,1))
-            cd_state:add(f_cd_playback, buffer(offset+9,1))
-            cd_state:add(f_cd_seeking_track, buffer(offset+9,1))
-            cd_state:add(f_cd_loading, buffer(offset+9,1))
-        elseif action == known_actions_names["ENABLE_FUNCTION_RESP"] or
-            action == known_actions_names["DISABLE_FUNCTION_RESP"] then
-        elseif buffer:len() > offset+3 then
-            -- Recognized CD action (initial report 0xf0, TOC 0xf9, track name
-            -- 0xfd, ...) whose payload layout isn't understood yet. Flag just the
-            -- undecoded bytes, not the whole (correctly-named) message.
-            mark_undecoded(subtree, buffer(offset+3))
-        end
-    elseif from_device == known_devices_names["TAPE_DECK"] then
-        subtree:add(f_action, buffer(offset+2,1))
-        local action = field_action().value
-
-        if action == known_actions_names["STATUS_REPORT"] then
-            local tapetree = subtree:add(avclanproto, buffer(offset,4), "Device: Tape deck")
-            tapetree:add(f_tape_present, buffer(offset+3,1))
-
-            local tape_state = tapetree:add(f_tape_state, buffer(offset+4,1))
-            tape_state:add(f_tape_seeking_rev, buffer(offset+4,1))
-            tape_state:add(f_tape_err1, buffer(offset+4,1))
-            tape_state:add(f_tape_playback, buffer(offset+4,1))
-            tape_state:add(f_tape_seeking, buffer(offset+4,1))
-            tape_state:add(f_tape_state1, buffer(offset+4,1))
-            tape_state:add(f_tape_random, buffer(offset+4,1))
-
-            local tape_flags = tapetree:add(f_tape_flags, buffer(offset+5,2))
-            tape_flags:add(f_tape_stereo, buffer(offset+5,2))
-            tape_flags:add(f_tape_dolby, buffer(offset+5,2))
-            tape_flags:add(f_tape_flag1, buffer(offset+5,2))
-            tape_flags:add(f_tape_flag2, buffer(offset+5,2))
-            tape_flags:add(f_tape_flag3, buffer(offset+5,2))
-            tape_flags:add(f_tape_flag4, buffer(offset+5,2))
-        end
-    elseif from_device == known_devices_names["SW"] then
-        subtree:add(f_action, buffer(offset+2,1))
-        local action = field_action().value
-        if action == known_actions_names["SCREEN_PRESS"] then
-            subtree:add(f_touch_x, buffer(offset+3,1))
-            subtree:add(f_touch_y, buffer(offset+4,1))
-            if buffer:len() > offset+6 then
-                subtree:add(f_touch_x, buffer(offset+5,1)):append_text(" (2)")
-                subtree:add(f_touch_y, buffer(offset+6,1)):append_text(" (2)")
-            end
-        else
-            subtree:add_proto_expert_info(pe_unhandled_msg)
-        end
+        device_decoders[from_device](subtree, buffer, offset, field_action().value)
     else
         subtree:add_proto_expert_info(pe_unhandled_msg)
     end
