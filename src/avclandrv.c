@@ -976,6 +976,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
     // Unicast to CD changer: bytes are (0x00, from, to, action, [extra...]).
     switch (PACK3(b1, b2, b3)) {
       case PACK3(dev_COMM_v1, dev_CD_CHANGER, Enable_Function_Req):
+        [[fallthrough]];
       case PACK3(dev_COMM_v2, dev_CD_CHANGER, Enable_Function_Req):
         out->is_unicast = true;
         out->peripheral_addr = HU_ADDR;
@@ -988,6 +989,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         respond = r_StartPlaying;
         break;
       case PACK3(dev_COMM_v1, dev_CD_CHANGER, Disable_Function_Req):
+        [[fallthrough]];
       case PACK3(dev_COMM_v2, dev_CD_CHANGER, Disable_Function_Req):
         AVCLAN_stopPlaying();
         out->length = sizeof(function_change_resp);
@@ -1000,30 +1002,38 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         respond = r_StatusReport;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Initial_Report_Request):
+        [[fallthrough]];
       case PACK3(dev_STATUS, dev_CD_CHANGER, Initial_Report_Request):
-        out->length = sizeof(cdinitreport_resp);
-        memcpy(out->data, cdinitreport_resp, sizeof(cdinitreport_resp));
-        out->data[1] = b1; // respond to device that requested
+        out->data[0] = 0x00; // Add leading zero-byte for unicast comms
+        out->length = sizeof(cdinitreport_resp) + 1;
+        memcpy(&out->data[1], cdinitreport_resp, sizeof(cdinitreport_resp));
+        out->data[2] = b1; // respond to device that requested
         out->is_unicast = true;
         out->peripheral_addr = HU_ADDR;
+        respond = r_Handled;
         break;
-      case PACK3(dev_CMD_SW, dev_CD_CHANGER, Playback_Request):
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, Playback_Request): [[fallthrough]];
       case PACK3(dev_STATUS, dev_CD_CHANGER, Playback_Request):
-        out->data[1] = b1;
-        out->data[2] = Playback_Report;
-        out->length = sizeof(cdstatus_resp);
-        serializeCDStatus(&out->data[3]);
+        out->data[0] = 0x00;
+        out->data[1] = dev_CD_CHANGER;
+        out->data[2] = b1;
+        out->data[3] = Playback_Report;
+        out->length = sizeof(AVCLAN_CD_Status_t) + 4;
+        serializeCDStatus(&out->data[4]);
         out->is_unicast = true;
         out->peripheral_addr = HU_ADDR;
+        respond = r_Handled;
         break;
-      case PACK3(dev_CMD_SW, dev_CD_CHANGER, Loading_Request2):
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, Loading_Request2): [[fallthrough]];
       case PACK3(dev_STATUS, dev_CD_CHANGER, Loading_Request2):
-        out->length = sizeof(cdloading_resp);
-        memcpy(out->data, cdloading_resp, sizeof(cdloading_resp));
-        out->data[1] = b1;
-        out->data[2] = Loading_Response2;
+        out->data[0] = 0x00;
+        out->length = sizeof(cdloading_resp) + 1;
+        memcpy(&out->data[1], cdloading_resp, sizeof(cdloading_resp));
+        out->data[2] = b1;
+        out->data[3] = Loading_Response2;
         out->is_unicast = true;
         out->peripheral_addr = HU_ADDR;
+        respond = r_Handled;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Seek_Up):
         cd_status.state = cd_SEEKING_TRACK;
@@ -1222,6 +1232,10 @@ void AVCLAN_generateStatus(AVCLAN_frame_t *status) {
 
 void AVCLAN_normalizeState() {
   // if (cd_status.state != cd_PLAYBACK) {
+  if (cd_status.mins > 99)
+    cd_status.mins = 0;
+  if (cd_status.secs > 99)
+    cd_status.secs = 0;
   cd_status.state = cd_PLAYBACK;
   cd_status.flags &= (uint8_t)~(cd_DISK_SCAN | cd_SCAN);
   cd_status.flags2 = 0x80;
