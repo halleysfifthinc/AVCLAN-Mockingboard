@@ -162,7 +162,11 @@ static const uint8_t function_change_resp[] = {0x00, dev_CD_CHANGER,
    0x80}
 
 static const uint8_t cdstatus_resp[] = STATUS_REPORT_DATA;
+static_assert(sizeof(AVCLAN_CD_Status_t) + 3 == sizeof(cdstatus_resp),
+              "canned Status Report message doesn't match size of CD status "
+              "plus header bytes");
 
+// No knowledge/understanding of field meaning/interpretation
 static const uint8_t cdinitreport_resp[] = {
     dev_CD_CHANGER, dev_STATUS, Initial_Report_Response, 0x01, 0x31, 0x10,
     0x01,           0x01};
@@ -600,6 +604,10 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   while (!BUS_IS_IDLE) {
     startbitlen = TCB1.CNT;
     if (startbitlen > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
+      // hang until bus is idle to avoid repeated STARTBIT_TOO_LONG
+      // errors when the AC is stuck (observed when cycling car power and
+      // mockingboard is externally powered by serial/updi)
+      while (!BUS_IS_IDLE) {}
       err.errno = STARTBIT_TOO_LONG;
       goto handle_err;
     }
