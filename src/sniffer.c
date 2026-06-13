@@ -67,12 +67,12 @@ static uint8_t return_resp(RFrame_t *resp) {
   return err;
 }
 
-static uint8_t push_or_return_resp(RFrame_t *resp) {
-  uint8_t err = pushQueue(&outgoing, resp);
-  if (err)
-    return return_resp(resp);
-  else
-    return err;
+static void push_or_return_resp(RFrame_t *resp) {
+  // r_Nothing == don't respond/send; should never be added to outgoing
+  if (resp->r != r_Nothing && !pushQueue(&outgoing, resp))
+    return;
+
+  return_resp(resp);
 }
 
 static void toggle_flag(bool *flag, const char *msg) {
@@ -146,9 +146,10 @@ int main() {
 
     if (AVCLAN_frame_t *in = peekQueue(&incoming)) {
       if (AVCLAN_frame_t *out = popQueue(&cache)) {
+        incrementRead(&incoming); // successful out = pop cache; claim the
+                                  // peeked incoming
         response_t respond = AVCLAN_handleframe(in, out);
-        incrementRead(&incoming);
-        pushQueue(&cache, in);
+        pushQueue(&cache, in); // return in after use
 
         if (respond) {
           if (RFrame_t *resp = popQueue(&rcache)) {
@@ -167,31 +168,11 @@ int main() {
       AVCLAN_frame_t *out = resp->frame;
       err = AVCLAN_sendframe(
           out, (log_t){.print = printAllFrames, .binary = printBinary});
-      if (err) {
+      if (err || resp->r == r_Handled) {
         return_resp(resp);
       } else {
-        // Re-use successful resp for sequence
-        switch (resp->r) {
-          case r_TrackChange: AVCLAN_setTime(0x00, 0x00); // fallthrough
-          case r_NormalizeState:
-            AVCLAN_normalizeState();
-            AVCLAN_generateStatus(out);
-            resp->r = r_Handled;
-            push_or_return_resp(resp);
-            break;
-          case r_StartPlaying:
-            AVCLAN_generateStatus(out);
-            resp->r = r_NormalizeState;
-            push_or_return_resp(resp);
-            break;
-          case r_StatusReport:
-            AVCLAN_generateStatus(out);
-            resp->r = r_Handled;
-            push_or_return_resp(resp);
-            break;
-          case r_Nothing: __builtin_unreachable();
-          case r_Handled: return_resp(resp); break;
-        }
+        resp = AVCLAN_statemachine(resp);
+        push_or_return_resp(resp);
       }
     } else if (enqueueStatus) {
       AVCLAN_frame_t *status = AVCLAN_getStatusFrame();
@@ -386,8 +367,8 @@ void general_GPIO_init() {
                   PIN4_bm | // Unused, but connected to WOC (PC0)
                   PIN5_bm); // Unused, but connected to WOD (PC1)
 
-  // Enable pull-up resistor and disable input buffer (reduces any EM caused pin
-  // toggling and saves power) for unused and unconnected pins
+  // Enable pull-up resistor and disable input buffer (reduces any EM caused
+  // pin toggling and saves power) for unused and unconnected pins
   PORTC.PIN2CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
   PORTB.PIN0CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
 

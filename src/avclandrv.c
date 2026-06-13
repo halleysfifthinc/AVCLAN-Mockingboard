@@ -1045,6 +1045,30 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
 
 #undef PACK3
 
+RFrame_t *AVCLAN_statemachine(RFrame_t *resp) {
+  AVCLAN_frame_t *out = resp->frame;
+  switch (resp->r) {
+    case r_TrackChange: AVCLAN_setTime(0x00, 0x00); [[fallthrough]];
+    case r_NormalizeState:
+      AVCLAN_normalizeState();
+      AVCLAN_generateStatus(out);
+      resp->r = r_Handled;
+      break;
+    case r_StartPlaying:
+      AVCLAN_generateStatus(out);
+      resp->r = r_NormalizeState;
+      break;
+    case r_StatusReport:
+      AVCLAN_generateStatus(out);
+      resp->r = r_Handled;
+      break;
+    case r_Handled: [[fallthrough]];
+    case r_Nothing: [[fallthrough]];
+    default: resp->r = r_Nothing;
+  }
+  return resp;
+}
+
 uint8_t AVCLAN_tryrespond(const AVCLAN_frame_t *resp) {
   uint8_t r = 0;
   for (uint8_t i = 0; i < MAX_SEND_ATTEMPTS; i++) {

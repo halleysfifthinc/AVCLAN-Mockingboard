@@ -200,8 +200,9 @@ void AVCLAN_muteDevice(bool mute);
 uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print);
 response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out);
 uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print);
-uint8_t AVCLAN_tryrespond(const AVCLAN_frame_t *frame);
-void AVCLAN_printframe(const AVCLAN_frame_t *frame, uint8_t binary);
+RFrame_t *AVCLAN_statemachine(RFrame_t *resp);
+// uint8_t AVCLAN_tryrespond(const AVCLAN_frame_t *frame);
+void AVCLAN_printframe(const AVCLAN_frame_t *frame, bool binary);
 uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
                           AVCLAN_frame_t *frame);
 AVCLAN_frame_t *AVCLAN_getStatusFrame();
