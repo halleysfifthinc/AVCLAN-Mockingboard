@@ -20,9 +20,77 @@
 
 local iebusproto = Proto("iebus", "IEBus protocol")
 
-local f_unicast = ProtoField.bool("iebus.unicast", "Unicast", base.NONE, { [1] = "false", [2] = "true" })
-local f_controller_addr = ProtoField.uint16("iebus.controller", "Controller address", base.HEX, nil, 0x0FFF)
-local f_peripheral_addr = ProtoField.uint16("iebus.peripheral", "Peripheral address", base.HEX, nil, 0x0FFF)
+-- 12-bit IEBus network (bus) addresses. Sourced from the ADDR_* table in
+-- GadgetNutt/AVC-LAN-Module-Builder (src/avclan-registers.h).
+local known_addresses = {
+    [0x178] = "NAV_W_CONTROLS",
+    [0x180] = "AUDIO_ECU",
+    [0x190] = "AUDIO_HU",
+    [0x1A0] = "DVD_P",
+    [0x1B0] = "REAR_TV",
+    [0x1B4] = "SINGLE_DIN_NAV",
+    [0x1B8] = "DISPLAY_SW",
+    [0x1C0] = "REAR_CTRL_SW",
+    [0x1C2] = "EURO_GW_ECU",
+    [0x1C4] = "RUSSIA_GW_ECU",
+    [0x1C6] = "GW_ECU",
+    [0x1C8] = "FM_MULTI_DISPLAY",
+    [0x1CC] = "STEERING_SW",
+    [0x1D0] = "MULTI_CD_DECODER",
+    [0x1D4] = "DISPLAY",
+    [0x1D6] = "CLOCK",
+    [0x1D8] = "FR_CONTROLLED_SW",
+    [0x1DC] = "NAV_REM_CTRL",
+    [0x1E0] = "CD_CH_COMMANDER",
+    [0x1E4] = "CONSOLIDATED_SW",
+    [0x1E8] = "MD_CH_COMMANDER",
+    [0x1EC] = "BODY_COMPUTER",
+    [0x1F0] = "AMP_RADIO_TUNER",
+    [0x1F2] = "XM_RADIO_TUNER",
+    [0x1F4] = "RSA",
+    [0x1F6] = "RSE_M",
+    [0x1FF] = "BROADCAST",
+    [0x200] = "NAV_ECU",
+    [0x210] = "ATIS",
+    [0x220] = "VICS",
+    [0x230] = "TV_TUNER",
+    [0x240] = "HW_CD_CH",
+    [0x250] = "HW_DVD_CH",
+    [0x260] = "TEL_INFO_ECU",
+    [0x280] = "CAMERA_CTRLR",
+    [0x300] = "RADIO",
+    [0x320] = "CASSETTE",
+    [0x330] = "CASSETTE_NO_CH",
+    [0x340] = "CD_P",
+    [0x360] = "1DIN_CD_CH",
+    [0x380] = "MD_P",
+    [0x3A0] = "MD_CH",
+    [0x3C0] = "DAT",
+    [0x3E0] = "DCC",
+    [0x3F8] = "TEL_ECU",
+    [0x400] = "EQUALIZER",
+    [0x440] = "DSP",
+    [0x480] = "HW_AMP",
+    [0x500] = "GPS_RECEIVER",
+    [0x510] = "ATIS_DECODER",
+    [0x520] = "FM_MULTI_DECODER",
+    [0x528] = "RADIO_WAVE_BEACON",
+    [0x52C] = "OPTICAL_BEACON",
+    [0x540] = "CD_CH",
+    [0x560] = "MD_CH_2",
+    [0x580] = "CDROM_CH",
+    [0x5A0] = "MDROM_CH",
+    [0x5C0] = "TEL_INFO",
+    [0x5C8] = "MAYDAY",
+    [0x600] = "AC_ECU",
+    [0x680] = "BODY_ECU",
+    [0xD19] = "TURN_SIGNAL",
+    [0xFFF] = "BROADCAST",
+}
+
+local f_unicast = ProtoField.bool("iebus.unicast", "Unicast", base.NONE, { [1] = "true", [2] = "false" })
+local f_controller_addr = ProtoField.uint16("iebus.controller", "Controller address", base.HEX, known_addresses, 0x0FFF)
+local f_peripheral_addr = ProtoField.uint16("iebus.peripheral", "Peripheral address", base.HEX, known_addresses, 0x0FFF)
 local f_control = ProtoField.uint8("iebus.control", "Control field", base.HEX)
 local f_length = ProtoField.uint8("iebus.length", "Data length", base.DEC)
 local f_data = ProtoField.bytes("iebus.data", "Frame data", base.SPACE)
@@ -76,6 +144,8 @@ function iebusproto.dissector(buffer, pinfo, tree)
     local subtree = tree:add(iebusproto, buffer(), "IEBus frame")
 
     subtree:add(f_unicast, buffer(0,1))
+    subtree:add(f_controller_addr, buffer(1,2))
+    subtree:add(f_peripheral_addr, buffer(3,2))
     pinfo.cols.src = buffer(1,2):bytes():tohex():sub(2,-1)
     pinfo.cols.dst = buffer(3,2):bytes():tohex():sub(2,-1)
 
@@ -109,20 +179,26 @@ end
 local known_devices = {
     [0x00] = "LAN",
     [0x01] = "COMM_CTRL",
-    [0x11] = "COMMUNICATION v1",
+    -- [0x02] = "COM_EXT", -- @GadgetNutt
+    [0x11] = "COMMUNICATION v1", -- @GadgetNutt reads 0x11 as COM_MASTER
     [0x12] = "COMMUNICATION v2",
-    [0x21] = "SW",
-    [0x23] = "SW_NAME",
+    [0x21] = "SW", -- @GadgetNutt reads 0x21 as SW_AUDIO
+    [0x23] = "SW_NAME", -- @GadgetNutt reads 0x23 as SW_SHIFT
     [0x24] = "SW_CONVERTING",
-    [0x25] = "CMD_SW",
+    [0x25] = "CMD_SW", -- @GadgetNutt reads 0x25 as SW
     [0x31] = "STATUS",
+    -- 0x32 corroborated by @GadgetNutt (INFO_DISPLAY2); sends status report f1 to STATUS (32 31 f1 00 00) [CQ-TS7471LC_bootup]
+    [0x32] = "INFO_DISPLAY2",
     [0x28] = "BEEP_HU",
     [0x29] = "BEEP_SPEAKERS",
     [0x34] = "FRONT_PSNG_MONITOR",
+    -- [0x40] = "TV_TUNER", -- @GadgetNutt
     [0x43] = "CD_CHANGER2",
+    -- [0x50] = "CD_50", [0x52] = "CD_52", -- @GadgetNutt (CD variants, unconfirmed)
     [0x55] = "BLUETOOTH_TEL",
     [0x56] = "INFO_DRAWING",
-    [0x58] = "NAV_ECU",
+    [0x58] = "NAV_ECU", -- @GadgetNutt reads 0x58 as NAV_GPS
+    -- [0x5A] = "FM_MULTIPLEX_VICS", [0x5B] = "BEACON", -- @GadgetNutt
     [0x5C] = "CAMERA",
     [0x5D] = "CLIMATE_DRAWING",
     [0x5E] = "AUDIO_DRAWING",
@@ -131,9 +207,14 @@ local known_devices = {
     [0x61] = "TAPE_DECK",
     [0x62] = "CD",
     [0x63] = "CD_CHANGER",
+    -- [0x64] = "MD", [0x65] = "MD_CH", -- @GadgetNutt (MiniDisc)
     [0x74] = "AUDIO_AMP",
     [0x80] = "GPS",
+    -- [0x82] = "FM_MULTIPLEX_DATA", [0x83] = "OPTICAL_BEACON", [0x84] = "RADIO_WAVE_BEACON", -- @GadgetNutt
     [0x85] = "VOICE_CTRL",
+    -- [0x9A] = "FM_MULTIPLEX_TUNER", [0xA4] = "??", -- @GadgetNutt (0xA4 also seen in the A4 01 DB heartbeat)
+    -- 0xc0 corroborated by @GadgetNutt (XM_TUNER, cf. ADDR XM_RADIO_TUNER); exchanges 0xef/0xff with CMD_SW, sends 0xfe to STATUS [douglasheld2-log.pcap]
+    [0xC0] = "XM_TUNER",
     [0xE0] = "CLIMATE_CTRL_DEV",
     [0xE5] = "TRIP_INFO",
 }
@@ -143,77 +224,104 @@ local f_from_device = ProtoField.uint8("avclan.from_device", "From device", base
 local f_to_device = ProtoField.uint8("avclan.to_device", "To device", base.HEX, known_devices)
 local f_active_device = ProtoField.uint8("avclan.active_device", "Active device", base.HEX, known_devices)
 
+-- Action conventions:
+--  - REQ/RESP pairs differ by 0x10, where the REQ is the lesser
+--  - Opposite pairs (e.g. disc up/down, enable/disable, etc.) differ by 0x01, where the "enable" like action is the lesser
+--  - Separate pairs are often (but not always) separated by 0x01
 local known_actions = {
     -- LAN related
+    [0x01] = "LAN_INIT",
+    [0x58] = "LAN_INIT_COMPLETE", -- Probably not fully correct label pair (based on values), but seem related functionally/sequentially
+    -- [0x5f] = "??", -- COMM_CTRL self-broadcast (01 01 5f 00), frequent in douglasheld2-log.pcap [but abnormal traffic]
     [0x00] = "LIST_FUNCTIONS_REQ",
     [0x10] = "LIST_FUNCTIONS_RESP",
-    [0x01] = "RESTART_LAN",
+    -- -- [0x02]/[0x12] REQ/RESP pair, COMM_v2 <-> COMM_CTRL. The 0x12 resp carries a
+    -- -- device list, so likely a richer enumeration than 0x00/0x10. (0x12 collides
+    -- -- with the COMMUNICATION v2 device id.) [CQ-TS7471LC_bootup]
+    -- -- @GadgetNutt corroborates the enumeration reading: 0x02=DEVICES_RESPONSE,
+    -- -- 0x12=DEVICES_REQUEST ("devices I want to hear"), 0x13=DEVICES_BROADCAST.
+    -- [0x02] = "??_REQ",  -- 12 01 02 [19 00 16 06 19 0d]
+    -- [0x12] = "??_RESP", -- 01 12 12 60 63 43 64 65 40 32 5e ...
+    -- [0x13] = "DEVICES_BROADCAST", -- @GadgetNutt: peripheral broadcasts its logical-device list (b <me> 1FF 01 11 13 ...)
     [0x08] = "LANCHECK_END_REQ",
     [0x18] = "LANCHECK_END_RESP",
     [0x0a] = "LANCHECK_SCAN_REQ",
     [0x1a] = "LANCHECK_SCAN_RESP",
     [0x0c] = "LANCHECK_REQ",
     [0x1c] = "LANCHECK_RESP",
+    -- [0x0d] = "LANCHECK_??_REQ", -- Observed in @marcin's code; no captured examples
+    -- [0x1d] = "LANCHECK_??_RESP",
+
     [0x20] = "PING_REQ",
     [0x30] = "PING_RESP",
 
-    -- Used when HU is switching between Radio and CD
-    [0x43] = "DISABLE_FUNCTION_REQ",
-    [0x53] = "DISABLE_FUNCTION_RESP",
     [0x42] = "ENABLE_FUNCTION_REQ",
     [0x52] = "ENABLE_FUNCTION_RESP",
+    [0x43] = "DISABLE_FUNCTION_REQ",
+    [0x53] = "DISABLE_FUNCTION_RESP",
 
     [0x45] = "ADVERTISE_FUNCTION",
     [0x46] = "GENERAL_QUERY",
 
-    [0x78] = "SCREEN_PRESS",
-    [0x60] = "BEEP",
-
-    -- Physical interface
+    -- Physical actions
+    [0x50] = "INSERTION",
+    [0x51] = "EJECTION",
     [0x59] = "BACKLIGHT_ADJUST",
+    [0x60] = "BEEP",
+    [0x78] = "SCREEN_PRESS",
     [0x80] = "EJECT",
+    -- [0x8e] = "??", -- COMM_v2->CD (12 62 8e, no payload) [CQ-TS7471LC_bootup]
     [0x90] = "DISC_UP",
     [0x91] = "DISC_DOWN",
-    [0x9c] = "PWRVOL_KNOB_RIGHTHAND_TURN",
-    [0x9d] = "PWRVOL_KNOB_LEFTHAND_TURN",
     [0x94] = "TRACK_SEEK_UP",
     [0x95] = "TRACK_SEEK_DOWN",
     [0x98] = "TRACK_FAST_FORWARD",
     [0x99] = "TRACK_REWIND",
-    [0xa6] = "CD_ENABLE_SCAN",
-    [0xa7] = "CD_DISABLE_SCAN",
-    [0xa9] = "CD_ENABLE_DISK_SCAN",
-    [0xaa] = "CD_DISABLE_DISK_SCAN",
+    [0x9c] = "PWRVOL_KNOB_RIGHTHAND_TURN",
+    [0x9d] = "PWRVOL_KNOB_LEFTHAND_TURN",
+    [0x9f] = "TAPE_NOT_READY", -- Uncertain; observed by @marcin
     [0xa0] = "CD_ENABLE_REPEAT",
     [0xa1] = "CD_DISABLE_REPEAT",
     [0xa3] = "CD_ENABLE_DISK_REPEAT",
     [0xa4] = "CD_DISABLE_DISK_REPEAT",
+    [0xa6] = "CD_ENABLE_SCAN",
+    [0xa7] = "CD_DISABLE_SCAN",
+    [0xa9] = "CD_ENABLE_DISK_SCAN",
+    [0xaa] = "CD_DISABLE_DISK_SCAN",
     [0xb0] = "CD_ENABLE_RANDOM",
     [0xb1] = "CD_DISABLE_RANDOM",
     [0xb3] = "CD_ENABLE_DISK_RANDOM",
     [0xb4] = "CD_DISABLE_DISK_RANDOM",
 
-    [0x9f] = "TAPE_NOT_READY",
+    -- Info-display / trip-computer functions. @GadgetNutt names these; cluster
+    -- around TRIP_INFO/INFO_DISPLAY and the A4 01 DB heartbeat. Unconfirmed here.
+    -- [0xb7] = "STATUS_B7",       -- @GadgetNutt
+    -- [0xd9] = "INFO_D9",         -- @GadgetNutt (info display, unidentified)
+    -- [0xdb] = "AVG_KMH_INFO",    -- @GadgetNutt (average km/h)
+    -- [0xdc] = "INFO_DC",         -- @GadgetNutt (unidentified)
+    -- [0xdd] = "FUEL_RANGE_INFO", -- @GadgetNutt
+    -- [0xde] = "TRIP_TIME_INFO",  -- @GadgetNutt
 
-    -- CD functions
-    -- Events
-    [0x50] = "INSERTION",
-    [0x51] = "EJECTION",
+    -- Peripheral state communication request/response
+    [0xe0] = "INITIAL_REPORT_REQ",
+    [0xf0] = "INITIAL_REPORT_RESP",
+    [0xe2] = "PLAYBACK_REQ",
+    [0xf2] = "PLAYBACK_RESP",
+    [0xe4] = "LOADING_REQ",
+    [0xf4] = "LOADING_RESP",
+    [0xed] = "TRACK_NAME_REQ",
+    [0xfd] = "TRACK_NAME_RESP",
 
-    -- Requests
-    [0xe0] = "INITIAL_REPORT_REQUEST",
-    [0xe2] = "PLAYBACK_REQUEST",
-    [0xe4] = "LOADING_REQUEST2",
-    [0xed] = "REQUEST_TRACK_NAME",
+    -- Numerically goes here, but message length (short) tracks more with a LAN related pair
+    -- (Also this was observed early in a capture)
+    -- [0xef] = "??_REQ", -- Observed in broadcast(?) message 190 => 1f1 00 25 c0 ef [douglasheld2-log.pcap]
+    -- [0xff] = "??_RESP", -- Observed in broadcast(?) message 1f1 => 190 00 c0 25 ff 00 [douglasheld2-log.pcap]
 
-    -- Reports
-    [0xf0] = "INITIAL_REPORT_RESPONSE",
-    [0xf1] = "STATUS_REPORT",
-    [0xf2] = "PLAYBACK_REPORT",
-    [0xf3] = "LOADING_STATUS_REPORT",
-    [0xf4] = "LOADING_RESPONSE2",
+    -- Unprompted peripheral state announcements
+    [0xf1] = "PLAYBACK_STATUS",
+    [0xf3] = "LOADING_STATUS",
     [0xf9] = "REPORT_TOC",
-    [0xfd] = "REPORT_TRACK_NAME",
+    -- [0xfe] = "??", -- dev 0xc0->STATUS (c0 31 fe 00), status-announcement-like [douglasheld2-log.pcap]
 }
 local known_actions_names = invert(known_actions)
 
@@ -402,6 +510,14 @@ avclanproto.fields = {
 
 local pe_unhandled_msg = ProtoExpert.new("avclan.expert", "Message not decoded",
     expert.group.UNDECODED, expert.severity.WARN)
+-- Parsed-but-unrecognized header values: the frame structure is understood, only
+-- the device/action byte is absent from our lookup tables. NOTE severity (vs the
+-- WARN above) keeps these distinct from genuinely undecodable payloads, and the
+-- dedicated abbreviations make each independently filterable in Wireshark.
+local pe_unknown_device = ProtoExpert.new("avclan.unknown_device.expert", "Unknown device address",
+    expert.group.UNDECODED, expert.severity.NOTE)
+local pe_unknown_action = ProtoExpert.new("avclan.unknown_action.expert", "Unknown action",
+    expert.group.UNDECODED, expert.severity.NOTE)
 -- local pe_lan_check = ProtoExpert.new("avclan.lan.expert", "")
 local pe_ping_req = ProtoExpert.new("avclan.ping_req.expert", "Ping request",
     expert.group.SEQUENCE, expert.severity.CHAT)
@@ -410,6 +526,8 @@ local pe_ping_resp = ProtoExpert.new("avclan.ping_resp.expert", "Ping response",
 
 avclanproto.experts = {
     pe_unhandled_msg,
+    pe_unknown_device,
+    pe_unknown_action,
     pe_ping_req,
     pe_ping_resp,
 }
@@ -431,6 +549,27 @@ local function mark_undecoded(tree, range)
     tree:add(range, "Undecoded bytes"):add_proto_expert_info(pe_unhandled_msg)
 end
 
+-- Add a device-address field (from/to/active), attaching an expert note when the
+-- byte isn't a known device so the frame is filterable via
+-- `avclan.unknown_device.expert`. Returns the item so callers can chain off it.
+local function add_device(tree, field, range)
+    local item = tree:add(field, range)
+    if known_devices[range:uint()] == nil then
+        item:add_proto_expert_info(pe_unknown_device)
+    end
+    return item
+end
+
+-- Add the action field, attaching an expert note when the byte isn't a known
+-- action (filterable via `avclan.unknown_action.expert`). Returns the item.
+local function add_action(tree, range)
+    local item = tree:add(f_action, range)
+    if known_actions[range:uint()] == nil then
+        item:add_proto_expert_info(pe_unknown_action)
+    end
+    return item
+end
+
 -- ---------------------------------------------------------------------------
 -- Per-message decoders.
 --
@@ -445,7 +584,7 @@ end
 -- tone/level control; these codes collide with physical-interface actions, so
 -- the CMD_SW -> AUDIO_AMP device pair disambiguates them.
 local function decode_cmd_sw(subtree, buffer, offset, to_device)
-    subtree:add(f_action, buffer(offset+2,1))
+    add_action(subtree, buffer(offset+2,1))
     local action = field_action().value
     if to_device == known_devices_names["AUDIO_AMP"] then
         local amptree = subtree:add(avclanproto, buffer(offset+2,-1), "Device: Audio amplifier control")
@@ -471,10 +610,10 @@ end
 -- COMMUNICATION v1/v2 source.
 local function decode_from_comm(subtree, buffer, offset, to_device)
     if to_device == known_devices_names["COMM_CTRL"] then
-        subtree:add(f_action, buffer(offset+2,1))
+        add_action(subtree, buffer(offset+2,1))
         local action = field_action().value
         if action == known_actions_names["ADVERTISE_FUNCTION"] then
-            subtree:add(f_active_device, buffer(offset+3,1))
+            add_device(subtree, f_active_device, buffer(offset+3,1))
         elseif action == known_actions_names["PING_REQ"] then
             subtree:add(f_ping_count, buffer(offset+3,1))
             subtree:add_proto_expert_info(pe_ping_req, "Ping request " .. buffer(offset+3,1):uint())
@@ -486,7 +625,7 @@ local function decode_from_comm(subtree, buffer, offset, to_device)
         -- Control actions addressed to a peripheral rather than COMM_CTRL, e.g.
         -- function enable/disable (COMM_v1/v2 -> CD_CHANGER, 0x42/0x43). These
         -- are understood apart from a trailing 0x01 of unknown meaning.
-        subtree:add(f_action, buffer(offset+2,1))
+        add_action(subtree, buffer(offset+2,1))
     end
 end
 
@@ -494,7 +633,7 @@ end
 local function decode_from_commctrl(subtree, buffer, offset, to_device)
     if to_device == known_devices_names["COMMUNICATION v1"] or
     to_device == known_devices_names["COMMUNICATION v2"] then
-        local action_tree = subtree:add(f_action, buffer(offset+2,1))
+        local action_tree = add_action(subtree, buffer(offset+2,1))
         local action = field_action().value
         if action == known_actions_names["PING_RESP"] then
             subtree:add(f_ping_count, buffer(offset+3,1))
@@ -515,7 +654,7 @@ local function decode_from_commctrl(subtree, buffer, offset, to_device)
             subtree:add_proto_expert_info(pe_unhandled_msg)
         end
     elseif to_device == known_devices_names["COMM_CTRL"] then
-        local action_tree = subtree:add(f_action, buffer(offset+2,1))
+        local action_tree = add_action(subtree, buffer(offset+2,1))
         local action = field_action().value
         if action == known_actions_names["BACKLIGHT_ADJUST"] then
             local backlight = subtree:add(f_backlight, buffer(offset+3,1))
@@ -524,9 +663,9 @@ local function decode_from_commctrl(subtree, buffer, offset, to_device)
     elseif to_device == known_actions_names["LANCHECK_SCAN_REQ"] or
         to_device == known_actions_names["LANCHECK_REQ"] or
         to_device == known_actions_names["LANCHECK_END_REQ"] then
-        subtree:add(f_action, buffer(offset+1,1))
+        add_action(subtree, buffer(offset+1,1))
     elseif to_device == 0x00 then
-        subtree:add(f_action, buffer(offset+2,1))
+        add_action(subtree, buffer(offset+2,1))
     else
         subtree:add_proto_expert_info(pe_unhandled_msg)
     end
@@ -534,7 +673,7 @@ end
 
 -- Beep request (any source -> BEEP_SPEAKERS), action 0x60 with a duration byte.
 local function decode_beep(subtree, buffer, offset)
-    subtree:add(f_action, buffer(offset+2,1))
+    add_action(subtree, buffer(offset+2,1))
     local action = field_action().value
     if action == known_actions_names["BEEP"] then
         subtree:add(f_beep_duration, buffer(offset+3,1))
@@ -585,8 +724,8 @@ end
 
 -- CD / CD_CHANGER source: payload depends on the report action.
 local function decode_cd(subtree, buffer, offset, action)
-    if action == known_actions_names["STATUS_REPORT"] or
-        action == known_actions_names["PLAYBACK_REPORT"] then
+    if action == known_actions_names["PLAYBACK_STATUS"] or
+        action == known_actions_names["PLAYBACK_RESP"] then
         local cdtree = subtree:add(avclanproto, buffer(offset,9), "Device: CD player")
         local cd_slots = cdtree:add(f_cd_slots, buffer(offset+3,1))
         cd_slots:add(f_cd_slot1, buffer(offset+3,1))
@@ -619,8 +758,8 @@ local function decode_cd(subtree, buffer, offset, action)
         cd_flags:add(f_cd_flag_repeat, buffer(offset+9,1))
         cd_flags:add(f_cd_flag_disk_scan, buffer(offset+9,1))
         cd_flags:add(f_cd_flag_scan, buffer(offset+9,1))
-    elseif action == known_actions_names["LOADING_STATUS_REPORT"] or
-        action == known_actions_names["LOADING_RESPONSE2"] then
+    elseif action == known_actions_names["LOADING_STATUS"] or
+        action == known_actions_names["LOADING_RESP"] then
         local cdtree = subtree:add(avclanproto, buffer(offset,9), "Device: CD player")
         local available_slots = cdtree:add(f_cd_slots, buffer(offset+4,1))
         available_slots:add(f_cd_slot1, buffer(offset+4,1))
@@ -664,9 +803,9 @@ local function decode_cd(subtree, buffer, offset, action)
     end
 end
 
--- TAPE_DECK source: tape state dump on STATUS_REPORT.
+-- TAPE_DECK source: tape state dump on PLAYBACK_STATUS
 local function decode_tape(subtree, buffer, offset, action)
-    if action == known_actions_names["STATUS_REPORT"] then
+    if action == known_actions_names["PLAYBACK_STATUS"] then
         local tapetree = subtree:add(avclanproto, buffer(offset,4), "Device: Tape deck")
         tapetree:add(f_tape_present, buffer(offset+3,1))
 
@@ -729,8 +868,8 @@ function avclanproto.dissector(buffer, pinfo, tree)
     if buffer(7,1):uint() == 0 then
         offset = 8
     end
-    subtree:add(f_from_device, buffer(offset+0,1))
-    subtree:add(f_to_device, buffer(offset+1,1))
+    add_device(subtree, f_from_device, buffer(offset+0,1))
+    add_device(subtree, f_to_device, buffer(offset+1,1))
 
     local from_device = field_from_device().value
     local to_device = field_to_device().value
@@ -746,11 +885,16 @@ function avclanproto.dissector(buffer, pinfo, tree)
         decode_beep(subtree, buffer, offset)
     elseif from_device == known_devices_names["STATUS"] and
         known_devices[to_device] ~= nil then
-        subtree:add(f_action, buffer(offset+2,1))
+        add_action(subtree, buffer(offset+2,1))
     elseif device_decoders[from_device] then
-        subtree:add(f_action, buffer(offset+2,1))
+        add_action(subtree, buffer(offset+2,1))
         device_decoders[from_device](subtree, buffer, offset, field_action().value)
     else
+        -- Unknown source/dest: the [from, to, action] header layout still holds
+        -- even when we can't decode the body, so surface the action.
+        if buffer:len() > offset+2 then
+            add_action(subtree, buffer(offset+2,1))
+        end
         subtree:add_proto_expert_info(pe_unhandled_msg)
     end
 end
