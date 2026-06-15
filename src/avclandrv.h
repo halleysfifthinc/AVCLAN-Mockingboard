@@ -155,9 +155,9 @@ typedef struct AVCLAN_CD_Status {
   uint8_t cds;
   uint8_t state;
   uint8_t disc;
-  uint8_t track;
-  uint8_t mins;
-  uint8_t secs;
+  uint8_t track; // Decimal storage; serialize to BCD
+  uint8_t mins;  // Decimal storage; serialize to BCD
+  uint8_t secs;  // Decimal storage; serialize to BCD
   uint8_t flags;
   uint8_t flags2;
 } AVCLAN_CD_Status_t;

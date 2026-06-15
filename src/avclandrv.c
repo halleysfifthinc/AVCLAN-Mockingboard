@@ -324,10 +324,11 @@ static uint8_t toBCD(uint8_t x) {
 }
 
 // Serialize cd_status into the wire format. The struct layout mirrors the wire
-// format byte-for-byte, except for mins/secs, which need converted from integer
-// to BCD
+// format byte-for-byte, except for track/mins/secs, which need converted from
+// decimal to BCD
 static void serializeCDStatus(uint8_t *dst) {
   memcpy(dst, &cd_status, sizeof(cd_status));
+  dst[3] = toBCD(cd_status.track);
   dst[4] = toBCD(cd_status.mins);
   dst[5] = toBCD(cd_status.secs);
 }
@@ -1037,7 +1038,10 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Seek_Up):
         cd_status.state = cd_SEEKING_TRACK;
-        (*cd_Track)++;
+        if (*cd_Track < 98)
+          ++*cd_Track;
+        else
+          *cd_Track = 1;
         *cd_Time_Min = 0xff;
         *cd_Time_Sec = 0x7f;
         cd_status.flags |= cd_SCAN;
@@ -1047,10 +1051,15 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Seek_Down):
         cd_status.state = cd_SEEKING_TRACK;
-        (*cd_Track)--;
+        // Track down returns to track beginning if in ~middle of song
+        if (*cd_Time_Min == 0 && *cd_Time_Sec < 0x05) {
+          if (*cd_Track > 1)
+            --*cd_Track;
+          else
+            *cd_Track = 99;
+        }
         *cd_Time_Min = 0xff;
         *cd_Time_Sec = 0x7f;
-        cd_status.flags |= cd_SCAN;
         cd_status.flags2 = 0xc0;
         AVCLAN_generateStatus(out);
         respond = r_TrackChange;
