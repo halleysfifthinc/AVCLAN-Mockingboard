@@ -51,7 +51,7 @@ static void *outgoingSlots[CACHE_SIZE];
 
 static Queue_t cache, rcache, incoming, outgoing;
 
-volatile uint8_t enqueueStatus = 0;
+volatile bool enqueueStatus = false;
 
 void Setup();
 void general_GPIO_init();
@@ -90,19 +90,19 @@ static void set_flag(bool *flag, bool val, const char *msg) {
 }
 
 int main() {
-  uint8_t readSeq = 0;
   uint8_t hexChars[2];
   uint8_t hexDigit = 0; // current digit being written to hexChars
 
+  bool readSeq = false;
   bool seqIsUnicast = false;
-  bool lastPrintAllFrames = 1;
+  bool readBinary = false;
 
-  bool verbose = 1;
-  bool printAllFrames = 1;
-  bool printBinary = 0;
-  bool echoCharacters = 1;
-  bool readBinary = 0;
-  bool muteBus = 0;
+  bool verbose = true;
+  bool printAllFrames = true;
+  bool lastPrintAllFrames = true;
+  bool printBinary = false;
+  bool echoCharacters = true;
+  bool muteBus = false;
 
   // Binary-mode REPL includes the full wire preamble (broadcast + 2*addr +
   // control + length), so size for the worst case.
@@ -184,7 +184,7 @@ int main() {
           RS232_Print("Outgoing queue full; unable to send status update\n");
           pushQueue(&rcache, resp);
         } else
-          enqueueStatus = 0; // Only clear if successful
+          enqueueStatus = false; // Only clear if successful
       }
       // no further error handling needed; status isn't part of the cache
     }
@@ -201,13 +201,16 @@ int main() {
         case 'v': toggle_flag(&verbose, "Verbose errors: "); break;
         case 'l': toggle_flag(&printAllFrames, "Logging: "); break;
         case 'k': toggle_flag(&echoCharacters, "Echo characters: "); break;
-        case 'm': toggle_flag(&muteBus, "Mute device: "); break;
+        case 'm':
+          toggle_flag(&muteBus, "Mute device: ");
+          AVCLAN_muteDevice(muteBus);
+          break;
 
         // X/x isn't a toggle interface because this is used
         // programmatically and is simpler than reading back the toggle
         // state
-        case 'X': set_flag(&printBinary, 1, "Binary: "); break;
-        case 'x': set_flag(&printBinary, 0, "Binary: "); break;
+        case 'X': set_flag(&printBinary, true, "Binary: "); break;
+        case 'x': set_flag(&printBinary, false, "Binary: "); break;
 
         case 'E': // Beep
           if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
@@ -252,7 +255,7 @@ int main() {
 
         case 0x10: // Signals binary sequence incoming
           if (!readSeq && !readBinary) {
-            readSeq = readBinary = 1;
+            readSeq = readBinary = true;
             seqIdx = 0;
             break;
           } else
@@ -261,8 +264,8 @@ int main() {
         case 'U': // Send command
           RS232_Print("READ SEQUENCE (U)> \n");
           lastPrintAllFrames = printAllFrames;
-          printAllFrames = 0;
-          readSeq = 1;
+          printAllFrames = false;
+          readSeq = true;
           seqIdx = hexDigit = 0;
           hexChars[0] = hexChars[1] = 0;
           seqIsUnicast = true;
@@ -270,8 +273,8 @@ int main() {
         case 'B': // Send broadcast
           RS232_Print("READ SEQUENCE (B)> \n");
           lastPrintAllFrames = printAllFrames;
-          printAllFrames = 0;
-          readSeq = 1;
+          printAllFrames = false;
+          readSeq = true;
           seqIdx = hexDigit = 0;
           hexChars[0] = hexChars[1] = 0;
           seqIsUnicast = false;
@@ -290,7 +293,7 @@ int main() {
                   } else
                     pushQueue(&cache, out);
                 }
-                readSeq = readBinary = 0;
+                readSeq = readBinary = false;
               } else
                 goto DEFAULT; // reading binary and this is a real data byte;
                               // fall through to default
@@ -413,6 +416,6 @@ void print_help() {
 // Periodic interrupt with a 1 sec period; only enabled when playing
 ISR(RTC_PIT_vect) {
   AVCLAN_incrementTime();
-  enqueueStatus = 1;
+  enqueueStatus = true;
   RTC.PITINTFLAGS = RTC_PI_bm;
 }
