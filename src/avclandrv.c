@@ -148,24 +148,6 @@ static const uint8_t ping_resp[] = {0x00,      dev_COMM_CTRL, dev_COMM_v1,
 static const uint8_t function_change_resp[] = {0x00, dev_CD_CHANGER,
                                                dev_COMM_v1, 0xFF, 0x01};
 
-#define STATUS_REPORT_DATA                                                     \
-  {dev_CD_CHANGER,                                                             \
-   dev_STATUS,                                                                 \
-   Status_Report,                                                              \
-   0x01,                                                                       \
-   cd_SEEKING_TRACK,                                                           \
-   0x01,                                                                       \
-   0x00,                                                                       \
-   0xFF,                                                                       \
-   0x7F,                                                                       \
-   0x00,                                                                       \
-   0x80}
-
-static const uint8_t cdstatus_resp[] = STATUS_REPORT_DATA;
-static_assert(sizeof(AVCLAN_CD_Status_t) + 3 == sizeof(cdstatus_resp),
-              "canned Status Report message doesn't match size of CD status "
-              "plus header bytes");
-
 // No knowledge/understanding of field meaning/interpretation
 static const uint8_t cdinitreport_resp[] = {
     dev_CD_CHANGER, dev_STATUS, Initial_Report_Response, 0x01, 0x31, 0x10,
@@ -953,7 +935,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
             cd_status.secs = 0;
           cd_status.state = cd_SEEKING | cd_SEEKING_TRACK;
           cd_status.flags2 = 0xc0;
-          AVCLAN_generateStatus(out);
+          AVCLAN_generateStatus(out, true, dev_STATUS);
           AVCLAN_startPlaying();
           respond = r_NormalizeState;
         }
@@ -1011,8 +993,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         //    triggering (after {0x00, dev_CD_CHANGER, dev_COMM_v1, Insertion,
         //    0x01} response) proper activation of mockingboard/cd-changer.
         //    - Subsequently observed when pressing (technically
-        //    releasing?) the fast-forward button (and not rewind? needs
-        //    confirmation)
+        //    releasing?) the fast-forward button and rewind
         out->is_unicast = true;
         out->peripheral_addr = HU_ADDR;
         {
@@ -1065,9 +1046,8 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
           *cd_Track = 1;
         *cd_Time_Min = 0xff;
         *cd_Time_Sec = 0x7f;
-        cd_status.flags |= cd_SCAN;
         cd_status.flags2 = 0xc0;
-        AVCLAN_generateStatus(out);
+        AVCLAN_generateStatus(out, true, dev_CMD_SW);
         respond = r_TrackChange;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Seek_Down):
@@ -1082,74 +1062,49 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         *cd_Time_Min = 0xff;
         *cd_Time_Sec = 0x7f;
         cd_status.flags2 = 0xc0;
-        AVCLAN_generateStatus(out);
+        AVCLAN_generateStatus(out, true, dev_CMD_SW);
         respond = r_TrackChange;
         break;
-      // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Random):
-      //   cd_status.flags |= cd_RANDOM;
-      //   out->is_unicast = true;
-      //   out->peripheral_addr = HU_ADDR;
-      //   {
-      //     const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_COMM_v1,
-      //                            CD_Enable_Random, 0x01};
-      //     out->length = sizeof(msg);
-      //     memcpy(out->data, msg, sizeof(msg));
-      //   }
-      //   respond = r_StatusReport;
-      //   break;
-      // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Random):
-      //   cd_status.flags &= ~cd_RANDOM;
-      //   AVCLAN_generateStatus(out);
-      //   respond = r_Handled;
-      //   break;
-      case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Repeat):
-        cd_status.flags |= cd_REPEAT;
-        // out->is_unicast = true;
-        out->is_unicast = false;
-        out->peripheral_addr = 0x1FF;
-        {
-          // const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_CMD_SW,
-          //                        CD_Enable_Repeat, 0x01};
-          // const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_CMD_SW,
-          //                        CD_Enable_Repeat, 0x00};
-          // const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_CMD_SW,
-          //                        CD_Enable_Repeat};
-          // const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_COMM_v1,
-          //                        CD_Enable_Repeat, 0x01};
-          // const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_COMM_v1,
-          //                        CD_Enable_Repeat, 0x00};
-          const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_COMM_v1,
-                                 CD_Enable_Repeat};
-          out->length = sizeof(msg);
-          memcpy(out->data, msg, sizeof(msg));
-        }
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Random):
+        cd_status.flags |= cd_RANDOM;
+        AVCLAN_generateStatus(out, true, dev_CMD_SW);
         respond = r_StatusReport;
         break;
-        // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Repeat):
-        //   cd_status.flags &= ~cd_REPEAT;
-        //   AVCLAN_generateStatus(out);
-        //   respond = r_Handled;
-        //   break;
-        // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Disk_Random):
-        //   cd_status.flags |= cd_DISK_RANDOM;
-        //   AVCLAN_generateStatus(out);
-        //   respond = r_Handled;
-        //   break;
-        // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Disk_Random):
-        //   cd_status.flags &= ~cd_DISK_RANDOM;
-        //   AVCLAN_generateStatus(out);
-        //   respond = r_Handled;
-        //   break;
-        // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Disk_Repeat):
-        //   cd_status.flags |= cd_DISK_REPEAT;
-        //   AVCLAN_generateStatus(out);
-        //   respond = r_Handled;
-        //   break;
-        // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Disk_Repeat):
-        //   cd_status.flags &= ~cd_DISK_REPEAT;
-        //   AVCLAN_generateStatus(out);
-        //   respond = r_Handled;
-        //   break;
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Random):
+        cd_status.flags &= ~cd_RANDOM;
+        AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        respond = r_StatusReport;
+        break;
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Repeat):
+        cd_status.flags |= cd_REPEAT;
+        AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        respond = r_StatusReport;
+        break;
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Repeat):
+        cd_status.flags &= ~cd_REPEAT;
+        AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        respond = r_StatusReport;
+        break;
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Disk_Random):
+        cd_status.flags |= cd_DISK_RANDOM;
+        AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        respond = r_StatusReport;
+        break;
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Disk_Random):
+        cd_status.flags &= ~cd_DISK_RANDOM;
+        AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        respond = r_StatusReport;
+        break;
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Disk_Repeat):
+        cd_status.flags |= cd_DISK_REPEAT;
+        AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        respond = r_StatusReport;
+        break;
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Disk_Repeat):
+        cd_status.flags &= ~cd_DISK_REPEAT;
+        AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        respond = r_StatusReport;
+        break;
     }
   }
 
@@ -1181,15 +1136,15 @@ RFrame_t *AVCLAN_statemachine(RFrame_t *resp) {
     case r_TrackChange: AVCLAN_setTime(0x00, 0x00); [[fallthrough]];
     case r_NormalizeState:
       AVCLAN_normalizeState();
-      AVCLAN_generateStatus(out);
+      AVCLAN_generateStatus(out, true, dev_STATUS);
       resp->r = r_Handled;
       break;
     case r_StartPlaying:
-      AVCLAN_generateStatus(out);
+      AVCLAN_generateStatus(out, true, dev_STATUS);
       resp->r = r_NormalizeState;
       break;
     case r_StatusReport:
-      AVCLAN_generateStatus(out);
+      AVCLAN_generateStatus(out, true, dev_STATUS);
       resp->r = r_Handled;
       break;
     case r_Handled: [[fallthrough]];
@@ -1315,7 +1270,7 @@ uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
 
 // Only used for regularly scheduled periodic updates
 AVCLAN_frame_t *AVCLAN_getStatusFrame() {
-  static uint8_t status_data[] = STATUS_REPORT_DATA;
+  static uint8_t status_data[sizeof(AVCLAN_CD_Status_t) + 3] = {0};
   static AVCLAN_frame_t status = {.is_unicast = false,
                                   .controller_addr = DEVICE_ADDR,
                                   .peripheral_addr = 0x1FF,
@@ -1327,19 +1282,24 @@ AVCLAN_frame_t *AVCLAN_getStatusFrame() {
 }
 
 // Used for changed status messages
-void AVCLAN_generateStatus(AVCLAN_frame_t *status) {
+void AVCLAN_generateStatus(AVCLAN_frame_t *status, bool is_unicast,
+                           devices to) {
   *status = (AVCLAN_frame_t){
-      .is_unicast = false,
+      .is_unicast = is_unicast,
       .controller_addr = DEVICE_ADDR,
-      .peripheral_addr = 0x1FF,
+      .peripheral_addr = (is_unicast) ? HU_ADDR : 0x1FF,
       .control = 0xF,
-      .length = sizeof(cdstatus_resp),
+      .length = sizeof(AVCLAN_CD_Status_t) + ((is_unicast) ? 4 : 3),
       .data = status->data, // don't overwrite data pointer
   };
-  status->data[0] = dev_CD_CHANGER;
-  status->data[1] = dev_STATUS;
-  status->data[2] = Status_Report;
-  serializeCDStatus(&status->data[3]);
+
+  uint8_t *data = status->data;
+  if (is_unicast)
+    *data++ = 0x00;
+  *data++ = dev_CD_CHANGER;
+  *data++ = to;
+  *data++ = Status_Report;
+  serializeCDStatus(data);
 }
 
 void AVCLAN_normalizeState() {

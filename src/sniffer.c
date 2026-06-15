@@ -176,7 +176,7 @@ int main() {
       }
     } else if (enqueueStatus) {
       AVCLAN_frame_t *status = AVCLAN_getStatusFrame();
-      AVCLAN_generateStatus(status);
+      AVCLAN_generateStatus(status, true, dev_STATUS);
       if (RFrame_t *resp = (RFrame_t *)popQueue(&rcache)) {
         *resp = (RFrame_t){.r = r_Handled, .frame = status};
         err = pushQueue(&outgoing, resp);

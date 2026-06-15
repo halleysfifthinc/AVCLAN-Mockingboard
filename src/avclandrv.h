@@ -215,7 +215,7 @@ void AVCLAN_printframe(const AVCLAN_frame_t *frame, bool binary);
 uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
                           AVCLAN_frame_t *frame);
 AVCLAN_frame_t *AVCLAN_getStatusFrame();
-void AVCLAN_generateStatus(AVCLAN_frame_t *status);
+void AVCLAN_generateStatus(AVCLAN_frame_t *status, bool is_unicast, devices to);
 
 bool AVCLAN_isPlaying();
 void AVCLAN_incrementTime();
