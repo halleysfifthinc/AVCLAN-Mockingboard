@@ -57,6 +57,7 @@ typedef enum : uint8_t {
   List_Functions_Req = 0x00,
   List_Functions_Resp = 0x10,
   Restart_Lan = 0x01,
+  // Lan_Startup_Complete = 0x58,
   Lancheck_End_Req = 0x08,
   Lancheck_End_Resp = 0x18,
   Lancheck_Scan_Req = 0x0a,
@@ -77,33 +78,34 @@ typedef enum : uint8_t {
   Current_Function = 0x45,
   General_Query = 0x46,
 
+  // Events
+  Insertion = 0x50,
+  Ejection = 0x51,
+
   // Physical interface
   Backlight_Adjust = 0x59,
+  Beep = 0x60,
   Eject = 0x80,
   Disc_Up = 0x90,
   Disc_Down = 0x91,
-  Pwrvol_Knob_Righthand_Turn = 0x9c,
-  Pwrvol_Knob_Lefthand_Turn = 0x9d,
   Track_Seek_Up = 0x94,
   Track_Seek_Down = 0x95,
   Track_Fast_Forward = 0x98,
   Track_Rewind = 0x99,
-  CD_Enable_Scan = 0xa6,
-  CD_Disable_Scan = 0xa7,
-  CD_Enable_Disk_Scan = 0xa9,
-  CD_Disable_Disk_Scan = 0xaa,
+  Pwrvol_Knob_Righthand_Turn = 0x9c,
+  Pwrvol_Knob_Lefthand_Turn = 0x9d,
   CD_Enable_Repeat = 0xa0,
   CD_Disable_Repeat = 0xa1,
   CD_Enable_Disk_Repeat = 0xa3,
   CD_Disable_Disk_Repeat = 0xa4,
+  CD_Enable_Scan = 0xa6,
+  CD_Disable_Scan = 0xa7,
+  CD_Enable_Disk_Scan = 0xa9,
+  CD_Disable_Disk_Scan = 0xaa,
   CD_Enable_Random = 0xb0,
   CD_Disable_Random = 0xb1,
   CD_Enable_Disk_Random = 0xb3,
   CD_Disable_Disk_Random = 0xb4,
-
-  // Events
-  Insertion = 0x50,
-  Ejection = 0x51,
 
   // Requests and Response pairs
   Initial_Report_Request = 0xe0,
@@ -164,6 +166,11 @@ typedef struct AVCLAN_CD_Status {
 
 typedef enum : uint8_t { stStop = 0, stPlay = 1 } cd_modes;
 
+/// Message state machine
+// - r_Nothing (0x00) means don't send current message
+// - r_Handled means send current message and stop/finished state machine
+// - All other instances mean send current message and imply the presence of
+//   follow-up messages within state machine
 typedef enum : uint8_t {
   r_Nothing = 0x00,
   r_Handled,             // No follow-up needed
@@ -172,6 +179,8 @@ typedef enum : uint8_t {
   r_StartPlaying,        // started playing; send current status and then
                          // normalize
   r_TrackChange,         // Time needs reset
+  r_Ejection,
+  r_Report_Load,
 } response_t;
 
 typedef struct print_struct {

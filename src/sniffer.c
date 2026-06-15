@@ -237,12 +237,12 @@ int main() {
               out->controller_addr = DEVICE_ADDR;
               out->peripheral_addr = HU_ADDR;
               {
-                const uint8_t play[] = {0x00,      dev_COMM_CTRL,  dev_COMM_v1,
-                                        Insertion, dev_CD_CHANGER, 0x01};
+                const uint8_t play[] = {0x00,     dev_COMM_CTRL,  dev_COMM_v1,
+                                        Ejection, dev_CD_CHANGER, 0x01};
                 out->length = sizeof(play);
                 memcpy(out->data, play, sizeof(play));
               }
-              *resp = (RFrame_t){.r = r_Handled, .frame = out};
+              *resp = (RFrame_t){.r = r_Ejection, .frame = out};
               push_or_return_resp(resp);
             } else
               pushQueue(&cache, out);

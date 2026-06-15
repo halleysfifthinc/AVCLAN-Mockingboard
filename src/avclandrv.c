@@ -299,7 +299,7 @@ void AVCLAN_init() {
 
   cd_status.cds = cd_CD1;
   cd_status.disc = 1;
-  cd_status.state = cd_SEEKING_TRACK;
+  cd_status.state = cd_SEEKING | cd_SEEKING_TRACK;
   cd_status.flags = 0;
   cd_status.flags2 = 0xC0;
 
@@ -947,10 +947,14 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
       case PACK3(dev_COMM_v1, dev_COMM_CTRL, Current_Function):
       case PACK3(dev_COMM_v2, dev_COMM_CTRL, Current_Function):
         if ((b3 == dev_CD_CHANGER) && !AVCLAN_isPlaying()) {
+          if (cd_status.mins > 99)
+            cd_status.mins = 0;
+          if (cd_status.secs > 99)
+            cd_status.secs = 0;
           cd_status.state = cd_SEEKING | cd_SEEKING_TRACK;
-          cd_status.flags2 = 0x80;
-          AVCLAN_startPlaying();
+          cd_status.flags2 = 0xc0;
           AVCLAN_generateStatus(out);
+          AVCLAN_startPlaying();
           respond = r_NormalizeState;
         }
         break;
@@ -984,10 +988,9 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         out->length = sizeof(function_change_resp);
         memcpy(out->data, function_change_resp, sizeof(function_change_resp));
         out->data[3] = Enable_Function_Resp;
-        cd_status.state = cd_SEEKING | cd_SEEKING_TRACK;
-        cd_status.flags2 = 0xc0;
-        AVCLAN_startPlaying();
-        respond = r_StartPlaying;
+        cd_status.state = 0;
+        cd_status.flags2 = 0x80;
+        respond = r_StatusReport;
         break;
       case PACK3(dev_COMM_v1, dev_CD_CHANGER, Disable_Function_Req):
         [[fallthrough]];
@@ -1001,6 +1004,24 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         out->is_unicast = true;
         out->peripheral_addr = HU_ADDR;
         respond = r_StatusReport;
+        break;
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, Eject):
+        // "Eject" label is multiply wrong; proper meaning unclear:
+        //    - First observed on initial multiple presses of "CD" button,
+        //    triggering (after {0x00, dev_CD_CHANGER, dev_COMM_v1, Insertion,
+        //    0x01} response) proper activation of mockingboard/cd-changer.
+        //    - Subsequently observed when pressing (technically
+        //    releasing?) the fast-forward button (and not rewind? needs
+        //    confirmation)
+        out->is_unicast = true;
+        out->peripheral_addr = HU_ADDR;
+        {
+          const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_COMM_v1, Insertion,
+                                 0x01};
+          out->length = sizeof(msg);
+          memcpy(out->data, msg, sizeof(msg));
+        }
+        respond = r_Handled;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Initial_Report_Request):
         [[fallthrough]];
@@ -1064,6 +1085,71 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         AVCLAN_generateStatus(out);
         respond = r_TrackChange;
         break;
+      // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Random):
+      //   cd_status.flags |= cd_RANDOM;
+      //   out->is_unicast = true;
+      //   out->peripheral_addr = HU_ADDR;
+      //   {
+      //     const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_COMM_v1,
+      //                            CD_Enable_Random, 0x01};
+      //     out->length = sizeof(msg);
+      //     memcpy(out->data, msg, sizeof(msg));
+      //   }
+      //   respond = r_StatusReport;
+      //   break;
+      // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Random):
+      //   cd_status.flags &= ~cd_RANDOM;
+      //   AVCLAN_generateStatus(out);
+      //   respond = r_Handled;
+      //   break;
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Repeat):
+        cd_status.flags |= cd_REPEAT;
+        // out->is_unicast = true;
+        out->is_unicast = false;
+        out->peripheral_addr = 0x1FF;
+        {
+          // const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_CMD_SW,
+          //                        CD_Enable_Repeat, 0x01};
+          // const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_CMD_SW,
+          //                        CD_Enable_Repeat, 0x00};
+          // const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_CMD_SW,
+          //                        CD_Enable_Repeat};
+          // const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_COMM_v1,
+          //                        CD_Enable_Repeat, 0x01};
+          // const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_COMM_v1,
+          //                        CD_Enable_Repeat, 0x00};
+          const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_COMM_v1,
+                                 CD_Enable_Repeat};
+          out->length = sizeof(msg);
+          memcpy(out->data, msg, sizeof(msg));
+        }
+        respond = r_StatusReport;
+        break;
+        // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Repeat):
+        //   cd_status.flags &= ~cd_REPEAT;
+        //   AVCLAN_generateStatus(out);
+        //   respond = r_Handled;
+        //   break;
+        // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Disk_Random):
+        //   cd_status.flags |= cd_DISK_RANDOM;
+        //   AVCLAN_generateStatus(out);
+        //   respond = r_Handled;
+        //   break;
+        // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Disk_Random):
+        //   cd_status.flags &= ~cd_DISK_RANDOM;
+        //   AVCLAN_generateStatus(out);
+        //   respond = r_Handled;
+        //   break;
+        // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Disk_Repeat):
+        //   cd_status.flags |= cd_DISK_REPEAT;
+        //   AVCLAN_generateStatus(out);
+        //   respond = r_Handled;
+        //   break;
+        // case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Disk_Repeat):
+        //   cd_status.flags &= ~cd_DISK_REPEAT;
+        //   AVCLAN_generateStatus(out);
+        //   respond = r_Handled;
+        //   break;
     }
   }
 
@@ -1075,6 +1161,23 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
 RFrame_t *AVCLAN_statemachine(RFrame_t *resp) {
   AVCLAN_frame_t *out = resp->frame;
   switch (resp->r) {
+    case r_Ejection: {
+      const uint8_t play[] = {0x00,      dev_COMM_CTRL,  dev_COMM_v1,
+                              Insertion, dev_CD_CHANGER, 0x01};
+      out->length = sizeof(play);
+      memcpy(out->data, play, sizeof(play));
+    }
+      resp->r = r_Report_Load;
+      break;
+    case r_Report_Load:
+      out->is_unicast = false;
+      out->peripheral_addr = 0x1FF;
+      out->length = sizeof(cdloading_resp) + 1;
+      memcpy(out->data, cdloading_resp, sizeof(cdloading_resp));
+      out->data[1] = dev_STATUS;
+      out->data[2] = Loading_Status_Report;
+      resp->r = r_Handled;
+      break;
     case r_TrackChange: AVCLAN_setTime(0x00, 0x00); [[fallthrough]];
     case r_NormalizeState:
       AVCLAN_normalizeState();
