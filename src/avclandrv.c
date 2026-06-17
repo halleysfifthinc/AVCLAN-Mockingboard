@@ -987,23 +987,28 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         out->peripheral_addr = HU_ADDR;
         respond = r_StatusReport;
         break;
-      case PACK3(dev_CMD_SW, dev_CD_CHANGER, Eject):
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, Eject): {
         // "Eject" label is multiply wrong; proper meaning unclear:
         //    - First observed on initial multiple presses of "CD" button,
         //    triggering (after {0x00, dev_CD_CHANGER, dev_COMM_v1, Insertion,
         //    0x01} response) proper activation of mockingboard/cd-changer.
         //    - Subsequently observed when pressing (technically
         //    releasing?) the fast-forward button and rewind
-        out->is_unicast = true;
-        out->peripheral_addr = HU_ADDR;
-        {
-          const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_COMM_v1, Insertion,
-                                 0x01};
-          out->length = sizeof(msg);
-          memcpy(out->data, msg, sizeof(msg));
+        if (cd_status.state | cd_SEEKING) { // FF/RW button released
+          cd_status.state &= ~cd_SEEKING;
+        } else {
+          out->is_unicast = true;
+          out->peripheral_addr = HU_ADDR;
+          {
+            const uint8_t msg[] = {0x00, dev_CD_CHANGER, dev_CMD_SW, Insertion,
+                                   0x01};
+            out->length = sizeof(msg);
+            memcpy(out->data, msg, sizeof(msg));
+          }
+          respond = r_Handled;
         }
-        respond = r_Handled;
         break;
+      }
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Initial_Report_Request):
         [[fallthrough]];
       case PACK3(dev_STATUS, dev_CD_CHANGER, Initial_Report_Request):
@@ -1065,6 +1070,34 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
         respond = r_TrackChange;
         break;
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Fast_Forward): {
+        cd_status.state |= cd_SEEKING;
+        *cd_Time_Sec += 15;
+        if (*cd_Time_Sec > 60) {
+          *cd_Time_Sec -= 60;
+          ++*cd_Time_Min;
+        }
+        AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        respond = r_Handled;
+        break;
+      }
+      case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Rewind): {
+        cd_status.state |= cd_SEEKING;
+        if (*cd_Time_Sec < 15) {
+          if (*cd_Time_Min > 0) {
+            uint8_t d = 15 - *cd_Time_Sec;
+            *cd_Time_Sec = 60 - d;
+            --*cd_Time_Min;
+          } else {
+            *cd_Time_Min = 0;
+            *cd_Time_Sec = 0;
+          }
+        } else
+          *cd_Time_Sec -= 15;
+        AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        respond = r_Handled;
+        break;
+      }
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Random):
         cd_status.flags |= cd_RANDOM;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
