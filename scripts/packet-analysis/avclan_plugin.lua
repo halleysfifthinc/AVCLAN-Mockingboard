@@ -20,36 +20,48 @@
 
 local iebusproto = Proto("iebus", "IEBus protocol")
 
--- 12-bit IEBus network (bus) addresses. Sourced from the ADDR_* table in
--- GadgetNutt/AVC-LAN-Module-Builder (src/avclan-registers.h).
+-- 12-bit IEBus network (bus) addresses. Sourced from:
+--  - Marcin/Soft-service
+--  - the ADDR_* table in GadgetNutt/AVC-LAN-Module-Builder
+--  - lists.py in sigrokproject/libsigrokdecode#106 by @enkiusz
 local known_addresses = {
+    [0x1F1] = "XM",
+    [0x110] = "EMV",
+    [0x120] = "AVX",
+    [0x128] = "1DIN TV",
+    [0x140] = "AVN",
+    [0x144] = "G-BOOK",
+    [0x160] = "AUDIO H/U",
+    [0x17C] = "MONET",
+    [0x17D] = "TEL",
     [0x178] = "NAV_W_CONTROLS",
-    [0x180] = "AUDIO_ECU",
+    [0x180] = "AUDIO_ECU", -- @enkiusz labels as Rr_TV (rear TV)
     [0x190] = "AUDIO_HU",
     [0x1A0] = "DVD_P",
+    [0x1AC] = "CAMERA-C",
     [0x1B0] = "REAR_TV",
     [0x1B4] = "SINGLE_DIN_NAV",
     [0x1B8] = "DISPLAY_SW",
     [0x1C0] = "REAR_CTRL_SW",
-    [0x1C2] = "EURO_GW_ECU",
-    [0x1C4] = "RUSSIA_GW_ECU",
+    [0x1C2] = "EURO_GW_ECU", -- @enkiusz labels as TV_TUNER2
+    [0x1C4] = "RUSSIA_GW_ECU", -- @enkiusz labels as PANEL
     [0x1C6] = "GW_ECU",
     [0x1C8] = "FM_MULTI_DISPLAY",
     [0x1CC] = "STEERING_SW",
     [0x1D0] = "MULTI_CD_DECODER",
     [0x1D4] = "DISPLAY",
     [0x1D6] = "CLOCK",
-    [0x1D8] = "FR_CONTROLLED_SW",
+    [0x1D8] = "FR_CONTROLLED_SW", -- @enkiusz labels as GW_TRIP (G/W for Trip)
     [0x1DC] = "NAV_REM_CTRL",
     [0x1E0] = "CD_CH_COMMANDER",
     [0x1E4] = "CONSOLIDATED_SW",
     [0x1E8] = "MD_CH_COMMANDER",
     [0x1EC] = "BODY_COMPUTER",
     [0x1F0] = "AMP_RADIO_TUNER",
-    [0x1F2] = "XM_RADIO_TUNER",
+    [0x1F2] = "XM_RADIO_TUNER", -- @enkiusz labels as SIRIUS
     [0x1F4] = "RSA",
     [0x1F6] = "RSE_M",
-    [0x1FF] = "BROADCAST",
+    [0x1FF] = "AUDIO_BROADCAST",
     [0x200] = "NAV_ECU",
     [0x210] = "ATIS",
     [0x220] = "VICS",
@@ -76,6 +88,7 @@ local known_addresses = {
     [0x520] = "FM_MULTI_DECODER",
     [0x528] = "RADIO_WAVE_BEACON",
     [0x52C] = "OPTICAL_BEACON",
+    [0x530] = "ETC",
     [0x540] = "CD_CH",
     [0x560] = "MD_CH_2",
     [0x580] = "CDROM_CH",
@@ -176,6 +189,30 @@ local function invert(t)
     return r
 end
 
+-- Decode a BCD-encoded byte to a decimal number. Returns nil when either nibble
+-- is out of range (> 9), which means the byte isn't valid BCD -- e.g. a 0xff
+-- "not present" sentinel, or a value the device actually encodes in plain
+-- binary. Callers decide how to present the invalid case.
+local function bcd2dec(b)
+    local hi = bit.rshift(b, 4)
+    local lo = bit.band(b, 0x0F)
+    if hi > 9 or lo > 9 then
+        return nil
+    end
+    return hi * 10 + lo
+end
+
+-- Format a BCD-encoded mm:ss pair, falling back to raw hex when a byte isn't
+-- valid BCD (e.g. a 0xff sentinel for "time unknown").
+local function bcd_time(min_b, sec_b)
+    local m = bcd2dec(min_b)
+    local s = bcd2dec(sec_b)
+    if m == nil or s == nil then
+        return string.format("%02x:%02x (raw)", min_b, sec_b)
+    end
+    return string.format("%02d:%02d", m, s)
+end
+
 local known_devices = {
     [0x00] = "LAN",
     [0x01] = "COMM_CTRL",
@@ -187,18 +224,20 @@ local known_devices = {
     [0x24] = "SW_CONVERTING",
     [0x25] = "CMD_SW", -- @GadgetNutt reads 0x25 as SW
     [0x31] = "STATUS",
-    -- 0x32 corroborated by @GadgetNutt (INFO_DISPLAY2); sends status report f1 to STATUS (32 31 f1 00 00) [CQ-TS7471LC_bootup]
+    -- [0x32] corroborated by @GadgetNutt (INFO_DISPLAY2); sends status report f1 to STATUS (32 31 f1 00 00) [CQ-TS7471LC_bootup]
     [0x32] = "INFO_DISPLAY2",
     [0x28] = "BEEP_HU",
     [0x29] = "BEEP_SPEAKERS",
     [0x34] = "FRONT_PSNG_MONITOR",
     -- [0x40] = "TV_TUNER", -- @GadgetNutt
     [0x43] = "CD_CHANGER2",
-    -- [0x50] = "CD_50", [0x52] = "CD_52", -- @GadgetNutt (CD variants, unconfirmed)
+    -- [0x50] = "CD_50", -- @GadgetNutt (CD variants, unconfirmed)
+    -- [0x52] = "CD_52",
     [0x55] = "BLUETOOTH_TEL",
     [0x56] = "INFO_DRAWING",
     [0x58] = "NAV_ECU", -- @GadgetNutt reads 0x58 as NAV_GPS
-    -- [0x5A] = "FM_MULTIPLEX_VICS", [0x5B] = "BEACON", -- @GadgetNutt
+    -- [0x5A] = "FM_MULTIPLEX_VICS", 
+    -- [0x5B] = "BEACON", -- @GadgetNutt
     [0x5C] = "CAMERA",
     [0x5D] = "CLIMATE_DRAWING",
     [0x5E] = "AUDIO_DRAWING",
@@ -207,12 +246,15 @@ local known_devices = {
     [0x61] = "TAPE_DECK",
     [0x62] = "CD",
     [0x63] = "CD_CHANGER",
-    -- [0x64] = "MD", [0x65] = "MD_CH", -- @GadgetNutt (MiniDisc)
+    -- [0x64] = "MD", -- @GadgetNutt (MiniDisc)
+    -- [0x65] = "MD_CH",
     [0x74] = "AUDIO_AMP",
     [0x80] = "GPS",
-    -- [0x82] = "FM_MULTIPLEX_DATA", [0x83] = "OPTICAL_BEACON", [0x84] = "RADIO_WAVE_BEACON", -- @GadgetNutt
+    -- [0x82] = "FM_MULTIPLEX_DATA",
+    -- [0x83] = "OPTICAL_BEACON",
+    -- [0x84] = "RADIO_WAVE_BEACON", -- @GadgetNutt
     [0x85] = "VOICE_CTRL",
-    -- [0x9A] = "FM_MULTIPLEX_TUNER", [0xA4] = "??", -- @GadgetNutt (0xA4 also seen in the A4 01 DB heartbeat)
+    -- [0x9A] = "FM_MULTIPLEX_TUNER",-- @GadgetNutt (0xA4 also seen in the A4 01 DB heartbeat)
     -- 0xc0 corroborated by @GadgetNutt (XM_TUNER, cf. ADDR XM_RADIO_TUNER); exchanges 0xef/0xff with CMD_SW, sends 0xfe to STATUS [douglasheld2-log.pcap]
     [0xC0] = "XM_TUNER",
     [0xE0] = "CLIMATE_CTRL_DEV",
@@ -351,7 +393,11 @@ local f_radio_status = ProtoField.uint8("avclan.radio.status", "Radio status", b
 )
 local f_radio_flags = ProtoField.uint8("avclan.radio.flags", "Radio flags")
 local f_radio_flags2 = ProtoField.uint8("avclan.radio.flags2", "Radio flags (byte 2)")
+-- Preset/channel number (0 when not on a stored preset).
+local f_radio_channel = ProtoField.uint8("avclan.radio.channel", "Preset channel", base.DEC)
 
+-- NOTE: bit 0x04 is read here as Stereo. @enkiusz (TunerFlags) reads the same
+-- bit as TP (Traffic Programme). One of these is wrong; unresolved.
 local f_radioflag_st = ProtoField.bool("avclan.radio.flags.st", "Stereo", 8, {"Set", "Not set"}, 0x04)
 local f_radioflag_ta = ProtoField.bool("avclan.radio.flags.ta", "TA", 8, {"Set", "Not set"}, 0x08)
 local f_radioflag_reg = ProtoField.bool("avclan.radio.flags.reg", "REG", 8, {"Set", "Not set"}, 0x10)
@@ -362,7 +408,8 @@ local f_radio_band = ProtoField.uint8("avclan.radio.band", "Radio band", base.HE
 local f_radio_bandnumber = ProtoField.int8("avclan.radio.bandnumber", "Radio band number", base.DEC, nil, 0x0F)
 local f_radio_freq = ProtoField.uint16("avclan.radio.freq", "Radio frequency")
 
--- Volume is BCD encoded
+-- Volume is BCD encoded here. NOTE: @enkiusz treats the volume byte as plain
+-- binary (no BCD conversion); the two disagree for values with a nibble > 9.
 local f_amp_volume = ProtoField.uint8("avclan.amp.volume", "Volume", base.DEC)
 
 -- Amp bass, mid, treble, fade, and balance are offset-binary (offset-16) encoded
@@ -392,6 +439,13 @@ local f_amp_balance = ProtoField.uint8("avclan.amp.balance", "Balance (right/lef
     [0x11] = "+1", [0x12] = "+2", [0x13] = "+3", [0x14] = "+4", [0x15] = "+5", [0x16] = "+6", [0x17] = "+7"
 })
 
+-- Amp status flags (from @enkiusz's AudioAmpFlags). Only MUTE (0x04) is
+-- identified; the rest are unknown. Note this byte (data_bytes[12]) sits past
+-- the end of the 14-byte amp reports in our captures, so it only decodes on
+-- longer report variants.
+local f_amp_flags = ProtoField.uint8("avclan.amp.flags", "Amplifier flags", base.HEX)
+local f_amp_mute = ProtoField.bool("avclan.amp.flags.mute", "MUTE", 8, nil, 0x04)
+
 local f_cd_slots = ProtoField.uint8("avclan.cd.slots", "CD player disc slots")
 local f_cd_slot1 = ProtoField.bool("avclan.cd.slot1", "Slot 1", 6, {"Filled", "Empty"}, 0x01)
 local f_cd_slot2 = ProtoField.bool("avclan.cd.slot1", "Slot 2", 6, {"Filled", "Empty"}, 0x02)
@@ -410,6 +464,8 @@ local f_cd_loading = ProtoField.bool("avclan.cd.state.loading", "LOADING", 8, ni
 
 local f_cd_disc = ProtoField.uint8("avclan.cd.disc", "Current disc", base.DEC)
 local f_cd_track = ProtoField.uint8("avclan.cd.track", "Track number", base.HEX)
+local f_cd_track_count = ProtoField.uint8("avclan.cd.track_count", "Track count", base.DEC)
+local f_cd_title = ProtoField.string("avclan.cd.title", "Track/disc title")
 local f_cd_min = ProtoField.uint8("avclan.cd.mins", "CD track play time, minutes", base.HEX)
 local f_cd_sec = ProtoField.uint8("avclan.cd.secs", "CD track play time, seconds", base.HEX)
 
@@ -456,6 +512,7 @@ avclanproto.fields = {
     f_radio_band,
     f_radio_bandnumber,
     f_radio_freq,
+    f_radio_channel,
     f_radioflag_af,
     f_radioflag_reg,
     f_radioflag_st,
@@ -466,6 +523,8 @@ avclanproto.fields = {
     f_amp_treble,
     f_amp_fade,
     f_amp_balance,
+    f_amp_flags,
+    f_amp_mute,
     f_cd_slots,
     f_cd_slot1,
     f_cd_slot2,
@@ -482,6 +541,8 @@ avclanproto.fields = {
     f_cd_loading,
     f_cd_disc,
     f_cd_track,
+    f_cd_track_count,
+    f_cd_title,
     f_cd_min,
     f_cd_sec,
     f_cd_flags,
@@ -591,8 +652,7 @@ local function decode_cmd_sw(subtree, buffer, offset, to_device)
         local param = buffer(offset+3,1)
         if action == 0x90 then -- VOLUME (BCD)
             local vol_raw = param:uint()
-            local vol_bcd = bit.rshift(vol_raw, 4) * 10 + bit.band(vol_raw, 0x0F)
-            amptree:add(f_amp_volume, param, vol_bcd):append_text(" (VOLUME)")
+            amptree:add(f_amp_volume, param, bcd2dec(vol_raw) or vol_raw):append_text(" (VOLUME)")
         elseif action == 0x91 then
             amptree:add(f_amp_balance, param)
         elseif action == 0x92 then
@@ -684,7 +744,7 @@ end
 
 -- TUNER source: radio state dump (regardless of action).
 local function decode_radio(subtree, buffer, offset, action)
-    local radiotree = subtree:add(avclanproto, buffer(offset,10), "Device: Radio")
+    local radiotree = subtree:add(avclanproto, buffer(offset), "Device: Radio")
     radiotree:add_le(f_radio_active, buffer(offset+3,1))
     radiotree:add_le(f_radio_status, buffer(offset+4,1))
     radiotree:add_le(f_radio_band, buffer(offset+5,1))
@@ -700,26 +760,48 @@ local function decode_radio(subtree, buffer, offset, action)
         freqtree:append_text(" (" .. 522+(freq-1)*9 .. " kHz)")
     end
 
-    local flags = radiotree:add(f_radio_flags, buffer(15,1))
-    flags:add(f_radioflag_st, buffer(15,1))
-    flags:add(f_radioflag_ta, buffer(15,1))
-    flags:add(f_radioflag_reg, buffer(15,1))
-    flags:add(f_radioflag_af, buffer(15,1))
-    radiotree:add(f_radio_flags2, buffer(16,1))
+    -- Preset channel number (@enkiusz's pd.py byte 6); 0 means "not on a preset".
+    if buffer:len() > offset+8 then
+        local channel = buffer(offset+8,1)
+        radiotree:add(f_radio_channel, channel)
+        if channel:uint() > 0 then
+            radiotree:append_text(", preset #" .. channel:uint())
+        end
+    end
+
+    -- Flags are offset-relative (@enkiusz's pd.py bytes 7 and 8); earlier
+    -- versions of this dissector read them at the fixed absolute offsets 15/16.
+    if buffer:len() > offset+9 then
+        local flags = radiotree:add(f_radio_flags, buffer(offset+9,1))
+        flags:add(f_radioflag_st, buffer(offset+9,1))
+        flags:add(f_radioflag_ta, buffer(offset+9,1))
+        flags:add(f_radioflag_reg, buffer(offset+9,1))
+        flags:add(f_radioflag_af, buffer(offset+9,1))
+    end
+    if buffer:len() > offset+10 then
+        radiotree:add(f_radio_flags2, buffer(offset+10,1))
+    end
 end
 
 -- AUDIO_AMP source: amplifier state dump (regardless of action).
 local function decode_amp(subtree, buffer, offset, action)
-    local amptree = subtree:add(avclanproto, buffer(offset,10), "Device: Audio amplifier")
+    -- Span to end of buffer rather than a fixed length: the flags byte (offset+14)
+    -- isn't present in every amp frame, and a fixed range would run out of bounds.
+    local amptree = subtree:add(avclanproto, buffer(offset), "Device: Audio amplifier")
 
     local vol_raw = buffer(offset+4,1):uint()
-    local vol_bcd = bit.rshift(vol_raw, 4) * 10 + bit.band(vol_raw, 0x0F)
-    amptree:add(f_amp_volume, buffer(offset+4,1), vol_bcd)
+    amptree:add(f_amp_volume, buffer(offset+4,1), bcd2dec(vol_raw) or vol_raw)
     amptree:add(f_amp_balance, buffer(offset+5,1))
     amptree:add(f_amp_fade, buffer(offset+6,1))
     amptree:add(f_amp_bass, buffer(offset+7,1))
     amptree:add(f_amp_mid, buffer(offset+8,1))
     amptree:add(f_amp_treble, buffer(offset+9,1))
+
+    -- Status flags (@enkiusz's pd.py byte 11); only MUTE (0x04) is identified.
+    if buffer:len() > offset+14 then
+        local amp_flags = amptree:add(f_amp_flags, buffer(offset+14,1))
+        amp_flags:add(f_amp_mute, buffer(offset+14,1))
+    end
 end
 
 -- CD / CD_CHANGER source: payload depends on the report action.
@@ -749,8 +831,7 @@ local function decode_cd(subtree, buffer, offset, action)
         cd_status:add(f_cd_sec, buffer(offset+8,1))
         cd_status:append_text("Disc " .. field_cd_disc().value .. ", ")
         cd_status:append_text("track " .. tostring(buffer(offset+6,1)):gsub("(.)(.)", "%1%2") .. ", ")
-        cd_status:append_text("time " .. tostring(buffer(offset+7,1)):gsub("0x(.)(.)", "%1%2") .. ":")
-        cd_status:append_text(tostring(buffer(offset+8,1)):gsub("(.)(.)", "%1%2"))
+        cd_status:append_text("time " .. bcd_time(buffer(offset+7,1):uint(), buffer(offset+8,1):uint()))
         local cd_flags = cdtree:add(f_cd_flags, buffer(offset+9,1))
         cd_flags:add(f_cd_flag_disk_random, buffer(offset+9,1))
         cd_flags:add(f_cd_flag_random, buffer(offset+9,1))
@@ -792,6 +873,24 @@ local function decode_cd(subtree, buffer, offset, action)
         cd_state:add(f_cd_playback, buffer(offset+9,1))
         cd_state:add(f_cd_seeking_track, buffer(offset+9,1))
         cd_state:add(f_cd_loading, buffer(offset+9,1))
+    elseif action == known_actions_names["REPORT_TOC"] then
+        -- Disc table-of-contents (@enkiusz's REPORT_TOC layout).
+        local toctree = subtree:add(avclanproto, buffer(offset), "Device: CD player (TOC)")
+        toctree:add(f_cd_disc, buffer(offset+3,1))
+        toctree:add(f_cd_track, buffer(offset+4,1)):append_text(" (first track)")
+        toctree:add(f_cd_track_count, buffer(offset+5,1))
+        local total = bcd_time(buffer(offset+6,1):uint(), buffer(offset+7,1):uint())
+        toctree:append_text(", total time " .. total)
+    elseif action == known_actions_names["TRACK_NAME_RESP"] then
+        -- Track-name report: disc/track then an ASCII title (@enkiusz's pd.py:
+        -- title starts at data byte 5).
+        local nametree = subtree:add(avclanproto, buffer(offset,-1), "Device: CD player (track name)")
+        nametree:add(f_cd_disc, buffer(offset+3,1))
+        nametree:add(f_cd_track, buffer(offset+4,1))
+        if buffer:len() > offset+7 then
+            local title = nametree:add(f_cd_title, buffer(offset+7))
+            title:append_text(" (\"" .. buffer(offset+7):string() .. "\")")
+        end
     elseif action == known_actions_names["ENABLE_FUNCTION_RESP"] or
         action == known_actions_names["DISABLE_FUNCTION_RESP"] then
         -- Understood apart from a trailing 0x01 of unknown meaning; not flagged.
@@ -800,6 +899,16 @@ local function decode_cd(subtree, buffer, offset, action)
         -- 0xfd, ...) whose payload layout isn't understood yet. Flag just the
         -- undecoded bytes, not the whole (correctly-named) message.
         mark_undecoded(subtree, buffer(offset+3))
+    end
+end
+
+-- CD / CD_CHANGER destination: requests addressed to a CD player. Only the
+-- track-name request carries a decodable payload (@enkiusz's pkt_to_cd_player);
+-- other request actions are identified by their action byte alone.
+local function decode_to_cd(subtree, buffer, offset, action)
+    if action == known_actions_names["TRACK_NAME_REQ"] then
+        subtree:add(f_cd_disc, buffer(offset+3,1))
+        subtree:add(f_cd_track, buffer(offset+4,1))
     end
 end
 
@@ -867,6 +976,14 @@ function avclanproto.dissector(buffer, pinfo, tree)
     local offset = 7
     if buffer(7,1):uint() == 0 then
         offset = 8
+    elseif buffer(0,1):uint() ~= 0 then
+        -- Unicast frame whose leading byte isn't the expected 0x00 pad (e.g.
+        -- 0xff). @enkiusz notes both 0x00 and 0xff occur here, but under the
+        -- current protocol understanding a non-0x00 prefix is unusual; rather
+        -- than risk misaligning every downstream field, treat it conservatively
+        -- as undecoded.
+        subtree:add_proto_expert_info(pe_unhandled_msg)
+        return
     end
     add_device(subtree, f_from_device, buffer(offset+0,1))
     add_device(subtree, f_to_device, buffer(offset+1,1))
@@ -889,6 +1006,10 @@ function avclanproto.dissector(buffer, pinfo, tree)
     elseif device_decoders[from_device] then
         add_action(subtree, buffer(offset+2,1))
         device_decoders[from_device](subtree, buffer, offset, field_action().value)
+    elseif to_device == known_devices_names["CD"] or
+        to_device == known_devices_names["CD_CHANGER"] then
+        add_action(subtree, buffer(offset+2,1))
+        decode_to_cd(subtree, buffer, offset, field_action().value)
     else
         -- Unknown source/dest: the [from, to, action] header layout still holds
         -- even when we can't decode the body, so surface the action.
