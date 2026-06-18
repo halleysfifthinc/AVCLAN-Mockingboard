@@ -173,86 +173,6 @@ static volatile int8_t mic_ntoggles = 0;
 static constexpr uint16_t mic_press_ticks = (uint16_t)((F_CPU / 1024UL) / 10UL);
 static constexpr uint16_t mic_quiet_ticks = (uint16_t)((F_CPU / 1024UL) / 2UL);
 
-/* Disable non-read related interrupts (USART RX, PIT, TCA) during AVCLAN reads.
- */
-static inline void stopEvent() {
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    RTC.PITINTCTRL &= ~RTC_PI_bm;
-    USART0.CTRLA &= ~USART_RXCIE_bm;
-
-    // WO1 toggles don't depend on OVF interrupt, but the OVF interrupt *DOES*
-    // count the toggles So, disabling the OVF interrupt alone is insufficient,
-    // we must also disable the timer
-    TCA0.SINGLE.INTCTRL &= ~TCA_SINGLE_OVF_bm;
-
-    // Target pulse length is ~40-150ms, with interval between pulses of
-    // ~100-200ms
-    // The longest AVCLAN frame duration is ~15ms, so stretching either phase
-    // (high/low) won't exceed the allowable ranges for pulses (high) or
-    // intervals (low)
-    TCA0.SINGLE.CTRLA &= ~TCA_SINGLE_ENABLE_bm;
-  }
-}
-
-// Re-enable serial and periodic interrupts.
-static inline void startEvent() {
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    if (AVCLAN_isPlaying()) // Reenable PIT interrupt if currently playing
-      RTC.PITINTCTRL |= RTC_PI_bm;
-    USART0.CTRLA |= USART_RXCIE_bm;
-    // Resume/re-arm mic-press timer only while a press is in progress.
-    // Enable before unmasking so a pending final-phase OVF lands after
-    // re-enable and the ISR's own ENABLE clear wins (no spurious extra period).
-    if (mic_ntoggles) {
-      TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
-      TCA0.SINGLE.INTCTRL |= TCA_SINGLE_OVF_bm;
-    }
-  }
-}
-
-// clang-format off
-static inline void AVCLAN_setBusIdle() {
-  __asm__ __volatile__(
-      "cbi %[vporta_out], 4; \n\t"
-      "sbi %[vportc_out], 0; \n\t"
-      ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)),
-        [vportc_out] "I"(_SFR_IO_ADDR(VPORTC_OUT)));
-}
-static inline void AVCLAN_setBusDriven() {
-  __asm__ __volatile__(
-      "sbi %[vporta_out], 4; \n\t"
-      "cbi %[vportc_out], 0; \n\t"
-      ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)),
-        [vportc_out] "I"(_SFR_IO_ADDR(VPORTC_OUT)));
-}
-// clang-format on
-
-// Returns true if device TX is muted on AVCLAN bus
-static inline bool AVCLAN_ismuted() {
-  return (((VPORTA_DIR & PIN4_bm) | (VPORTA_DIR & PIN0_bm)) == 0);
-}
-
-// Mute device TX on AVCLAN bus
-void AVCLAN_muteDevice(bool mute) {
-  if (mute) {
-    // clang-format off
-    __asm__ __volatile__("cbi %[vporta_dir], 4; \n\t" // set as INPUT (output values ignored)
-                         "cbi %[vportc_dir], 0; \n\t" // set as INPUT (output values ignored)
-                         ::
-                         [vporta_dir] "I"(_SFR_IO_ADDR(VPORTA_DIR)),
-                         [vportc_dir] "I"(_SFR_IO_ADDR(VPORTC_DIR)));
-    // clang-format on
-  } else {
-    // clang-format off
-    __asm__ __volatile__("sbi %[vporta_dir], 4; \n\t"
-                         "sbi %[vportc_dir], 0; \n\t"
-                         ::
-                         [vporta_dir] "I"(_SFR_IO_ADDR(VPORTA_DIR)),
-                         [vportc_dir] "I"(_SFR_IO_ADDR(VPORTC_DIR)));
-    // clang-format on
-  }
-}
-
 #ifndef NDEBUG
 // Toggle PB1 and return its new level.
 bool AVCLAN_micToggle() {
@@ -309,6 +229,44 @@ void AVCLAN_micPlayPause() { mic_pulse(1); }
 // Emulate a skip-forward button press: H / L / H.
 void AVCLAN_micSkip() { mic_pulse(3); }
 
+/* Disable non-read related interrupts (USART RX, PIT, TCA) during AVCLAN reads.
+ */
+static inline void stopEvent() {
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    RTC.PITINTCTRL &= ~RTC_PI_bm;
+    USART0.CTRLA &= ~USART_RXCIE_bm;
+
+    // WO1 toggles don't depend on OVF interrupt, but the OVF interrupt *DOES*
+    // count the toggles
+    // So, disabling the OVF interrupt alone is insufficient, we must also
+    // disable the timer
+    TCA0.SINGLE.INTCTRL &= ~TCA_SINGLE_OVF_bm;
+
+    // Target pulse length is ~40-150ms, with interval between pulses of
+    // ~100-200ms
+    // The longest AVCLAN frame duration is ~15ms, so stretching either phase
+    // (high/low) won't exceed the allowable ranges for pulses (high) or
+    // intervals (low)
+    TCA0.SINGLE.CTRLA &= ~TCA_SINGLE_ENABLE_bm;
+  }
+}
+
+// Re-enable serial and periodic interrupts.
+static inline void startEvent() {
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    if (AVCLAN_isPlaying()) // Reenable PIT interrupt if currently playing
+      RTC.PITINTCTRL |= RTC_PI_bm;
+    USART0.CTRLA |= USART_RXCIE_bm;
+    // Resume/re-arm mic-press timer only while a press is in progress.
+    // Enable before unmasking so a pending final-phase OVF lands after
+    // re-enable and the ISR's own ENABLE clear wins (no spurious extra period).
+    if (mic_ntoggles) {
+      TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
+      TCA0.SINGLE.INTCTRL |= TCA_SINGLE_OVF_bm;
+    }
+  }
+}
+
 // Sets CD_mode to play and resets timer count (so that the next interrupt is in
 // 1 sec)
 static void AVCLAN_startPlaying() {
@@ -323,10 +281,53 @@ static void AVCLAN_startPlaying() {
 
 // Sets CD_mode to play and resets timer count (so that the next interrupt is in
 // 1 sec)
-static void AVCLAN_stopPlaying() {
-  AVCLAN_micPlayPause();
-  CD_Mode = stStop;
+void AVCLAN_stopPlaying() {
   RTC.PITINTCTRL &= ~RTC_PI_bm;
+  CD_Mode = stStop;
+  AVCLAN_micPlayPause();
+}
+
+// clang-format off
+static inline void AVCLAN_setBusIdle() {
+  __asm__ __volatile__(
+      "cbi %[vporta_out], 4; \n\t"
+      "sbi %[vportc_out], 0; \n\t"
+      ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)),
+        [vportc_out] "I"(_SFR_IO_ADDR(VPORTC_OUT)));
+}
+static inline void AVCLAN_setBusDriven() {
+  __asm__ __volatile__(
+      "sbi %[vporta_out], 4; \n\t"
+      "cbi %[vportc_out], 0; \n\t"
+      ::[vporta_out] "I"(_SFR_IO_ADDR(VPORTA_OUT)),
+        [vportc_out] "I"(_SFR_IO_ADDR(VPORTC_OUT)));
+}
+// clang-format on
+
+// Returns true if device TX is muted on AVCLAN bus
+static inline bool AVCLAN_ismuted() {
+  return (((VPORTA_DIR & PIN4_bm) | (VPORTA_DIR & PIN0_bm)) == 0);
+}
+
+// Mute device TX on AVCLAN bus
+void AVCLAN_muteDevice(bool mute) {
+  if (mute) {
+    // clang-format off
+    __asm__ __volatile__("cbi %[vporta_dir], 4; \n\t" // set as INPUT (output values ignored)
+                         "cbi %[vportc_dir], 0; \n\t" // set as INPUT (output values ignored)
+                         ::
+                         [vporta_dir] "I"(_SFR_IO_ADDR(VPORTA_DIR)),
+                         [vportc_dir] "I"(_SFR_IO_ADDR(VPORTC_DIR)));
+    // clang-format on
+  } else {
+    // clang-format off
+    __asm__ __volatile__("sbi %[vporta_dir], 4; \n\t"
+                         "sbi %[vportc_dir], 0; \n\t"
+                         ::
+                         [vporta_dir] "I"(_SFR_IO_ADDR(VPORTA_DIR)),
+                         [vportc_dir] "I"(_SFR_IO_ADDR(VPORTC_DIR)));
+    // clang-format on
+  }
 }
 
 void AVCLAN_init() {
