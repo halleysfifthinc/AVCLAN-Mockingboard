@@ -176,33 +176,37 @@ constexpr uint16_t mic_quiet_ticks = (uint16_t)((F_CPU / 1024UL) / 2UL);
 /* Disable non-read related interrupts (USART RX, PIT, TCA) during AVCLAN reads.
  */
 static inline void stopEvent() {
-  RTC.PITINTCTRL &= ~(1 << RTC_PI_bp);
-  USART0.CTRLA &= ~(1 << USART_RXCIE_bp);
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    RTC.PITINTCTRL &= ~RTC_PI_bm;
+    USART0.CTRLA &= ~USART_RXCIE_bm;
 
-  // WO1 toggles don't depend on OVF interrupt, but the OVF interrupt *DOES*
-  // count the toggles So, disabling the OVF interrupt alone is insufficient,
-  // we must also disable the timer
-  TCA0.SINGLE.INTCTRL &= ~TCA_SINGLE_OVF_bm;
+    // WO1 toggles don't depend on OVF interrupt, but the OVF interrupt *DOES*
+    // count the toggles So, disabling the OVF interrupt alone is insufficient,
+    // we must also disable the timer
+    TCA0.SINGLE.INTCTRL &= ~TCA_SINGLE_OVF_bm;
 
-  // Target pulse length is ~40-150ms, with interval between pulses of
-  // ~100-200ms
-  // The longest AVCLAN frame duration is ~15ms, so stretching either phase
-  // (high/low) won't exceed the allowable ranges for pulses (high) or
-  // intervals (low)
-  TCA0.SINGLE.CTRLA &= ~TCA_SINGLE_ENABLE_bm;
+    // Target pulse length is ~40-150ms, with interval between pulses of
+    // ~100-200ms
+    // The longest AVCLAN frame duration is ~15ms, so stretching either phase
+    // (high/low) won't exceed the allowable ranges for pulses (high) or
+    // intervals (low)
+    TCA0.SINGLE.CTRLA &= ~TCA_SINGLE_ENABLE_bm;
+  }
 }
 
 // Re-enable serial and periodic interrupts.
 static inline void startEvent() {
-  if (AVCLAN_isPlaying()) // Reenable PIT interrupt if currently playing
-    RTC.PITINTCTRL |= (1 << RTC_PI_bp);
-  USART0.CTRLA |= (1 << USART_RXCIE_bp);
-  // Resume/re-arm mic-press timer only while a press is in progress.
-  // Enable before unmasking so a pending final-phase OVF lands after re-enable
-  // and the ISR's own ENABLE clear wins (no spurious extra period).
-  if (mic_ntoggles) {
-    TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
-    TCA0.SINGLE.INTCTRL |= TCA_SINGLE_OVF_bm;
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    if (AVCLAN_isPlaying()) // Reenable PIT interrupt if currently playing
+      RTC.PITINTCTRL |= RTC_PI_bm;
+    USART0.CTRLA |= USART_RXCIE_bm;
+    // Resume/re-arm mic-press timer only while a press is in progress.
+    // Enable before unmasking so a pending final-phase OVF lands after
+    // re-enable and the ISR's own ENABLE clear wins (no spurious extra period).
+    if (mic_ntoggles) {
+      TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
+      TCA0.SINGLE.INTCTRL |= TCA_SINGLE_OVF_bm;
+    }
   }
 }
 
