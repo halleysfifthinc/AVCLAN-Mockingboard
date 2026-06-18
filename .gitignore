@@ -4,6 +4,10 @@
 *.zip
 *.db
 *.bak
+out/
 build/
 hardware/_autosave*
 hardware/fp-info-cache
+__pycache__/
+~*
+\#*
