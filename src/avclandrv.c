@@ -122,10 +122,6 @@
 
 static AVCLAN_CD_Status_t cd_status;
 
-static uint8_t *cd_Track;
-static uint8_t *cd_Time_Min;
-static uint8_t *cd_Time_Sec;
-
 static cd_modes CD_Mode;
 
 #ifndef NDEBUG
@@ -400,10 +396,6 @@ void AVCLAN_init() {
   cd_status.mins = 0xFF;
   cd_status.secs = 0x7F;
 
-  cd_Track = &cd_status.track;
-  cd_Time_Min = &cd_status.mins;
-  cd_Time_Sec = &cd_status.secs;
-
   CD_Mode = stStop;
 }
 
@@ -431,21 +423,21 @@ bool AVCLAN_isPlaying() { return (CD_Mode == stPlay); }
 void AVCLAN_incrementTime() {
   // Sentinel values (>99) mean "no time"; leave them alone until setTime()
   // replaces them with a real count.
-  if (*cd_Time_Sec > 99)
+  if (cd_status.secs > 99)
     return;
-  if (*cd_Time_Sec == 59) {
-    *cd_Time_Sec = 0;
-    if (*cd_Time_Min == 99)
-      *cd_Time_Min = 0;
+  if (cd_status.secs == 59) {
+    cd_status.secs = 0;
+    if (cd_status.mins == 99)
+      cd_status.mins = 0;
     else
-      (*cd_Time_Min)++;
+      cd_status.mins++;
   } else
-    (*cd_Time_Sec)++;
+    cd_status.secs++;
 }
 
 static void AVCLAN_setTime(uint8_t mins, uint8_t secs) {
-  *cd_Time_Min = mins;
-  *cd_Time_Sec = secs;
+  cd_status.mins = mins;
+  cd_status.secs = secs;
 }
 
 // Set AVC bus to `val` (logical 1 or 0) for `period` ticks of TCB1
@@ -1157,12 +1149,12 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Seek_Up):
         AVCLAN_micSkip();
         cd_status.state = cd_SEEKING_TRACK;
-        if (*cd_Track < 98)
-          ++*cd_Track;
+        if (cd_status.track < 98)
+          ++cd_status.track;
         else
-          *cd_Track = 1;
-        *cd_Time_Min = 0xff;
-        *cd_Time_Sec = 0x7f;
+          cd_status.track = 1;
+        cd_status.mins = 0xff;
+        cd_status.secs = 0x7f;
         cd_status.flags2 = 0xc0;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
         respond = r_TrackChange;
@@ -1170,42 +1162,43 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Seek_Down):
         cd_status.state = cd_SEEKING_TRACK;
         // Track down returns to track beginning if in ~middle of song
-        if (*cd_Time_Min == 0 && *cd_Time_Sec < 0x05) {
-          if (*cd_Track > 1)
-            --*cd_Track;
+        if (cd_status.mins == 0 && cd_status.secs < 0x05) {
+          if (cd_status.track > 1)
+            --cd_status.track;
           else
-            *cd_Track = 99;
+            cd_status.track = 99;
         }
-        *cd_Time_Min = 0xff;
-        *cd_Time_Sec = 0x7f;
+        cd_status.mins = 0xff;
+        cd_status.secs = 0x7f;
         cd_status.flags2 = 0xc0;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
         respond = r_TrackChange;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Fast_Forward): {
         cd_status.state |= cd_SEEKING;
-        *cd_Time_Sec += 15;
-        if (*cd_Time_Sec > 60) {
-          *cd_Time_Sec -= 60;
-          ++*cd_Time_Min;
+        cd_status.secs += 15;
+        if (cd_status.secs > 60) {
+          cd_status.secs -= 60;
+          ++cd_status.mins;
         }
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        AVCLAN_micSkip();
         respond = r_Handled;
         break;
       }
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Rewind): {
         cd_status.state |= cd_SEEKING;
-        if (*cd_Time_Sec < 15) {
-          if (*cd_Time_Min > 0) {
-            uint8_t d = 15 - *cd_Time_Sec;
-            *cd_Time_Sec = 60 - d;
-            --*cd_Time_Min;
+        if (cd_status.secs < 15) {
+          if (cd_status.mins > 0) {
+            uint8_t d = 15 - cd_status.secs;
+            cd_status.secs = 60 - d;
+            --cd_status.mins;
           } else {
-            *cd_Time_Min = 0;
-            *cd_Time_Sec = 0;
+            cd_status.mins = 0;
+            cd_status.secs = 0;
           }
         } else
-          *cd_Time_Sec -= 15;
+          cd_status.secs -= 15;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
         respond = r_Handled;
         break;
