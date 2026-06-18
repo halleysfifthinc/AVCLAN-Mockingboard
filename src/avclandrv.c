@@ -313,7 +313,7 @@ static void AVCLAN_startPlaying() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CNTBUSY_bp);
     RTC.CNT = 0;
-    RTC.PITINTCTRL |= (1 << RTC_PI_bp);
+    RTC.PITINTCTRL |= RTC_PI_bm;
   }
 }
 
@@ -322,7 +322,7 @@ static void AVCLAN_startPlaying() {
 static void AVCLAN_stopPlaying() {
   AVCLAN_micPlayPause();
   CD_Mode = stStop;
-  RTC.PITINTCTRL &= ~(1 << RTC_PI_bp);
+  RTC.PITINTCTRL &= ~RTC_PI_bm;
 }
 
 void AVCLAN_init() {
@@ -377,7 +377,7 @@ void AVCLAN_init() {
   loop_until_bit_is_clear(RTC_STATUS, RTC_CTRLABUSY_bp);
   RTC.CTRLA = RTC_PRESCALER_DIV1_gc;
   RTC.CLKSEL = RTC_CLKSEL_INT32K_gc;
-  RTC.PITINTCTRL = RTC_PI_bm;
+  RTC.PITINTCTRL = 0;
   loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CTRLBUSY_bp);
   RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm;
 
