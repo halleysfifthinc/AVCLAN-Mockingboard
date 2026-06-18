@@ -112,7 +112,7 @@
 #define READING_NBITS  GPIOR2
 #define READING_PARITY GPIOR3
 
-#ifdef SOFTWARE_DEBUG
+#ifndef NDEBUG
   #define TCB_CNTMODE TCB_CNTMODE_FRQPW_gc
 #else
   #define TCB_CNTMODE TCB_CNTMODE_PW_gc
@@ -128,7 +128,7 @@ uint8_t *cd_Time_Sec;
 
 cd_modes CD_Mode;
 
-#ifdef SOFTWARE_DEBUG
+#ifndef NDEBUG
 volatile uint8_t pulse_count = 0;
 volatile uint16_t period = 0;
 #endif
@@ -164,11 +164,32 @@ static const uint8_t cdloading_resp[] = {dev_CD_CHANGER,
                                          0x01,
                                          0x02};
 
-/* Disable serial and periodic interrupts during AVCLAN reads.
-  Not using cli() because AVCLAN reads depend on other interrupts. */
+// pending WO1 toggles (even); signed to avoid underflows from a stray OVF
+static volatile int8_t mic_ntoggles = 0;
+
+// TCA0 period (CMP0/TOP) in ticks at F_CPU with the CLKSEL=DIV1024 prescaler.
+// A press phase is ~100 ms; the final LOW phase is stretched to mic_quiet_ticks
+// (~500 ms) so consecutive presses stay distinct
+constexpr uint16_t mic_press_ticks = (uint16_t)((F_CPU / 1024UL) / 10UL);
+constexpr uint16_t mic_quiet_ticks = (uint16_t)((F_CPU / 1024UL) / 2UL);
+
+/* Disable non-read related interrupts (USART RX, PIT, TCA) during AVCLAN reads.
+ */
 static inline void stopEvent() {
   RTC.PITINTCTRL &= ~(1 << RTC_PI_bp);
   USART0.CTRLA &= ~(1 << USART_RXCIE_bp);
+
+  // WO1 toggles don't depend on OVF interrupt, but the OVF interrupt *DOES*
+  // count the toggles So, disabling the OVF interrupt alone is insufficient,
+  // we must also disable the timer
+  TCA0.SINGLE.INTCTRL &= ~TCA_SINGLE_OVF_bm;
+
+  // Target pulse length is ~40-150ms, with interval between pulses of
+  // ~100-200ms
+  // The longest AVCLAN frame duration is ~15ms, so stretching either phase
+  // (high/low) won't exceed the allowable ranges for pulses (high) or
+  // intervals (low)
+  TCA0.SINGLE.CTRLA &= ~TCA_SINGLE_ENABLE_bm;
 }
 
 // Re-enable serial and periodic interrupts.
@@ -176,6 +197,13 @@ static inline void startEvent() {
   if (AVCLAN_isPlaying()) // Reenable PIT interrupt if currently playing
     RTC.PITINTCTRL |= (1 << RTC_PI_bp);
   USART0.CTRLA |= (1 << USART_RXCIE_bp);
+  // Resume/re-arm mic-press timer only while a press is in progress.
+  // Enable before unmasking so a pending final-phase OVF lands after re-enable
+  // and the ISR's own ENABLE clear wins (no spurious extra period).
+  if (mic_ntoggles) {
+    TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
+    TCA0.SINGLE.INTCTRL |= TCA_SINGLE_OVF_bm;
+  }
 }
 
 // clang-format off
@@ -221,9 +249,66 @@ void AVCLAN_muteDevice(bool mute) {
   }
 }
 
+#ifndef NDEBUG
+// Toggle PB1 and return its new level.
+bool AVCLAN_micToggle() {
+  // Take manual control of PB1 (CMP1EN gives TCA0 control of WO1/PB1 level)
+  TCA0.SINGLE.CTRLB &= ~TCA_SINGLE_CMP1EN_bm;
+  VPORTB.OUT ^= PIN1_bm;
+  return (VPORTB.OUT & PIN1_bm) != 0;
+}
+
+bool AVCLAN_isMediaFunctioning() { return mic_ntoggles != 0; }
+#endif
+
+// Begin a press waveform of `nphases` × 100 ms level segments.
+// - ~Immediately toggles high, alternates each phase (1 = single HIGH press, 3
+//   = skip H/L/H, etc).
+// - Halting the timer freezes WO1 at its last level; must run even number of
+// phases to ensure we return to low
+static void mic_pulse(uint8_t nphases) {
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    if (mic_ntoggles) // Skip if already pulsing
+      return;
+
+    // must be even to return to idle-low
+    mic_ntoggles = (nphases & 0x01) ? nphases + 1 : nphases;
+    TCA0.SINGLE.CTRLB |=
+        TCA_SINGLE_CMP1EN_bm; // Reassert TCA control of WO1/PB1
+    TCA0.SINGLE.CTRLC = 0;    // Reset WO1 level just in case
+    TCA0.SINGLE.CNT = 0;
+    TCA0.SINGLE.CMP0 =   // TOP
+        mic_press_ticks; // always restore default ~100 ms period
+    TCA0.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm; // clear any stale flag
+    TCA0.SINGLE.INTCTRL |= TCA_SINGLE_OVF_bm;
+    TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
+  }
+}
+
+// OVF ISR counts phases, stretches the final LOW phase into a quiet gap, and
+// stops the timer on the last one.
+ISR(TCA0_OVF_vect) {
+  TCA0.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;
+  if (--mic_ntoggles == 1) {
+    // Stretch final phase to a ~500 ms idle-low so back-to-back presses stay
+    // distinct
+    TCA0.SINGLE.CMP0 = mic_quiet_ticks;
+  } else if (mic_ntoggles <= 0) {
+    mic_ntoggles = 0; // clamp to avoid perma-lockout in mic_pulse
+    TCA0.SINGLE.CTRLA &= ~TCA_SINGLE_ENABLE_bm;
+  }
+}
+
+// Emulate a single play/pause button press on the source device.
+void AVCLAN_micPlayPause() { mic_pulse(1); }
+
+// Emulate a skip-forward button press: H / L / H.
+void AVCLAN_micSkip() { mic_pulse(3); }
+
 // Sets CD_mode to play and resets timer count (so that the next interrupt is in
 // 1 sec)
-void AVCLAN_startPlaying() {
+static void AVCLAN_startPlaying() {
+  AVCLAN_micPlayPause();
   CD_Mode = stPlay;
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CNTBUSY_bp);
@@ -234,7 +319,8 @@ void AVCLAN_startPlaying() {
 
 // Sets CD_mode to play and resets timer count (so that the next interrupt is in
 // 1 sec)
-void AVCLAN_stopPlaying() {
+static void AVCLAN_stopPlaying() {
+  AVCLAN_micPlayPause();
   CD_Mode = stStop;
   RTC.PITINTCTRL &= ~(1 << RTC_PI_bp);
 }
@@ -255,6 +341,26 @@ void AVCLAN_init() {
   // Set AC2 to generate events on async channel 0
   EVSYS.ASYNCCH0 = EVSYS_ASYNCCH0_AC2_OUT_gc;
   EVSYS.ASYNCUSER0 = EVSYS_ASYNCUSER0_ASYNCCH0_gc; // USER0 is TCB0
+
+  // PB1 needs to be set as an output for TCA0 to set the level
+  PORTB.DIRSET = PIN1_bm;
+
+  // Experimentally, a press should be ~100ms; multiple presses can be separated
+  // by the same ~100ms (but separate pulse trains need more separation to
+  // remain distinct)
+  TCA0.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV1024_gc;
+
+  // In frequency (FRQ) mode, channel N compare match triggers "UPDATE"
+  // When CMPnEN is set, TCA0 has control of the output level for the channel's
+  // pin, and UPDATE toggles the level
+  // Channel 1 controls WO1, which is mapped to PB1
+  TCA0.SINGLE.CTRLB = TCA_SINGLE_WGMODE_FRQ_gc | TCA_SINGLE_CMP1EN_bm;
+  TCA0.SINGLE.CTRLC = 0; // Preset WO1 level low just to be sure
+
+  // toggle WO1 ~immediately after each period start; should go low => high
+  TCA0.SINGLE.CMP1 = 2;
+  TCA0.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm; // Clear OVF flag just in case
+  TCA0.SINGLE.INTCTRL = 0;
 
   // TCB0 for read bit timing
   TCB0.CTRLB = TCB_CNTMODE;
@@ -467,7 +573,7 @@ avclan_bit_t AVCLAN_sendbyte(const uint8_t *byte) {
 }
 
 ISR(TCB0_INT_vect) {
-#ifdef SOFTWARE_DEBUG
+#ifndef NDEBUG
   pulse_count++;
   period = TCB0.CNT;
 #endif
@@ -1044,6 +1150,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         respond = r_Handled;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Seek_Up):
+        AVCLAN_micSkip();
         cd_status.state = cd_SEEKING_TRACK;
         if (*cd_Track < 98)
           ++*cd_Track;
@@ -1347,7 +1454,11 @@ void AVCLAN_normalizeState() {
   // }
 }
 
-#ifdef SOFTWARE_DEBUG
+#ifndef NDEBUG
+  // Only used immediately below
+  #define XSTR(x) #x
+  #define STR(x)  XSTR(x)
+
 uint16_t pulses[100];
 uint16_t periods[100];
 

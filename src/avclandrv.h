@@ -222,11 +222,12 @@ void AVCLAN_incrementTime();
 void AVCLAN_setTime(uint8_t mins, uint8_t secs);
 void AVCLAN_normalizeState();
 
-#ifdef SOFTWARE_DEBUG
+#ifndef NDEBUG
+bool AVCLAN_micToggle();
+void AVCLAN_micPlayPause();
+void AVCLAN_micSkip();
+bool AVCLAN_isMediaFunctioning();
 void AVCLan_Measure();
-#endif
-#ifdef HARDWARE_DEBUG
-void SetHighLow();
 #endif
 
 #endif // __AVCLANDRV_H

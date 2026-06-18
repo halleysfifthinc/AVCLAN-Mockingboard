@@ -60,9 +60,9 @@ set_property(CACHE USART_RXMODE PROPERTY STRINGS
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_C_FLAGS_RELEASE "-Wall -Wswitch-enum -Werror -Os")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO "-Wall -Wswitch-enum -Werror -O2 -save-temps -g -gdwarf-3 -gstrict-dwarf")
-set(CMAKE_C_FLAGS_DEBUG "-Wall -Wswitch-enum -Werror -fanalyzer -O0 -save-temps -g -gdwarf-3 -gstrict-dwarf")
+add_compile_options(
+    -Wall -Wswitch-enum -Werror
+    "$<$<CONFIG:Debug>:-fanalyzer>")
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "13")

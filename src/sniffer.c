@@ -249,7 +249,20 @@ int main() {
           }
           break;
 
-#ifdef SOFTWARE_DEBUG
+#ifndef NDEBUG
+        case 'g': AVCLAN_micToggle(); break;
+        case 'p':
+          RS232_Print("Play/pause begin\n");
+          AVCLAN_micPlayPause();
+          while (AVCLAN_isMediaFunctioning()) {}
+          RS232_Print("Play/pause end\n");
+          break;
+        case 's':
+          RS232_Print("Skip begin\n");
+          AVCLAN_micSkip();
+          while (AVCLAN_isMediaFunctioning()) {}
+          RS232_Print("Skip end\n");
+          break;
         case 'M': AVCLan_Measure(); break;
 #endif
 
@@ -403,12 +416,11 @@ void print_help() {
               "k - Toggle character echo\n"
               "E - Beep\n"
               "P - Play\n"
-#ifdef SOFTWARE_DEBUG
+#ifndef NDEBUG
+              "g - Toggle MIC_CONTROL high/low\n"
+              "p - MIC play/pause pulse\n"
+              "s - MIC skip pulse\n"
               "M - Measure bit-timing (pulse-widths and periods)\n"
-#endif
-#ifdef HARDWARE_DEBUG
-              "1 - Hold High/low\n"
-              "E - Print line status\n"
 #endif
               "? - Print this message\n");
 }
