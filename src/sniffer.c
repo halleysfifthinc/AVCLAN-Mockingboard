@@ -110,6 +110,7 @@ int main() {
   uint8_t seqIdx = 0; // current index in data_tmp
 
   uint8_t err = 0;
+  uint8_t failedStatusReports = 0;
 
   for (uint8_t i = 0; i < CACHE_SIZE; ++i) {
     frames[i].control = 0x0f;
@@ -169,6 +170,12 @@ int main() {
       err = AVCLAN_sendframe(
           out, (log_t){.print = printAllFrames, .binary = printBinary});
       if (err || resp->r == r_Handled) {
+        if (err && out == AVCLAN_getStatusFrame() &&
+            failedStatusReports++ > 1) {
+          failedStatusReports = 0;
+          AVCLAN_stopPlaying(); // Disable periodic updates if e.g. no-one's
+                                // listening (car was turned off?)
+        }
         return_resp(resp);
       } else {
         resp = AVCLAN_statemachine(resp);

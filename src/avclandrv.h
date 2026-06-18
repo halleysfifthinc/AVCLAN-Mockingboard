@@ -218,6 +218,7 @@ AVCLAN_frame_t *AVCLAN_getStatusFrame();
 void AVCLAN_generateStatus(AVCLAN_frame_t *status, bool is_unicast, devices to);
 
 bool AVCLAN_isPlaying();
+void AVCLAN_stopPlaying();
 void AVCLAN_incrementTime();
 void AVCLAN_setTime(uint8_t mins, uint8_t secs);
 void AVCLAN_normalizeState();
