@@ -51,7 +51,7 @@ static void *outgoingSlots[CACHE_SIZE];
 
 static Queue_t cache, rcache, incoming, outgoing;
 
-volatile bool enqueueStatus = false;
+static volatile bool enqueueStatus = false;
 
 void Setup();
 void general_GPIO_init();

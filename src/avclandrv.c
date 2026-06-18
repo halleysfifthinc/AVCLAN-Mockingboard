@@ -120,20 +120,20 @@
 
 #define MAX_SEND_ATTEMPTS 3
 
-AVCLAN_CD_Status_t cd_status;
+static AVCLAN_CD_Status_t cd_status;
 
-uint8_t *cd_Track;
-uint8_t *cd_Time_Min;
-uint8_t *cd_Time_Sec;
+static uint8_t *cd_Track;
+static uint8_t *cd_Time_Min;
+static uint8_t *cd_Time_Sec;
 
-cd_modes CD_Mode;
+static cd_modes CD_Mode;
 
 #ifndef NDEBUG
-volatile uint8_t pulse_count = 0;
-volatile uint16_t period = 0;
+static volatile uint8_t pulse_count = 0;
+static volatile uint16_t period = 0;
 #endif
 
-volatile uint16_t pulsewidth;
+static volatile uint16_t pulsewidth;
 
 // answers
 //
@@ -170,8 +170,8 @@ static volatile int8_t mic_ntoggles = 0;
 // TCA0 period (CMP0/TOP) in ticks at F_CPU with the CLKSEL=DIV1024 prescaler.
 // A press phase is ~100 ms; the final LOW phase is stretched to mic_quiet_ticks
 // (~500 ms) so consecutive presses stay distinct
-constexpr uint16_t mic_press_ticks = (uint16_t)((F_CPU / 1024UL) / 10UL);
-constexpr uint16_t mic_quiet_ticks = (uint16_t)((F_CPU / 1024UL) / 2UL);
+static constexpr uint16_t mic_press_ticks = (uint16_t)((F_CPU / 1024UL) / 10UL);
+static constexpr uint16_t mic_quiet_ticks = (uint16_t)((F_CPU / 1024UL) / 2UL);
 
 /* Disable non-read related interrupts (USART RX, PIT, TCA) during AVCLAN reads.
  */
@@ -442,7 +442,7 @@ void AVCLAN_incrementTime() {
     (*cd_Time_Sec)++;
 }
 
-void AVCLAN_setTime(uint8_t mins, uint8_t secs) {
+static void AVCLAN_setTime(uint8_t mins, uint8_t secs) {
   *cd_Time_Min = mins;
   *cd_Time_Sec = secs;
 }
