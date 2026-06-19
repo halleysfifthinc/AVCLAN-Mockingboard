@@ -57,6 +57,11 @@ set_property(CACHE USART_RXMODE PROPERTY STRINGS
     USART_RXMODE_NORMAL_gc
 )
 
+# Measured wall-clock duration (ms) of one nominal 32768-tick RTC period, used
+# to calibrate out the internal OSCULP32K's tolerance for the status-update
+# tick. 1000 = no correction; set per-board in CMakeUserPresets.json.
+set(RTC_STATUS_PERIOD_MS 1000 CACHE STRING "Measured ms per nominal RTC status period (1000 = no correction)")
+
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -116,6 +121,7 @@ target_compile_definitions(mockingboard PRIVATE
     __CLK_PRESCALE_DIV=__${CLK_PRESCALE_DIV}
     TCB_CLKSEL=${TCB_CLKSEL}
     USART_RXMODE=${USART_RXMODE}
+    RTC_STATUS_PERIOD_MS=${RTC_STATUS_PERIOD_MS}
 )
 target_compile_options(mockingboard PRIVATE
     --param=min-pagesize=0

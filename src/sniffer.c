@@ -432,9 +432,9 @@ void print_help() {
               "? - Print this message\n");
 }
 
-// Periodic interrupt with a 1 sec period; only enabled when playing
-ISR(RTC_PIT_vect) {
+// Periodic interrupt with a ~1 sec period; only enabled when playing
+ISR(RTC_CNT_vect) {
   AVCLAN_incrementTime();
   enqueueStatus = true;
-  RTC.PITINTFLAGS = RTC_PI_bm;
+  RTC.INTFLAGS = RTC_OVF_bm;
 }

@@ -200,7 +200,7 @@ void AVCLAN_micSkip() { mic_pulse(3); }
  */
 static inline void stopEvent() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    RTC.PITINTCTRL &= ~RTC_PI_bm;
+    RTC.INTCTRL &= ~RTC_OVF_bm;
     USART0.CTRLA &= ~USART_RXCIE_bm;
 
     // WO1 toggles don't depend on OVF interrupt, but the OVF interrupt *DOES*
@@ -221,8 +221,8 @@ static inline void stopEvent() {
 // Re-enable serial and periodic interrupts.
 static inline void startEvent() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    if (AVCLAN_isPlaying()) // Reenable PIT interrupt if currently playing
-      RTC.PITINTCTRL |= RTC_PI_bm;
+    if (AVCLAN_isPlaying()) // Reenable status interrupt if currently playing
+      RTC.INTCTRL |= RTC_OVF_bm;
     USART0.CTRLA |= USART_RXCIE_bm;
     // Resume/re-arm mic-press timer only while a press is in progress.
     // Enable before unmasking so a pending final-phase OVF lands after
@@ -234,22 +234,27 @@ static inline void startEvent() {
   }
 }
 
-// Sets CD_mode to play and resets timer count (so that the next interrupt is in
-// 1 sec)
-static void AVCLAN_startPlaying() {
-  AVCLAN_micPlayPause();
-  CD_Mode = stPlay;
+static inline void resetStatusTimer() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CNTBUSY_bp);
+    loop_until_bit_is_clear(RTC_STATUS, RTC_CNTBUSY_bp);
     RTC.CNT = 0;
-    RTC.PITINTCTRL |= RTC_PI_bm;
+    RTC.INTFLAGS = RTC_OVF_bm; // Clear interrupt flag just in case
+    RTC.INTCTRL |= RTC_OVF_bm;
   }
 }
 
 // Sets CD_mode to play and resets timer count (so that the next interrupt is in
 // 1 sec)
+static void AVCLAN_startPlaying() {
+  AVCLAN_micPlayPause();
+  CD_Mode = stPlay;
+  resetStatusTimer();
+}
+
+// Sets CD_mode to play and resets timer count (so that the next interrupt is in
+// 1 sec)
 void AVCLAN_stopPlaying() {
-  RTC.PITINTCTRL &= ~RTC_PI_bm;
+  RTC.INTCTRL &= ~RTC_OVF_bm;
   CD_Mode = stStop;
   AVCLAN_micPlayPause();
 }
@@ -296,6 +301,21 @@ void AVCLAN_muteDevice(bool mute) {
     // clang-format on
   }
 }
+
+// Measured wall-clock duration (in ms) of one nominal 32768-tick RTC period,
+// used to calibrate out the internal OSCULP32K's error. The RTC runs from
+// OSCULP32K, which is only spec'd to +/-3% and has no user calibration
+// register, so a nominal 32768-count period does not land on exactly 1 s.
+// Override per-board via the CMake cache (see CMakeUserPresets.json).
+#ifndef RTC_STATUS_PERIOD_MS
+  #define RTC_STATUS_PERIOD_MS 1000
+#endif
+
+// RTC overflow period (in 32.768 kHz ticks) for the ~1 Hz status-update tick.
+// ticks = round(32768 * 1000 / RTC_STATUS_PERIOD_MS); the RTC overflows after
+// PER+1 ticks, so PER = ticks - 1.
+static constexpr uint16_t rtc_status_per =
+    (uint16_t)(32768UL * 1000UL / RTC_STATUS_PERIOD_MS) - 1U;
 
 void AVCLAN_init() {
   // Pull-ups are disabled by default
@@ -345,13 +365,16 @@ void AVCLAN_init() {
   TCB1.CCMP = 0xFFFF;
   TCB1.CTRLA = TCB_CLKSEL | TCB_ENABLE_bm;
 
-  // Setup RTC as 1 sec periodic timer
+  // Setup RTC as a ~1 sec periodic timer via the normal counter's overflow.
+  // Use the RTC directly (not PIT) to tune the status report interval closer to
+  // 1 sec (internal osc may be slightly off)
   loop_until_bit_is_clear(RTC_STATUS, RTC_CTRLABUSY_bp);
-  RTC.CTRLA = RTC_PRESCALER_DIV1_gc;
   RTC.CLKSEL = RTC_CLKSEL_INT32K_gc;
-  RTC.PITINTCTRL = 0;
-  loop_until_bit_is_clear(RTC_PITSTATUS, RTC_CTRLBUSY_bp);
-  RTC.PITCTRLA = RTC_PERIOD_CYC32768_gc | RTC_PITEN_bm;
+  loop_until_bit_is_clear(RTC_STATUS, RTC_PERBUSY_bp);
+  RTC.PER = rtc_status_per;
+  RTC.INTCTRL = 0;
+  loop_until_bit_is_clear(RTC_STATUS, RTC_CTRLABUSY_bp);
+  RTC.CTRLA = RTC_PRESCALER_DIV1_gc | RTC_RTCEN_bm;
 
   AVCLAN_setBusIdle();
 
@@ -1182,6 +1205,8 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         }
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
         AVCLAN_micSkip();
+        resetStatusTimer(); // Skipped to a whole/round sec; ensure next tick is
+                            // ~1 sec from now
         respond = r_Handled;
         break;
       }
@@ -1199,6 +1224,8 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         } else
           cd_status.secs -= 15;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        resetStatusTimer(); // Skipped to a whole/round sec; ensure next tick is
+                            // ~1 sec from now
         respond = r_Handled;
         break;
       }
@@ -1270,7 +1297,11 @@ RFrame_t *AVCLAN_statemachine(RFrame_t *resp) {
       out->data[2] = Loading_Status_Report;
       resp->r = r_Handled;
       break;
-    case r_TrackChange: AVCLAN_setTime(0x00, 0x00); [[fallthrough]];
+    case r_TrackChange:
+      AVCLAN_setTime(0x00, 0x00);
+      resetStatusTimer(); // Skipped to a whole/round sec; ensure next tick is
+                          // ~1 sec from now
+      [[fallthrough]];
     case r_NormalizeState:
       AVCLAN_normalizeState();
       AVCLAN_generateStatus(out, true, dev_STATUS);
