@@ -1067,8 +1067,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
           cd_status.state = cd_SEEKING | cd_SEEKING_TRACK;
           cd_status.flags2 = 0xc0;
           AVCLAN_generateStatus(out, true, dev_STATUS);
-          AVCLAN_startPlaying();
-          respond = r_NormalizeState;
+          respond = r_StartPlaying;
         }
         break;
       case PACK3(dev_COMM_v1, dev_COMM_CTRL, Ping_Req):
@@ -1327,8 +1326,13 @@ RFrame_t *AVCLAN_statemachine(RFrame_t *resp) {
       resp->r = r_Handled;
       break;
     case r_StartPlaying:
+      AVCLAN_normalizeState();
       AVCLAN_generateStatus(out, true, dev_STATUS);
-      resp->r = r_NormalizeState;
+      resp->r = r_BeganPlaying;
+      break;
+    case r_BeganPlaying:
+      AVCLAN_startPlaying(); // only start PIT after normalizing state
+      resp->r = r_Nothing;
       break;
     case r_StatusReport:
       AVCLAN_generateStatus(out, true, dev_STATUS);

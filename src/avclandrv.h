@@ -176,9 +176,9 @@ typedef enum : uint8_t {
   r_Handled,             // No follow-up needed
   r_StatusReport = 0x02, // Needs follow-up status report
   r_NormalizeState,      // cd_status needs normalized and resent
-  r_StartPlaying,        // started playing; send current status and then
-                         // normalize
-  r_TrackChange,         // Time needs reset
+  r_StartPlaying, // ~equivalent to normalizeState, but cycles to BeganPlaying
+  r_BeganPlaying,
+  r_TrackChange, // Time needs reset
   r_Ejection,
   r_Report_Load,
 } response_t;
