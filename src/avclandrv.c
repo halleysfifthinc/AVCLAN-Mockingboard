@@ -318,11 +318,13 @@ static constexpr uint16_t rtc_status_per =
     (uint16_t)(32768UL * 1000UL / RTC_STATUS_PERIOD_MS) - 1U;
 
 void AVCLAN_init() {
-  // Pull-ups are disabled by default
   // Set pin 6 and 7 as input
   PORTA.DIRCLR = (PIN6_bm | PIN7_bm);
-  PORTA.PIN6CTRL = PORT_ISC_INPUT_DISABLE_gc; // Disable input buffer;
-  PORTA.PIN7CTRL = PORT_ISC_INPUT_DISABLE_gc; // recommended when using AC
+  // Disable input buffer; recommended when using AC
+  PORTA.PIN6CTRL = PORT_ISC_INPUT_DISABLE_gc;
+  // PA7/AINN1(-) additionally gets a pull-up to help prevent the comparator
+  // latching high (ie false "driven" bus)
+  PORTA.PIN7CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
 
   // Analog comparator config
   AC2.CTRLA = AC_OUTEN_bm | AC_HYSMODE_25mV_gc | AC_ENABLE_bm;
@@ -666,6 +668,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
       BAD_CONTROL_PARITY,
       STARTBIT_TOO_SHORT,
       STARTBIT_TOO_LONG,
+      LATCHED_COMPARATOR,
     } errno;
     union {
       uint8_t val; // BAD_LENGTH_RANGE: the out-of-range length value
@@ -684,11 +687,23 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   while (!BUS_IS_IDLE) {
     startbitlen = TCB1.CNT;
     if (startbitlen > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
-      // hang until bus is idle to avoid repeated STARTBIT_TOO_LONG
-      // errors when the AC is stuck (observed when cycling car power and
-      // mockingboard is externally powered by serial/updi)
-      while (!BUS_IS_IDLE) {}
       err.errno = STARTBIT_TOO_LONG;
+      while (!BUS_IS_IDLE) {
+        // If bus is "driven" too long, assume the AC2 is latched (e.g.
+        // because the bus is actually floating). Kick it if so.
+        // This should prevent/resolve a flood of "STARTBIT_TOO_LONG" errors
+        if (TCB1.CNT > (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 3)) {
+          err.errno = LATCHED_COMPARATOR;
+          PORTA.OUTSET = PIN7_bm; // preset high before enabling the driver
+          PORTA.DIRSET = PIN7_bm; // drive (-) hard high
+          TCB1.CNT = 0;
+          while (!BUS_IS_IDLE && TCB1.CNT < (uint16_t)AVCLAN_BIT0_LOGIC_1) {
+            // Wait a max of ~6μs until bus is idle
+          }
+          PORTA.DIRCLR = PIN7_bm; // back to high-Z comparator input
+          PORTA.OUTCLR = PIN7_bm;
+        }
+      }
       goto handle_err;
     }
   }
@@ -797,6 +812,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
     startEvent();
     RS232_Print("ERR(read): ");
     switch (err.errno) {
+      case LATCHED_COMPARATOR: RS232_Print("latched comparator"); break;
       case STARTBIT_TOO_SHORT: RS232_Print("start bit too short"); break;
       case STARTBIT_TOO_LONG: RS232_Print("start bit too long"); break;
       case BAD_CONTROLLER_PARITY:
