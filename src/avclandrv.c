@@ -131,35 +131,6 @@ static volatile uint16_t period = 0;
 
 static volatile uint16_t pulsewidth;
 
-// answers
-//
-// 0xFF placeholders are variant bytes filled in by callers writing directly
-// into out->data[N] after memcpy.
-static const uint8_t lancheck_resp[] = {0x00, dev_COMM_CTRL, dev_LAN, 0xFF,
-                                        0xFF};
-static const uint8_t list_functions_resp[] = {
-    0x00, dev_COMM_CTRL, dev_COMM_v1, List_Functions_Resp, dev_CD_CHANGER};
-static const uint8_t ping_resp[] = {0x00,      dev_COMM_CTRL, dev_COMM_v1,
-                                    Ping_Resp, 0xFF,          0x00};
-static const uint8_t function_change_resp[] = {0x00, dev_CD_CHANGER,
-                                               dev_COMM_v1, 0xFF, 0x01};
-
-// No knowledge/understanding of field meaning/interpretation
-static const uint8_t cdinitreport_resp[] = {
-    dev_CD_CHANGER, dev_STATUS, Initial_Report_Response, 0x01, 0x31, 0x10,
-    0x01,           0x01};
-
-static const uint8_t cdloading_resp[] = {dev_CD_CHANGER,
-                                         dev_STATUS,
-                                         Loading_Status_Report,
-                                         0x00,
-                                         0x01,
-                                         0x00,
-                                         0x01,
-                                         0x00,
-                                         0x01,
-                                         0x02};
-
 // pending WO1 toggles (even); signed to avoid underflows from a stray OVF
 static volatile int8_t mic_ntoggles = 0;
 
@@ -982,11 +953,29 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
 
 #define PACK3(a, b, c) (((uint32_t)(a) << 16) | ((uint32_t)(b) << 8) | (c))
 
+static const uint8_t cdloading_resp[] = {dev_CD_CHANGER,
+                                         dev_STATUS,
+                                         Loading_Status_Report,
+                                         0x00,
+                                         0x01,
+                                         0x00,
+                                         0x01,
+                                         0x00,
+                                         0x01,
+                                         0x02};
+
 response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
   response_t respond = r_Nothing;
 
   if (AVCLAN_ismuted() || in->length < 3)
     return respond;
+
+  // 0xFF placeholders are variant bytes filled by writing directly to
+  // out->data[N] after memcpy.
+  static const uint8_t lancheck_resp[] = {0x00, dev_COMM_CTRL, dev_LAN, 0xFF,
+                                          0xFF};
+  static const uint8_t function_change_resp[] = {0x00, dev_CD_CHANGER,
+                                                 dev_COMM_v1, 0xFF, 0x01};
 
   out->controller_addr = DEVICE_ADDR;
   out->control = 0xF;
@@ -1044,22 +1033,28 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         }
         break;
       case PACK3(dev_COMM_v1, dev_COMM_CTRL, Ping_Req):
-      case PACK3(dev_COMM_v2, dev_COMM_CTRL, Ping_Req):
+      case PACK3(dev_COMM_v2, dev_COMM_CTRL, Ping_Req): {
         out->is_unicast = true;
         out->peripheral_addr = HU_ADDR;
+        const uint8_t ping_resp[] = {0x00,      dev_COMM_CTRL, dev_COMM_v1,
+                                     Ping_Resp, 0xFF,          b3};
         out->length = sizeof(ping_resp);
         memcpy(out->data, ping_resp, sizeof(ping_resp));
-        out->data[4] = b3;
         respond = r_Handled;
         break;
+      }
       case PACK3(dev_COMM_v1, dev_COMM_CTRL, List_Functions_Req):
-      case PACK3(dev_COMM_v2, dev_COMM_CTRL, List_Functions_Req):
+      case PACK3(dev_COMM_v2, dev_COMM_CTRL, List_Functions_Req): {
         out->is_unicast = true;
         out->peripheral_addr = HU_ADDR;
+        const uint8_t list_functions_resp[] = {0x00, dev_COMM_CTRL, dev_COMM_v1,
+                                               List_Functions_Resp,
+                                               dev_CD_CHANGER};
         out->length = sizeof(list_functions_resp);
         memcpy(out->data, list_functions_resp, sizeof(list_functions_resp));
         respond = r_Handled;
         break;
+      }
         // case Restart_Lan: not handled
     }
   } else if (in->peripheral_addr == DEVICE_ADDR && b0 == 0x00) {
@@ -1114,15 +1109,19 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
       }
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Initial_Report_Request):
         [[fallthrough]];
-      case PACK3(dev_STATUS, dev_CD_CHANGER, Initial_Report_Request):
-        out->data[0] = 0x00; // Add leading zero-byte for unicast comms
-        out->length = sizeof(cdinitreport_resp) + 1;
-        memcpy(&out->data[1], cdinitreport_resp, sizeof(cdinitreport_resp));
-        out->data[2] = b1; // respond to device that requested
+      case PACK3(dev_STATUS, dev_CD_CHANGER, Initial_Report_Request): {
         out->is_unicast = true;
         out->peripheral_addr = HU_ADDR;
+
+        // No knowledge/understanding of field meaning/interpretation
+        const uint8_t cdinitreport_resp[] = {
+            0x00, dev_CD_CHANGER, b1,  Initial_Report_Response, 0x01, 0x31,
+            0x10, 0x01,           0x01};
+        out->length = sizeof(cdinitreport_resp);
+        memcpy(&out->data[1], cdinitreport_resp, sizeof(cdinitreport_resp));
         respond = r_Handled;
         break;
+      }
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Playback_Request): [[fallthrough]];
       case PACK3(dev_STATUS, dev_CD_CHANGER, Playback_Request):
         out->data[0] = 0x00;
