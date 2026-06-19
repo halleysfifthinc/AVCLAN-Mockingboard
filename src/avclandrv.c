@@ -1114,15 +1114,18 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
       case PACK3(dev_COMM_v1, dev_CD_CHANGER, Disable_Function_Req):
         [[fallthrough]];
       case PACK3(dev_COMM_v2, dev_CD_CHANGER, Disable_Function_Req):
-        AVCLAN_stopPlaying();
-        out->length = sizeof(function_change_resp);
-        memcpy(out->data, function_change_resp, sizeof(function_change_resp));
-        out->data[3] = Disable_Function_Resp;
-        cd_status.state = cd_PLAYBACK | cd_SEEKING_TRACK;
-        cd_status.flags2 = 0x80;
-        out->is_unicast = true;
-        out->peripheral_addr = HU_ADDR;
-        respond = r_StatusReport;
+        // No change/response needed if we're already not playing
+        if (AVCLAN_isPlaying()) {
+          AVCLAN_stopPlaying();
+          out->length = sizeof(function_change_resp);
+          memcpy(out->data, function_change_resp, sizeof(function_change_resp));
+          out->data[3] = Disable_Function_Resp;
+          cd_status.state = 0;
+          cd_status.flags2 = 0x80;
+          out->is_unicast = true;
+          out->peripheral_addr = HU_ADDR;
+          respond = r_StatusReport;
+        }
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Eject): {
         // "Eject" label is multiply wrong; proper meaning unclear:
