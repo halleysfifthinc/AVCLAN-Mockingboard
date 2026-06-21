@@ -260,7 +260,10 @@ static inline void resetStatusTimer() {
 // Sets CD_mode to play and resets timer count (so that the next interrupt is in
 // 1 sec)
 static void AVCLAN_startPlaying() {
-  AVCLAN_micPlayPause();
+  static bool havePlayed = false;
+  if (havePlayed)
+    AVCLAN_micPlayPause();
+  havePlayed |= true;
   CD_Mode = stPlay;
   resetStatusTimer();
 }
