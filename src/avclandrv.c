@@ -218,8 +218,9 @@ ISR(TCA0_OVF_vect) { mic_timer_isr_body(false); }
 // Emulate a single play/pause button press on the source device.
 void AVCLAN_micPlayPause() { mic_pulse(1); }
 
-// Emulate a skip-forward button press: H / L / H.
-void AVCLAN_micSkip() { mic_pulse(3); }
+// Emulate skip-forward/backward button presses
+void AVCLAN_micSkipForward() { mic_pulse(3); }  //  double-press
+void AVCLAN_micSkipBackward() { mic_pulse(5); } // triple-press
 
 /* Disable non-read related interrupts (USART RX, PIT, TCA) during AVCLAN reads.
  */
@@ -1205,7 +1206,6 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         respond = r_Handled;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Seek_Up):
-        AVCLAN_micSkip();
         cd_status.state = cd_SEEKING_TRACK;
         if (cd_status.track < 98)
           ++cd_status.track;
@@ -1215,6 +1215,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         cd_status.secs = 0x7f;
         cd_status.flags2 = 0xc0;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        AVCLAN_micSkipForward();
         respond = r_TrackChange;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Seek_Down):
@@ -1230,6 +1231,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         cd_status.secs = 0x7f;
         cd_status.flags2 = 0xc0;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        AVCLAN_micSkipBackward();
         respond = r_TrackChange;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Fast_Forward): {
@@ -1240,7 +1242,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
           ++cd_status.mins;
         }
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        AVCLAN_micSkip();
+        AVCLAN_micSkipForward();
         resetStatusTimer(); // Skipped to a whole/round sec; ensure next tick is
                             // ~1 sec from now
         respond = r_Handled;
@@ -1260,6 +1262,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         } else
           cd_status.secs -= 15;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
+        AVCLAN_micSkipBackward();
         resetStatusTimer(); // Skipped to a whole/round sec; ensure next tick is
                             // ~1 sec from now
         respond = r_Handled;

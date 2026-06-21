@@ -269,7 +269,13 @@ int main() {
           break;
         case 's':
           RS232_Print("Skip begin ... ");
-          AVCLAN_micSkip();
+          AVCLAN_micSkipForward();
+          while (AVCLAN_isMediaFunctioning()) {}
+          RS232_Print("end\n");
+          break;
+        case 'b':
+          RS232_Print("Skip back begin ... ");
+          AVCLAN_micSkipBackward();
           while (AVCLAN_isMediaFunctioning()) {}
           RS232_Print("end\n");
           break;
@@ -430,7 +436,8 @@ void print_help() {
               "g - Toggle MIC_CONTROL high/low\n"
               "p - double MIC play/pause pulse\n" // Confirm pulse function and
                                                   // refractory timing
-              "s - MIC skip pulse\n"
+              "s - MIC skip forward\n"
+              "b - MIC skip backward\n"
               "M - Measure bit-timing (pulse-widths and periods)\n"
 #endif
               "? - Print this message\n");

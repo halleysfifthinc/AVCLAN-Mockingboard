@@ -226,7 +226,8 @@ void AVCLAN_normalizeState();
 #ifndef NDEBUG
 bool AVCLAN_micToggle();
 void AVCLAN_micPlayPause();
-void AVCLAN_micSkip();
+void AVCLAN_micSkipForward();
+void AVCLAN_micSkipBackward();
 bool AVCLAN_isMediaFunctioning();
 void AVCLan_Measure();
 #endif
