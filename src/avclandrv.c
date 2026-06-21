@@ -134,11 +134,18 @@ static volatile uint16_t pulsewidth;
 // pending WO1 toggles (even); signed to avoid underflows from a stray OVF
 static volatile int8_t mic_ntoggles = 0;
 
+// Target pulse length is ~40-150ms, with interval between pulses of
+// ~100-200ms
 // TCA0 period (CMP0/TOP) in ticks at F_CPU with the CLKSEL=DIV1024 prescaler.
-// A press phase is ~100 ms; the final LOW phase is stretched to mic_quiet_ticks
-// (~500 ms) so consecutive presses stay distinct
+// A press phase is ~100 ms; the final LOW phase is stretched to
+// mic_refractory_period (~333 ms) so consecutive presses stay distinct
 static constexpr uint16_t mic_press_ticks = (uint16_t)((F_CPU / 1024UL) / 10UL);
-static constexpr uint16_t mic_quiet_ticks = (uint16_t)((F_CPU / 1024UL) / 2UL);
+static constexpr uint16_t mic_refractory_period =
+    (uint16_t)((F_CPU / 1024UL) / 3UL);
+
+// the longest AVCLAN frame duration is ~15ms
+static constexpr uint16_t close_thresh =
+    (uint16_t)(mic_press_ticks * 15UL / 100UL);
 
 #ifndef NDEBUG
 // Toggle PB1 and return its new level.
@@ -176,19 +183,37 @@ static void mic_pulse(uint8_t nphases) {
   }
 }
 
-// OVF ISR counts phases, stretches the final LOW phase into a quiet gap, and
-// stops the timer on the last one.
-ISR(TCA0_OVF_vect) {
-  TCA0.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;
+// OVF ISR body function:
+//  - counts phases
+//  - stretches the final LOW phase as a refractory period, to keep separate
+//    pulse trains distinct
+//  - stops the timer after the last phase
+static inline void mic_timer_isr_body(bool is_early) {
   if (--mic_ntoggles == 1) {
-    // Stretch final phase to a ~500 ms idle-low so back-to-back presses stay
+    // Stretch final phase to a ~333 ms idle-low so back-to-back presses stay
     // distinct
-    TCA0.SINGLE.CMP0 = mic_quiet_ticks;
+    // Invariant: mic_refractory_period > mic_press_ticks, so counter can never
+    // silently wrap
+    TCA0.SINGLE.CMP0 = mic_refractory_period;
   } else if (mic_ntoggles <= 0) {
-    mic_ntoggles = 0; // clamp to avoid perma-lockout in mic_pulse
     TCA0.SINGLE.CTRLA &= ~TCA_SINGLE_ENABLE_bm;
+    TCA0.SINGLE.CTRLC = 0; // Timer must be disabled before (re)setting
+                           // CTRLC/WO1 level (§20.5.3)
+    mic_ntoggles = 0;      // clamp to avoid perma-lockout in mic_pulse
   }
+  if (is_early)
+    TCA0.SINGLE.CNT = 0;
+
+  // OVF FLAG must be cleared via write. MUST BE PERFORMED LAST.
+  // This function is called in two cases:
+  //  - ISR, triggered by actual OVF: OVF FLAG is set and needs clearing
+  //  - stopEvent, running ISR body ~early: OVF flag may be set while in
+  //    ATOMIC_BLOCK (either in stopEvent, or earlier in this function body).
+  //    Clear OVF FLAG as a precaution to prevent erroneous ISR runs
+  TCA0.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;
 }
+
+ISR(TCA0_OVF_vect) { mic_timer_isr_body(false); }
 
 // Emulate a single play/pause button press on the source device.
 void AVCLAN_micPlayPause() { mic_pulse(1); }
@@ -203,18 +228,14 @@ static inline void stopEvent() {
     RTC.INTCTRL &= ~RTC_OVF_bm;
     USART0.CTRLA &= ~USART_RXCIE_bm;
 
-    // WO1 toggles don't depend on OVF interrupt, but the OVF interrupt *DOES*
-    // count the toggles
-    // So, disabling the OVF interrupt alone is insufficient, we must also
-    // disable the timer
-    TCA0.SINGLE.INTCTRL &= ~TCA_SINGLE_OVF_bm;
-
-    // Target pulse length is ~40-150ms, with interval between pulses of
-    // ~100-200ms
-    // The longest AVCLAN frame duration is ~15ms, so stretching either phase
-    // (high/low) won't exceed the allowable ranges for pulses (high) or
-    // intervals (low)
-    TCA0.SINGLE.CTRLA &= ~TCA_SINGLE_ENABLE_bm;
+    // Pre-emptively "overflow" and run ISR early if expected/possible to
+    // overflow within this frame. This maintains:
+    //  - a rough absolute time for the pulse train
+    //  - peripheral WO1 toggles and mic_ntoggles kept in sync
+    //  - maximum frame duration is ~15ms, "early" OVF remains within acceptable
+    //    ranges for either high/low pulses
+    if (mic_ntoggles && TCA0.SINGLE.CNT >= (TCA0.SINGLE.CMP0 - close_thresh))
+      mic_timer_isr_body(true);
   }
 }
 
@@ -224,13 +245,6 @@ static inline void startEvent() {
     if (AVCLAN_isPlaying()) // Reenable status interrupt if currently playing
       RTC.INTCTRL |= RTC_OVF_bm;
     USART0.CTRLA |= USART_RXCIE_bm;
-    // Resume/re-arm mic-press timer only while a press is in progress.
-    // Enable before unmasking so a pending final-phase OVF lands after
-    // re-enable and the ISR's own ENABLE clear wins (no spurious extra period).
-    if (mic_ntoggles) {
-      TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
-      TCA0.SINGLE.INTCTRL |= TCA_SINGLE_OVF_bm;
-    }
   }
 }
 
@@ -350,6 +364,7 @@ void AVCLAN_init() {
   // Channel 1 controls WO1, which is mapped to PB1
   TCA0.SINGLE.CTRLB = TCA_SINGLE_WGMODE_FRQ_gc | TCA_SINGLE_CMP1EN_bm;
   TCA0.SINGLE.CTRLC = 0; // Preset WO1 level low just to be sure
+  mic_ntoggles = 0;
 
   // toggle WO1 ~immediately after each period start; should go low => high
   TCA0.SINGLE.CMP1 = 2;
