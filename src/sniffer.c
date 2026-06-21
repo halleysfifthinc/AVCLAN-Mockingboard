@@ -259,16 +259,19 @@ int main() {
 #ifndef NDEBUG
         case 'g': AVCLAN_micToggle(); break;
         case 'p':
-          RS232_Print("Play/pause begin\n");
+          RS232_Print("First play/pause begin ... ");
           AVCLAN_micPlayPause();
           while (AVCLAN_isMediaFunctioning()) {}
-          RS232_Print("Play/pause end\n");
+          RS232_Print("end\nSecond play/pause begin ... ");
+          AVCLAN_micPlayPause();
+          while (AVCLAN_isMediaFunctioning()) {}
+          RS232_Print("end\n");
           break;
         case 's':
-          RS232_Print("Skip begin\n");
+          RS232_Print("Skip begin ... ");
           AVCLAN_micSkip();
           while (AVCLAN_isMediaFunctioning()) {}
-          RS232_Print("Skip end\n");
+          RS232_Print("end\n");
           break;
         case 'M': AVCLan_Measure(); break;
 #endif
@@ -425,7 +428,8 @@ void print_help() {
               "P - Play\n"
 #ifndef NDEBUG
               "g - Toggle MIC_CONTROL high/low\n"
-              "p - MIC play/pause pulse\n"
+              "p - double MIC play/pause pulse\n" // Confirm pulse function and
+                                                  // refractory timing
               "s - MIC skip pulse\n"
               "M - Measure bit-timing (pulse-widths and periods)\n"
 #endif
