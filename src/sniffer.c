@@ -171,7 +171,7 @@ int main() {
           out, (log_t){.print = printAllFrames, .binary = printBinary});
       if (err || resp->r == r_Handled) {
         if (err && out == AVCLAN_getStatusFrame() &&
-            failedStatusReports++ > 1) {
+            ++failedStatusReports > 1) {
           failedStatusReports = 0;
           AVCLAN_stopPlaying(); // Disable periodic updates if e.g. no-one's
                                 // listening (car was turned off?)
