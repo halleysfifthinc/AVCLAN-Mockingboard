@@ -6,8 +6,9 @@
 *.bak
 out/
 build/
-hardware/_autosave*
-hardware/fp-info-cache
+_autosave*
+fp-info-cache
 __pycache__/
 ~*
 \#*
+/CMakeUserPresets.json

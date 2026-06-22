@@ -2,34 +2,30 @@
 
 <img src="./hardware/pcbv1.png" width=500\>
 
-This board adds an auxiliary audio input to the stock head unit of compatible Toyota vehicles using a Microchip ATtiny3216 to emulate a CD changer. The Mockingboard communicates with the head unit on the AVC-LAN bus, Toyota's name for their messaging protocol over the NEC (now Renesas) IEBus.
+This project adds an aux in to the stock head unit of compatible Toyota vehicles by emulating an external CD changer. The Mockingboard communicates with the head unit over the AVC-LAN bus, Toyota's name for their messaging protocol over the NEC (now Renesas) IEBus. Also included is a Wireshark dissector for IEBus and AVC-LAN. AVC-LAN is sparsely documented publicly; this dissector collects what's known from prior art alongside my own findings.
 
-# Project status:
+# Features:
 
-The circuit board and firmware is functional and can send/recieve messages on the AVC-LAN bus. The AVC-LAN driver is incomplete and doesn't finish the initial "handshake"/advertisement, but manually sending the CD changer activation command ('p' on the serial "REPL") is effective in enabling the CD changer audio inputs (this state persists between car trips, although loss of power (dead/disconnected battery) will reset the head unit). The semi-working state of the project is functional enough for me to live with for now; although I plan on eventually coming back to this.
+- Select/switch between internal CD player and mockingboard by pressing the "CD" button (repeated presses toggle between internal and external CD players)
+- Generally complete handling of physical interface (track next/prev, fast-forward/rewind, track/disk repeat and random; "scan" button and change disc buttons are currently unimplemented for lack of use/purpose)
+- Play/pause, next/prev control of connected phones via headset functions (mimicing the button press on a wired headset; requires phone support and connection using a TRRS aux cable)
 
-## (Upcoming) Features
+## Future plans (Mockingboard v2)
 
-- [ ] AVCLAN communication uses PWM peripherals for sending and receiving
-    - The sending PWM (TCD) is unique to the tinyAVR 1-series, and allows queuing 2 bits at a time for sending on the AVC-Lan bus. Technically this still qualifies as ["bit-banging"](https://en.wikipedia.org/wiki/Bit_banging), but should be more robust and exhibit lower timing jitter (than previous method of manually toggling pin outputs and busy-waiting for timer counters; and not that the timing jitter was a problem). 
-    - The receiving timer (TCB) precisely (again, probably more precisely than really needed) measures pulse-widths to distinguish bits.
-- [ ] Hardware designed with a headset (TRRS) jack allows triggering media play/pause/skip using the head-unit buttons
-
-## Roadmap
-
-- [ ] Refactor (simplify) existing AVC LAN framework
-- [ ] Switch AVC-LAN Tx to TCD PWM
-- [ ] Media play/pause/skip feature
-    - ~~Listen to head-unit for head unit on/off and skip~~
-        - Use "MUTE" logic signal from head-unit
-    - Test MIC_CONTROL short duration and double "click" separation
-- [ ] Switch UART library?
-    - https://github.com/jnk0le/AVR-UART-lib
-        - (Needs updating/extension for tinyAVR 1-series)
-- Speculative:
-    - Bodge ADC pin to mic to try plug-detection
-    - Bluetooth audio somehow?
-        - ESP32 and an I2S audio codec?
+- Bluetooth functionality
+  - "Scan" button repurposed to enter bluetooth pairing mode
+  - Button actions (play/pause, track skip, ff/rw, \[disc\] repeat/shuffle) mapped to AVRCP
+  - Song info/status (time, etc) relayed to head-unit (i.e. time display matches actual song/audio time)
+- Redesign hardware based on RPi Pico 2W (RP2350 + Bluetooth)
+  - PIO used to implement:
+    - AVCLAN comms
+    - I2S audio
+  - Dual audio input options (aux in, bluetooth)
+    - Switched audio jack to sense aux plug presence
+  - Audio codec with differential output (better rejection of electrical noise, e.g. from adjacent AVCLAN bus lines)
+  - Switching regulator (easier assembly)
+  - CAN transceiver
+    - TX/RX connected to different diodes (or different pads of a single dual/multicolor LED package) for observability
 
 # Helpful links/prior art:
 
@@ -41,17 +37,7 @@ The circuit board and firmware is functional and can send/recieve messages on th
 - https://web.archive.org/web/20040617005106/http://www.interfacebus.com/Design_Connector_IEbus.html
 - https://web.archive.org/web/2/https://old.pinouts.ru/Car-Stereo-Toyota-Lexus/Toyota_1990-2002_CD_Chang_pinout.shtml
 - https://web.archive.org/web/20240519043021/https://pop.fsck.pl/hardware/toyota-corolla.html
-
-# Current Issues:
-
-- CD changer emulation isn't working
-    - Mockingboard isn't sending correct responses to finish the initial "handshake"/advertisement
-- Messages get missed when logging/printing via serial (even when printing raw binary messages)
-    - jnk0le UART lib doesn't support AVR 1-series
-        - TODO: Add support
-    - ~~Write binary parser on computer side which outputs messages in libpcap format to stdout~~
-- Register functions aren't working
-    - ~~Write packet dissector for Wireshark to reverse engineer more of the protocol~~
+- https://github.com/GadgetNutt/AVC-LAN-Module-Builder
 
 # Hardware
 
@@ -93,7 +79,7 @@ I ordered a [cable harness](https://www.amazon.com/dp/B01EUZ8CFU) from Amazon to
 4. Start developing!
 
 #### Natively/without VS Code Dev Containers
-1. Install avr-gcc >= v8.3, binutils >= v2.39, cmake >= v3.24
+1. Install avr-gcc >= v13.1, binutils >= v2.39, cmake >= v3.24
 2. Configure cmake in repo with `cmake -B build`
     - Trigger builds with `cmake --build build`
 3. Start developing!
@@ -104,8 +90,8 @@ The CMake target `upload_mockingboard` uses the AVRDude utility using the "seria
 
 # Protocol reverse-engineering
 
-The "scripts/packet-analysis" folder contains a [Wireshark](https://www.wireshark.org/) [Lua plugin](https://www.wireshark.org/docs/wsdg_html_chunked/wsluarm.html) that defines a dissector for IEBUS and AVC-LAN messages. Also contained in that folder is a [Julia](https://julialang.org/) script that pipes packets from the Mockingboard serial into Wireshark for live capturing and inspection.
-    
+The "scripts/packet-analysis" folder contains a [Wireshark](https://www.wireshark.org/) [Lua plugin](https://www.wireshark.org/docs/wsdg_html_chunked/wsluarm.html) that defines a dissector for IEBUS and AVC-LAN messages.
+
 # License
 
 The firmware for this project is licensed under the [GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0.html),
