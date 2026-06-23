@@ -75,11 +75,28 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   endif()
 endif()
 
+# The AVC-LAN stack as a (currently AVR-only) static library. Establishing this
+# boundary now sets up the planned HAL extraction + off-target protocol testing.
+add_avr_library(avclan
+    src/avclan/avclan_phy.c
+    src/avclan/avclan_frame.c
+    src/avclan/avclan_protocol.c
+    src/avclan/cdchanger.c
+    src/avclan/mediacontrol.c
+    src/avclan/statustimer.c)
+
 add_avr_executable(mockingboard
     src/sniffer.c
     src/com232.c
-    src/queue.c
-    src/avclandrv.c)
+    src/queue.c)
+
+# avclan exports its public headers (src/avclan) to consumers, and reaches into
+# src/ for sibling driver headers (com232.h, timing.h) during its own build.
+target_include_directories(avclan
+    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/avclan
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+target_link_libraries(mockingboard avclan)
 
 # Handle libc versioning
 try_compile(LIBC_VERSION_TEST
@@ -106,7 +123,9 @@ if(NOT LIBC_VERSION_TEST)
     if(NOT LIBC_VERSION_TEST)
         message(FATAL_ERROR "Insufficient AVR-LIBC/Microchip pack for chosen MCU '${AVR_MCU}'")
     else()
-        target_include_directories(mockingboard SYSTEM 
+        # PUBLIC on the library so its compile inherits the device headers and
+        # the requirement propagates to mockingboard via linking.
+        target_include_directories(avclan SYSTEM
             PUBLIC "${attiny_atpack_SOURCE_DIR}/include")
         target_link_options(mockingboard PUBLIC
             -B "${attiny_atpack_SOURCE_DIR}/gcc/dev/${AVR_MCU}"
@@ -114,7 +133,9 @@ if(NOT LIBC_VERSION_TEST)
     endif()
 endif()
 
-target_compile_definitions(mockingboard PRIVATE
+# PUBLIC on avclan so these reach both the library TUs and the executable TUs
+# (mockingboard inherits them by linking avclan).
+target_compile_definitions(avclan PUBLIC
     FREQSEL=${FREQSEL}
     CLK_PRESCALE=$<IF:$<BOOL:${CLK_PRESCALE}>,0x01,0x00>
     CLK_PRESCALE_DIV=${CLK_PRESCALE_DIV}
@@ -123,7 +144,7 @@ target_compile_definitions(mockingboard PRIVATE
     USART_RXMODE=${USART_RXMODE}
     RTC_STATUS_PERIOD_MS=${RTC_STATUS_PERIOD_MS}
 )
-target_compile_options(mockingboard PRIVATE
+target_compile_options(avclan PUBLIC
     --param=min-pagesize=0
     -ffunction-sections
     -fdata-sections

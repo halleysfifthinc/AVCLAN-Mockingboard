@@ -20,13 +20,15 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#ifndef __AVCLANDRV_H
-#define __AVCLANDRV_H
+// Shared cross-cutting AVC-LAN definitions used by two or more layers
+// (phy / frame / protocol / cdchanger). This is a leaf header: it must not
+// include any other project header.
 
-// AVC LAN bus on AC2 (PA6/7)
-// PA6 AINP0 +
-// PA7 AINN1 -
-#define BUS_IS_IDLE (bit_is_clear(AC2_STATUS, AC_STATE_bp))
+#ifndef AVCLAN_DEFS_H
+#define AVCLAN_DEFS_H
+
+#include <stdbool.h>
+#include <stdint.h>
 
 #define MAXMSGLEN 32
 
@@ -126,63 +128,6 @@ typedef enum : uint8_t {
   Report_TOC = 0xf9,
 } actions;
 
-typedef enum : uint8_t {
-  cd_OPEN = 0x01,
-  cd_ERR1 = 0x02,
-  cd_SEEKING = 0x08,
-  cd_PLAYBACK = 0x10,
-  cd_SEEKING_TRACK = 0x20,
-  cd_LOADING = 0x80,
-} cd_state;
-
-typedef enum : uint8_t {
-  cd_CD1 = 1 << 0,
-  cd_CD2 = 1 << 1,
-  cd_CD3 = 1 << 2,
-  cd_CD4 = 1 << 3,
-  cd_CD5 = 1 << 4,
-  cd_CD6 = 1 << 5,
-} cd_present_t;
-
-typedef enum : uint8_t {
-  cd_DISK_RANDOM = 1 << 1,
-  cd_RANDOM = 1 << 2,
-  cd_DISK_REPEAT = 1 << 3,
-  cd_REPEAT = 1 << 4,
-  cd_DISK_SCAN = 1 << 5,
-  cd_SCAN = 1 << 6,
-} cd_flag_t;
-
-typedef struct AVCLAN_CD_Status {
-  uint8_t cds;
-  uint8_t state;
-  uint8_t disc;
-  uint8_t track; // Decimal storage; serialize to BCD
-  uint8_t mins;  // Decimal storage; serialize to BCD
-  uint8_t secs;  // Decimal storage; serialize to BCD
-  uint8_t flags;
-  uint8_t flags2;
-} AVCLAN_CD_Status_t;
-
-typedef enum : uint8_t { stStop = 0, stPlay = 1 } cd_modes;
-
-/// Message state machine
-// - r_Nothing (0x00) means don't send current message
-// - r_Handled means send current message and stop/finished state machine
-// - All other instances mean send current message and imply the presence of
-//   follow-up messages within state machine
-typedef enum : uint8_t {
-  r_Nothing = 0x00,
-  r_Handled,             // No follow-up needed
-  r_StatusReport = 0x02, // Needs follow-up status report
-  r_NormalizeState,      // cd_status needs normalized and resent
-  r_StartPlaying, // ~equivalent to normalizeState, but cycles to BeganPlaying
-  r_BeganPlaying,
-  r_TrackChange, // Time needs reset
-  r_Ejection,
-  r_Report_Load,
-} response_t;
-
 typedef struct print_struct {
   bool print : 1;   // print at all
   bool binary : 1;  // when also printing, format as binary instead of text
@@ -198,38 +143,4 @@ typedef struct AVCLAN_frame_struct {
   uint8_t *data;
 } AVCLAN_frame_t;
 
-typedef struct RFrame_struct {
-  response_t r;
-  AVCLAN_frame_t *frame;
-} RFrame_t;
-
-void AVCLAN_init();
-void AVCLAN_muteDevice(bool mute);
-
-uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print);
-response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out);
-uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print);
-RFrame_t *AVCLAN_statemachine(RFrame_t *resp);
-// uint8_t AVCLAN_tryrespond(const AVCLAN_frame_t *frame);
-void AVCLAN_printframe(const AVCLAN_frame_t *frame, bool binary);
-uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
-                          AVCLAN_frame_t *frame);
-AVCLAN_frame_t *AVCLAN_getStatusFrame();
-void AVCLAN_generateStatus(AVCLAN_frame_t *status, bool is_unicast, devices to);
-
-bool AVCLAN_isPlaying();
-void AVCLAN_stopPlaying();
-void AVCLAN_incrementTime();
-void AVCLAN_setTime(uint8_t mins, uint8_t secs);
-void AVCLAN_normalizeState();
-
-#ifndef NDEBUG
-bool AVCLAN_micToggle();
-void AVCLAN_micPlayPause();
-void AVCLAN_micSkipForward();
-void AVCLAN_micSkipBackward();
-bool AVCLAN_isMediaFunctioning();
-void AVCLan_Measure();
-#endif
-
-#endif // __AVCLANDRV_H
+#endif // AVCLAN_DEFS_H
