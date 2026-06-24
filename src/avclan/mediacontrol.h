@@ -3,8 +3,7 @@
 
 // Media-control: route/handle head-unit button presses to the audio source.
 
-#ifndef MEDIACONTROL_H
-#define MEDIACONTROL_H
+#pragma once
 
 #include <stdint.h>
 
@@ -14,6 +13,10 @@ typedef enum : uint8_t {
   MEDIA_SKIP_FORWARD,
   MEDIA_SKIP_BACKWARD,
 } AVCLAN_media_fn_t;
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // One-time hardware bring-up for the media driver.
 void mediacontrol_init();
@@ -26,4 +29,6 @@ bool AVCLAN_micToggle();
 bool AVCLAN_isMediaFunctioning();
 #endif
 
-#endif // MEDIACONTROL_H
+#ifdef __cplusplus
+}
+#endif

@@ -8,12 +8,15 @@
 // logic; it commands the mediacontrol and statustimer drivers rather than
 // touching their hardware directly.
 
-#ifndef CDCHANGER_H
-#define CDCHANGER_H
+#pragma once
 
 #include <stdint.h>
 
 #include "avclan_defs.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef enum : uint8_t {
   cd_OPEN = 0x01,
@@ -77,4 +80,6 @@ void serializeCDStatus(uint8_t *dst);
 AVCLAN_frame_t *AVCLAN_getStatusFrame();
 void AVCLAN_generateStatus(AVCLAN_frame_t *status, bool is_unicast, devices to);
 
-#endif // CDCHANGER_H
+#ifdef __cplusplus
+}
+#endif

@@ -1,8 +1,7 @@
 // Copyright (C) 2015 Allen Hill <allenofthehills@gmail.com>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef TIMING_AVR_H
-#define TIMING_AVR_H
+#pragma once
 
 // AVR ATtiny3216 timing parameters. Derives F_CPU (needed by avr-libc, e.g.
 // util/delay.h) and the bus-timer (TCB) tick period from the CMake-provided
@@ -65,5 +64,3 @@
 #define TICK_US (TCB_TICK / 1000.0)
 
 #include "timing.h"
-
-#endif // TIMING_AVR_H

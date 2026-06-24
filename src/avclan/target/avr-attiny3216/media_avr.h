@@ -5,8 +5,11 @@
 // transaction guard (phy_avr.c's AVCLAN_stopEvent). Not part of the public
 // mediacontrol.h interface.
 
-#ifndef MEDIA_AVR_H
-#define MEDIA_AVR_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Keep the TCA0 press waveform roughly in sync while a bus transaction has
 // masked interrupts (runs the OVF ISR body early if an overflow is imminent).
@@ -14,4 +17,6 @@
 // ATOMIC_BLOCK).
 void mediacontrol_syncDuringMask();
 
-#endif // MEDIA_AVR_H
+#ifdef __cplusplus
+}
+#endif

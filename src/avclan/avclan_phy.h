@@ -3,12 +3,15 @@
 // Copyright (C) 2015 Allen Hill <allenofthehills@gmail.com>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef AVCLAN_PHY_H
-#define AVCLAN_PHY_H
+#pragma once
 
 #include <stdint.h>
 
 #include "avclan_defs.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // One-time bring-up of the bus hardware. Leaves the bus idle and TX unmuted.
 void AVCLAN_busInit(void);
@@ -69,4 +72,6 @@ uint8_t AVCLAN_readbyte(uint8_t *byte);
 void AVCLan_Measure(void);
 #endif
 
-#endif // AVCLAN_PHY_H
+#ifdef __cplusplus
+}
+#endif

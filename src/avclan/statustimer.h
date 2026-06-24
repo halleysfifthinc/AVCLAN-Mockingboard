@@ -5,8 +5,11 @@
 // polls statustimer_tickPending() and clears the tick with
 // statustimer_clearTick()
 
-#ifndef STATUSTIMER_H
-#define STATUSTIMER_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // One-time hardware bring-up. Leaves the tick disabled.
 void statustimer_init(void);
@@ -23,4 +26,6 @@ extern volatile bool tick_pending;
 static inline bool statustimer_tickPending() { return tick_pending; }
 static inline void statustimer_clearTick() { tick_pending = false; }
 
-#endif // STATUSTIMER_H
+#ifdef __cplusplus
+}
+#endif

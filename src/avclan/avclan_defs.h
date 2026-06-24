@@ -7,8 +7,7 @@
 // (phy / frame / protocol / cdchanger). This is a leaf header: it must not
 // include any other project header.
 
-#ifndef AVCLAN_DEFS_H
-#define AVCLAN_DEFS_H
+#pragma once
 
 #include <stdint.h>
 
@@ -157,5 +156,3 @@ typedef enum : uint8_t {
   sBUSY,
   sMUTED,
 } avclan_senderr_t;
-
-#endif // AVCLAN_DEFS_H

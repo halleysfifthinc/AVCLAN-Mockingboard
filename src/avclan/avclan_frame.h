@@ -29,12 +29,15 @@
   No acknowledge bits are sent for broadcast frames.
 */
 
-#ifndef AVCLAN_FRAME_H
-#define AVCLAN_FRAME_H
+#pragma once
 
 #include <stdint.h>
 
 #include "avclan_defs.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 avclan_readerr_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print);
 avclan_senderr_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print);
@@ -42,4 +45,6 @@ void AVCLAN_printframe(const AVCLAN_frame_t *frame, bool binary);
 uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
                           AVCLAN_frame_t *frame);
 
-#endif // AVCLAN_FRAME_H
+#ifdef __cplusplus
+}
+#endif

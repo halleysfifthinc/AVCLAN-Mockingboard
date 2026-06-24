@@ -5,6 +5,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct Queue_struct {
   uint8_t write;
   uint8_t read;
@@ -20,3 +24,7 @@ static inline void incrementRead(Queue_t *q) { q->read++; }
 uint8_t pushQueue(Queue_t *q, void *x);
 void *peekQueue(const Queue_t *q);
 void *popQueue(Queue_t *q);
+
+#ifdef __cplusplus
+}
+#endif

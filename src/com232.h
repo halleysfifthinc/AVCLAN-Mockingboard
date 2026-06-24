@@ -3,10 +3,13 @@
 // Copyright (C) 2015 Allen Hill <allenofthehills@gmail.com>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef __COM232_H
-#define __COM232_H
+#pragma once
 
 #include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void RS232_Init(void);
 
@@ -28,4 +31,6 @@ void RS232_PrintHex(uint16_t x);
 void RS232_PrintDec(uint8_t Data);
 void RS232_PrintDec2(uint8_t Data);
 
-#endif // __COM232_H
+#ifdef __cplusplus
+}
+#endif

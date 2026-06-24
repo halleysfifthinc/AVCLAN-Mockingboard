@@ -5,12 +5,15 @@
 // generic peripheral-level handling with CD-changer device-specific handling;
 // the device-specific cases will later migrate into cdchanger.
 
-#ifndef AVCLAN_PROTOCOL_H
-#define AVCLAN_PROTOCOL_H
+#pragma once
 
 #include <stdint.h>
 
 #include "avclan_defs.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /// Message state machine
 // - r_Nothing (0x00) means don't send current message
@@ -37,4 +40,6 @@ typedef struct RFrame_struct {
 response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out);
 RFrame_t *AVCLAN_statemachine(RFrame_t *resp);
 
-#endif // AVCLAN_PROTOCOL_H
+#ifdef __cplusplus
+}
+#endif
