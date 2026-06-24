@@ -16,29 +16,18 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// Media-control: route/handle head-unit button presses to the audio source.
+// Board / MCU bring-up interface (the BSP seam). Implemented per-target (the AVR
+// implementation is target/avr-attiny3216/board_avr.c). Keeps the app
+// (sniffer.c) free of clock/pin/interrupt register access.
 
-#ifndef MEDIACONTROL_H
-#define MEDIACONTROL_H
+#ifndef BOARD_H
+#define BOARD_H
 
-#include <stdint.h>
+// Clock setup + GPIO/pin configuration. Call once, first thing at startup
+// (before any peripheral init).
+void board_init(void);
 
-// Actions list
-typedef enum : uint8_t {
-  MEDIA_PLAY_PAUSE = 0,
-  MEDIA_SKIP_FORWARD,
-  MEDIA_SKIP_BACKWARD,
-} AVCLAN_media_fn_t;
+// Globally enable interrupts. Call after all peripherals are initialized.
+void board_interruptsEnable(void);
 
-// One-time hardware bring-up for the media driver.
-void mediacontrol_init();
-
-// Emulate a button press on the source device.
-void AVCLAN_mediaFunction(AVCLAN_media_fn_t fn);
-
-#ifndef NDEBUG
-bool AVCLAN_micToggle();
-bool AVCLAN_isMediaFunctioning();
-#endif
-
-#endif // MEDIACONTROL_H
+#endif // BOARD_H

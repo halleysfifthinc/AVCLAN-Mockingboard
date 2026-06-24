@@ -16,10 +16,12 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+#include <avr/interrupt.h>
 #include <avr/io.h>
 #include <stdint.h>
 #include <util/atomic.h>
 
+#include "cdchanger.h"
 #include "statustimer.h"
 
 // Measured wall-clock duration (in ms) of one nominal 32768-tick RTC period,
@@ -62,3 +64,13 @@ void statustimer_reset() {
 void statustimer_enable() { RTC.INTCTRL |= RTC_OVF_bm; }
 
 void statustimer_disable() { RTC.INTCTRL &= ~RTC_OVF_bm; }
+
+// Set once per overflow; consumed by the app via statustimer_tickPending().
+volatile bool tick_pending = false;
+
+// Periodic interrupt with a ~1 sec period; only enabled while playing.
+ISR(RTC_CNT_vect) {
+  AVCLAN_incrementTime();
+  tick_pending = true;
+  RTC.INTFLAGS = RTC_OVF_bm;
+}

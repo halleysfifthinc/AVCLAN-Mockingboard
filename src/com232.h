@@ -25,10 +25,15 @@
 
 #include <stdint.h>
 
-extern volatile uint8_t RS232_RxCharBuffer[25], RS232_RxCharBegin,
-    RS232_RxCharEnd;
-
 void RS232_Init(void);
+
+// Receive path. The RX ring is private to the driver; the app polls hasChar()
+// and drains with getChar(). setRxInterrupt() masks/unmasks RX completion (used
+// by the bus-transaction guard).
+void RS232_setRxInterrupt(bool enable);
+bool RS232_hasChar(void);
+char RS232_getChar(void);
+
 void RS232_Print_P(const char *str_addr);
 void RS232_SendByte(uint8_t Data);
 void RS232_sendbytes(const uint8_t *bytes, uint8_t len);

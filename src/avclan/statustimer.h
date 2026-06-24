@@ -16,23 +16,26 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// ~1 Hz status-update tick, driven by the RTC overflow. The overflow handler
-// (ISR(RTC_CNT_vect)) lives in the app (sniffer.c); this module owns only the
-// RTC hardware configuration and enable/disable/reset of the tick.
+// ~1 Hz status-update tick interface. The app
+// polls statustimer_tickPending() and clears the tick with
+// statustimer_clearTick()
 
 #ifndef STATUSTIMER_H
 #define STATUSTIMER_H
 
-// One-time RTC hardware bring-up (clock source + period). Leaves the overflow
-// interrupt disabled.
-void statustimer_init();
+// One-time hardware bring-up. Leaves the tick disabled.
+void statustimer_init(void);
 
-// Reset the count so the next tick is ~1 s out, and enable the overflow tick.
-void statustimer_reset();
+// Reset the count so the next tick is ~1 s out, and enable the tick.
+void statustimer_reset(void);
 
-// Enable / disable the ~1 Hz overflow interrupt (bare register RMW; wrap in a
-// critical section if called with interrupts enabled and concurrency matters).
-void statustimer_enable();
-void statustimer_disable();
+// Enable / disable the ~1 Hz tick.
+void statustimer_enable(void);
+void statustimer_disable(void);
+
+extern volatile bool tick_pending;
+
+static inline bool statustimer_tickPending() { return tick_pending; }
+static inline void statustimer_clearTick() { tick_pending = false; }
 
 #endif // STATUSTIMER_H

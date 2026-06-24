@@ -16,29 +16,17 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// Media-control: route/handle head-unit button presses to the audio source.
+// AVR-internal media-driver hooks, shared between media_avr.c and the bus
+// transaction guard (phy_avr.c's AVCLAN_stopEvent). Not part of the public
+// mediacontrol.h interface.
 
-#ifndef MEDIACONTROL_H
-#define MEDIACONTROL_H
+#ifndef MEDIA_AVR_H
+#define MEDIA_AVR_H
 
-#include <stdint.h>
+// Keep the TCA0 press waveform roughly in sync while a bus transaction has
+// masked interrupts (runs the OVF ISR body early if an overflow is imminent).
+// MUST be called with interrupts disabled (from within AVCLAN_stopEvent's
+// ATOMIC_BLOCK).
+void mediacontrol_syncDuringMask();
 
-// Actions list
-typedef enum : uint8_t {
-  MEDIA_PLAY_PAUSE = 0,
-  MEDIA_SKIP_FORWARD,
-  MEDIA_SKIP_BACKWARD,
-} AVCLAN_media_fn_t;
-
-// One-time hardware bring-up for the media driver.
-void mediacontrol_init();
-
-// Emulate a button press on the source device.
-void AVCLAN_mediaFunction(AVCLAN_media_fn_t fn);
-
-#ifndef NDEBUG
-bool AVCLAN_micToggle();
-bool AVCLAN_isMediaFunctioning();
-#endif
-
-#endif // MEDIACONTROL_H
+#endif // MEDIA_AVR_H

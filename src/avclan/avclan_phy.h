@@ -20,45 +20,44 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-// AVC-LAN PHY: bus bit-banging via TCB timers + analog comparator AC2.
-// This is the lowest layer and has no dependencies on the higher layers
-// (frame / protocol / cdchanger) — keep it that way.
-
 #ifndef AVCLAN_PHY_H
 #define AVCLAN_PHY_H
 
-#include <avr/io.h>
-#include <avr/sfr_defs.h>
 #include <stdint.h>
 
 #include "avclan_defs.h"
 
-// AVC LAN bus on AC2 (PA6/7)
-// PA6 AINP0 +
-// PA7 AINN1 -
-#define BUS_IS_IDLE (bit_is_clear(AC2_STATUS, AC_STATE_bp))
+// One-time bring-up of the bus hardware. Leaves the bus idle and TX unmuted.
+void AVCLAN_busInit(void);
 
-typedef enum avclan_bit : uint8_t {
-  bit_zero = 0x00,
-  bit_one = 0x01,
-  bit_start = 0x10
-} avclan_bit_t;
-
-// One-time hardware bring-up for the PHY: AC2, EVSYS, TCB0/TCB1, the AC inputs
-// (PA6/7) and AC2-OUT LED (PB2). Leaves the bus idle and TX unmuted.
-void AVCLAN_phyInit();
-
-// Returns true if device TX is muted on AVCLAN bus
-static inline bool AVCLAN_ismuted() {
-  return (((VPORTA_DIR & PIN4_bm) | (VPORTA_DIR & PIN0_bm)) == 0);
-}
-
-// Mute device TX on AVCLAN bus
+// Mute/unmute device TX. "Muted" means we still listen, we just don't ACK or
+// transmit.
 void AVCLAN_muteDevice(bool mute);
+bool AVCLAN_ismuted(void);
 
+// True when there is activity on the bus (something is driving it).
+bool AVCLAN_busActive(void);
+
+// Bus-transaction guard: quiesce the target's other async sources around a bus
+// read/send so framing isn't disturbed, then restore them. May be a no-op on a
+// target without such contention.
+void AVCLAN_stopEvent(void);
+void AVCLAN_startEvent(void);
+
+// Start-bit handling, factored out of read/sendframe so the framing layer holds
+// no bus-timing or hardware-recovery logic.
+// - AVCLAN_readstartbit waits for and validates an incoming start bit, doing
+//   any target-specific bus recovery; see avclan_readerr_t.
+// - AVCLAN_sendstartbit acquires the bus and emits a start bit; returns false
+//   if the bus was busy.
+avclan_readerr_t AVCLAN_readstartbit(void);
+bool AVCLAN_sendstartbit(void);
+
+// Per-symbol I/O. The send* helpers return the even parity of the bits sent;
+// the read* helpers return the even parity of the bits read.
 void AVCLAN_sendbit(avclan_bit_t bit);
-void AVCLAN_sendbit_ACK();
-uint8_t AVCLAN_readbit_ACK();
+void AVCLAN_sendbit_ACK(void);
+uint8_t AVCLAN_readbit_ACK(void);
 
 avclan_bit_t AVCLAN_sendbitsi(const uint8_t *bits, int8_t len);
 avclan_bit_t AVCLAN_sendbitsl(const uint16_t *bits, int8_t len);
@@ -83,10 +82,8 @@ uint8_t AVCLAN_readbyte(uint8_t *byte);
       uint8_t *: AVCLAN_readbitsi)(bits, len)
 
 #ifndef NDEBUG
-// Bit-timing capture, populated by the TCB0 capture ISR; read by AVCLan_Measure.
-extern volatile uint16_t pulsewidth;
-extern volatile uint8_t pulse_count;
-extern volatile uint16_t period;
+// Sample and dump bus bit timing over the serial link (REPL `M`).
+void AVCLan_Measure(void);
 #endif
 
 #endif // AVCLAN_PHY_H

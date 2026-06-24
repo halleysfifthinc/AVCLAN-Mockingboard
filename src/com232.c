@@ -24,9 +24,10 @@
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
 #include <stdint.h>
+#include <util/atomic.h>
 
 #include "com232.h"
-#include "timing.h"
+#include "timing_avr.h" // F_CPU (baud-rate calc)
 
 #if USART_RXMODE == USART_RXMODE_CLK2X_gc
   #define RXMODE_S 8
@@ -37,7 +38,10 @@
 #define USART_BAUD_RATE(BAUD_RATE)                                             \
   (uint16_t)((float)(F_CPU * 64 / (RXMODE_S * (float)BAUD_RATE)) + 0.5)
 
-volatile uint8_t RS232_RxCharBuffer[25], RS232_RxCharBegin, RS232_RxCharEnd;
+// RX ring, owned entirely by this driver (filled by the ISR, drained by
+// RS232_getChar). Kept internal so the app never touches UART buffer state.
+static volatile uint8_t RS232_RxCharBuffer[25], RS232_RxCharBegin,
+    RS232_RxCharEnd;
 
 void RS232_Init(void) {
   RS232_RxCharBegin = RS232_RxCharEnd = 0;
@@ -59,6 +63,29 @@ void RS232_Init(void) {
 ISR(USART0_RXC_vect) {
   // Store received character to the End of Buffer
   RS232_RxCharBuffer[RS232_RxCharEnd++] = USART0_RXDATAL;
+}
+
+// Enable/disable the RX-complete interrupt (used by the bus-transaction guard
+// to keep serial RX from disturbing bit-banged framing).
+void RS232_setRxInterrupt(bool enable) {
+  if (enable)
+    USART0.CTRLA |= USART_RXCIE_bm;
+  else
+    USART0.CTRLA &= ~USART_RXCIE_bm;
+}
+
+// True if at least one received byte is waiting.
+bool RS232_hasChar(void) { return RS232_RxCharEnd != 0; }
+
+// Atomically dequeue the next received byte. Only call when RS232_hasChar().
+char RS232_getChar(void) {
+  char c;
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    c = (char)RS232_RxCharBuffer[RS232_RxCharBegin++];
+    if (RS232_RxCharBegin == RS232_RxCharEnd) // buffer consumed
+      RS232_RxCharBegin = RS232_RxCharEnd = 0;
+  }
+  return c;
 }
 
 void RS232_SendByte(uint8_t Data) {

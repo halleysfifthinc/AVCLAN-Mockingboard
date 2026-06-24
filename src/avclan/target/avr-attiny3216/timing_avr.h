@@ -1,5 +1,12 @@
-#ifndef _TIMING_HPP_
-#define _TIMING_HPP_
+#ifndef TIMING_AVR_H
+#define TIMING_AVR_H
+
+// AVR ATtiny3216 timing parameters. Derives F_CPU (needed by avr-libc, e.g.
+// util/delay.h) and the bus-timer (TCB) tick period from the CMake-provided
+// FREQSEL / CLK_PRESCALE / TCB_CLKSEL, then hands the generic timing.h a TICK_US
+// (microseconds per TCB tick) so the physical bit-phase durations resolve to
+// TCB-tick counts. TICK_US == TCB_TICK / 1000, so every derived constant is
+// numerically identical to the previous F_CPU/TCB_CLKSEL formulation.
 
 #define __CLKCTRL_PDIV_2X_gc  2
 #define __CLKCTRL_PDIV_4X_gc  4
@@ -21,6 +28,7 @@
   #define CYCLE_MUL 1
 #endif
 
+// CPU_CYCLE / TCB_TICK are in nanoseconds.
 #if FREQSEL == 20000000L
   #define CPU_CYCLE (50 * CYCLE_MUL)
 #elif FREQSEL == 16000000L
@@ -49,18 +57,9 @@
   #error "Not implemented"
 #endif
 
-// Measured at ±0.02 μs @ F_CPU=20MHz, TCB_CLKSEL=TCB_CLKSEL_CLKDIV1_gc
-#define AVCLAN_STARTBIT_LOGIC_0 (169e3 / TCB_TICK)
-#define AVCLAN_STARTBIT_LOGIC_1 (20.6e3 / TCB_TICK)
+// TCB_TICK is nanoseconds/tick; the generic timing.h wants microseconds/tick.
+#define TICK_US (TCB_TICK / 1000.0)
 
-#define AVCLAN_BIT1_LOGIC_0 (19.7e3 / TCB_TICK)
-#define AVCLAN_BIT1_LOGIC_1 (18.1e3 / TCB_TICK)
+#include "timing.h"
 
-#define AVCLAN_BIT0_LOGIC_0 (32.85e3 / TCB_TICK)
-#define AVCLAN_BIT0_LOGIC_1 (6.2e3 / TCB_TICK)
-
-#define AVCLAN_READBIT_THRESHOLD (26e3 / TCB_TICK)
-
-#define AVCLAN_BIT_LENGTH_MAX (39.1e3 / TCB_TICK)
-
-#endif
+#endif // TIMING_AVR_H

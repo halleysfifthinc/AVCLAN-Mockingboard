@@ -51,22 +51,10 @@
 
 #include "avclan_defs.h"
 
-uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print);
-uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print);
+avclan_readerr_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print);
+avclan_senderr_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print);
 void AVCLAN_printframe(const AVCLAN_frame_t *frame, bool binary);
 uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
                           AVCLAN_frame_t *frame);
-
-// Bus-transaction guard: quiesce the other async sources (USART RX, the RTC
-// status tick, the mic timer) around a bus read/send so framing isn't disturbed.
-// NOTE (temporary): these couple the frame layer to the statustimer /
-// mediacontrol / cdchanger modules; this intermingling is accepted pending the
-// RP2350 port rework. TCB0 must remain enabled.
-void AVCLAN_stopEvent();
-void AVCLAN_startEvent();
-
-#ifndef NDEBUG
-void AVCLan_Measure();
-#endif
 
 #endif // AVCLAN_FRAME_H

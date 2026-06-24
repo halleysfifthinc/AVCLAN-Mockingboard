@@ -27,7 +27,6 @@
 #ifndef AVCLAN_DEFS_H
 #define AVCLAN_DEFS_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #define MAXMSGLEN 32
@@ -142,5 +141,38 @@ typedef struct AVCLAN_frame_struct {
   uint8_t length;
   uint8_t *data;
 } AVCLAN_frame_t;
+
+// A single bus symbol. bit_zero/bit_one carry data (and double as parity
+// values); bit_start marks a frame start bit.
+typedef enum avclan_bit : uint8_t {
+  bit_zero = 0x00,
+  bit_one = 0x01,
+  bit_start = 0x10
+} avclan_bit_t;
+
+// Error enums are ordered such that a lower numeric value corresponds to more
+// progress/success before an error occured, with 0 being no errors
+typedef enum : uint8_t {
+  rNO_ERROR = 0x00,
+  rBAD_DATA_PARITY,
+  rBAD_LENGTH_RANGE,
+  rBAD_LENGTH_PARITY,
+  rBAD_PERIPHERAL_PARITY,
+  rBAD_CONTROLLER_PARITY,
+  rBAD_CONTROL_PARITY,
+  rSTARTBIT_TOO_SHORT,
+  rSTARTBIT_TOO_LONG,
+  rLATCHED_COMPARATOR,
+} avclan_readerr_t;
+
+typedef enum : uint8_t {
+  sNO_ERROR = 0x00,
+  sNAK_DATA,
+  sNAK_MESSAGE_LENGTH,
+  sNAK_CONTROL,
+  sNAK_ADDRESS,
+  sBUSY,
+  sMUTED,
+} avclan_senderr_t;
 
 #endif // AVCLAN_DEFS_H

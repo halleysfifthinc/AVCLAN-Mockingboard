@@ -37,7 +37,7 @@ static cd_modes CD_Mode;
 void AVCLAN_startPlaying() {
   static bool havePlayed = false;
   if (havePlayed)
-    AVCLAN_micPlayPause();
+    AVCLAN_mediaFunction(MEDIA_PLAY_PAUSE);
   havePlayed |= true;
   CD_Mode = stPlay;
   statustimer_reset();
@@ -48,7 +48,7 @@ void AVCLAN_startPlaying() {
 void AVCLAN_stopPlaying() {
   statustimer_disable();
   CD_Mode = stStop;
-  AVCLAN_micPlayPause();
+  AVCLAN_mediaFunction(MEDIA_PLAY_PAUSE);
 }
 
 /* Pack a 0–99 count into 2-digit BCD. Values >99 (sentinels such as 0xFF /
@@ -139,7 +139,7 @@ void AVCLAN_normalizeState() {
 }
 
 void AVCLAN_init() {
-  AVCLAN_phyInit();
+  AVCLAN_busInit();
   mediacontrol_init();
   statustimer_init();
 

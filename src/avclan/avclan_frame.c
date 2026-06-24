@@ -20,58 +20,16 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <avr/interrupt.h>
-#include <avr/io.h>
-#include <avr/sfr_defs.h>
 #include <stdint.h>
 #include <string.h>
-#include <util/atomic.h>
 
 #include "avclan_frame.h"
-#include "avclan_phy.h"
-#include "cdchanger.h"
-#include "com232.h"
-#include "mediacontrol.h"
-#include "statustimer.h"
+#include "avclan_phy.h" // bus symbol I/O + transaction guard (target-provided)
+#include "com232.h"     // error logging
 
-// F_CPU defined in timing.h and potentially needed by avr-libc (e.g. delay.h)
-#include "timing.h"
-
-/* Disable non-read related interrupts (USART RX, PIT, TCA) during AVCLAN reads.
- */
-void AVCLAN_stopEvent() {
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    statustimer_disable();
-    USART0.CTRLA &= ~USART_RXCIE_bm;
-    mediacontrol_syncDuringMask();
-  }
-}
-
-// Re-enable serial and periodic interrupts.
-void AVCLAN_startEvent() {
-  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    if (AVCLAN_isPlaying()) // Reenable status interrupt if currently playing
-      statustimer_enable();
-    USART0.CTRLA |= USART_RXCIE_bm;
-  }
-}
-
-uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
+avclan_readerr_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   struct errtype {
-    // Error enum is ordered such that a lower numeric value corresponds to more
-    // successful read
-    enum : uint8_t {
-      NO_ERROR = 0x00,
-      BAD_DATA_PARITY = 0x01,
-      BAD_LENGTH_RANGE,
-      BAD_LENGTH_PARITY,
-      BAD_PERIPHERAL_PARITY,
-      BAD_CONTROLLER_PARITY,
-      BAD_CONTROL_PARITY,
-      STARTBIT_TOO_SHORT,
-      STARTBIT_TOO_LONG,
-      LATCHED_COMPARATOR,
-    } errno;
+    avclan_readerr_t errno;
     union {
       uint8_t val; // BAD_LENGTH_RANGE: the out-of-range length value
       struct {
@@ -81,48 +39,13 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
     };
   } err = {0};
 
-  AVCLAN_stopEvent(); // disable timer1 interrupt
+  AVCLAN_stopEvent(); // quiesce contending sources during the read
 
   uint8_t tmp = 0;
 
-  uint16_t startbitlen = TCB1.CNT = 0;
-  while (!BUS_IS_IDLE) {
-    startbitlen = TCB1.CNT;
-    if (startbitlen > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
-      err.errno = STARTBIT_TOO_LONG;
-      while (!BUS_IS_IDLE) {
-        // If bus is "driven" too long, assume the AC2 is latched (e.g.
-        // because the bus is actually floating). Kick it if so.
-        // This should prevent/resolve a flood of "STARTBIT_TOO_LONG" errors
-        if (TCB1.CNT > (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 3)) {
-          err.errno = LATCHED_COMPARATOR;
-          PORTA.OUTSET = PIN7_bm; // preset high before enabling the driver
-          PORTA.DIRSET = PIN7_bm; // drive (-) hard high
-          TCB1.CNT = 0;
-          while (!BUS_IS_IDLE && TCB1.CNT < (uint16_t)AVCLAN_BIT0_LOGIC_1) {
-            // Wait a max of ~6μs until bus is idle
-          }
-          PORTA.DIRCLR = PIN7_bm; // back to high-Z comparator input
-          PORTA.OUTCLR = PIN7_bm;
-        }
-      }
-      goto handle_err;
-    }
-  }
-  if (startbitlen < (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8)) {
-    err.errno = STARTBIT_TOO_SHORT;
-    // We missed the beginning of this message; wait for it to finish (bus
-    // continuously idle for >1 bit length) before returning, so we don't have
-    // multiple false-starts while the in-progress message keeps sending more
-    // bits.
-    TCB1.CNT = 0;
-    while (TCB1.CNT < (uint16_t)(AVCLAN_BIT_LENGTH_MAX * 1.2)) {
-      if (!BUS_IS_IDLE)
-        TCB1.CNT = 0;
-    }
+  err.errno = AVCLAN_readstartbit();
+  if (err.errno)
     goto handle_err;
-  }
-  // Otherwise that was a start bit
 
   AVCLAN_readbits(&tmp, 1);
   frame->is_unicast = tmp;
@@ -130,7 +53,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   uint8_t parity = AVCLAN_readbits(&frame->controller_addr, 12);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp &= 1)) {
-    err.errno = BAD_CONTROLLER_PARITY;
+    err.errno = rBAD_CONTROLLER_PARITY;
     if (print.verbose) {
       err.read_val = frame->controller_addr;
       err.parity = tmp;
@@ -141,7 +64,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   parity = AVCLAN_readbits(&frame->peripheral_addr, 12);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp &= 1)) {
-    err.errno = BAD_PERIPHERAL_PARITY;
+    err.errno = rBAD_PERIPHERAL_PARITY;
     if (print.verbose) {
       err.read_val = frame->peripheral_addr;
       err.parity = tmp;
@@ -159,7 +82,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   parity = AVCLAN_readbits(&frame->control, 4);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp &= 1)) {
-    err.errno = BAD_CONTROL_PARITY;
+    err.errno = rBAD_CONTROL_PARITY;
     if (print.verbose) {
       err.read_val = frame->control;
       err.parity = tmp;
@@ -174,7 +97,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   parity = AVCLAN_readbyte(&frame->length);
   AVCLAN_readbits(&tmp, 1);
   if (parity != (tmp &= 1)) {
-    err.errno = BAD_LENGTH_PARITY;
+    err.errno = rBAD_LENGTH_PARITY;
     if (print.verbose) {
       err.read_val = frame->length;
       err.parity = tmp;
@@ -187,7 +110,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   }
 
   if (frame->length == 0 || frame->length > MAXMSGLEN) {
-    err.errno = BAD_LENGTH_RANGE;
+    err.errno = rBAD_LENGTH_RANGE;
     err.val = frame->length;
     goto handle_err;
   }
@@ -196,7 +119,7 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
     parity = AVCLAN_readbyte(&frame->data[i]);
     AVCLAN_readbits(&tmp, 1);
     if (parity != (tmp &= 1)) {
-      err.errno = BAD_DATA_PARITY;
+      err.errno = rBAD_DATA_PARITY;
       if (print.verbose) {
         err.read_val = frame->data[i];
         err.parity = tmp;
@@ -214,23 +137,23 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
     AVCLAN_startEvent();
     RS232_Print("ERR(read): ");
     switch (err.errno) {
-      case LATCHED_COMPARATOR: RS232_Print("latched comparator"); break;
-      case STARTBIT_TOO_SHORT: RS232_Print("start bit too short"); break;
-      case STARTBIT_TOO_LONG: RS232_Print("start bit too long"); break;
-      case BAD_CONTROLLER_PARITY:
+      case rLATCHED_COMPARATOR: RS232_Print("latched comparator"); break;
+      case rSTARTBIT_TOO_SHORT: RS232_Print("start bit too short"); break;
+      case rSTARTBIT_TOO_LONG: RS232_Print("start bit too long"); break;
+      case rBAD_CONTROLLER_PARITY:
         RS232_Print("reading controller addr.");
         goto VERBOSE;
-      case BAD_PERIPHERAL_PARITY:
+      case rBAD_PERIPHERAL_PARITY:
         RS232_Print("reading peripheral addr.");
         goto VERBOSE;
-      case BAD_CONTROL_PARITY: RS232_Print("reading control"); goto VERBOSE;
-      case BAD_LENGTH_PARITY: RS232_Print("reading length"); goto VERBOSE;
-      case BAD_LENGTH_RANGE:
+      case rBAD_CONTROL_PARITY: RS232_Print("reading control"); goto VERBOSE;
+      case rBAD_LENGTH_PARITY: RS232_Print("reading length"); goto VERBOSE;
+      case rBAD_LENGTH_RANGE:
         RS232_Print("bad length 0x");
         RS232_PrintHex4(err.val);
         break;
-      case BAD_DATA_PARITY: RS232_Print("reading data"); goto VERBOSE;
-      case NO_ERROR:
+      case rBAD_DATA_PARITY: RS232_Print("reading data"); goto VERBOSE;
+      case rNO_ERROR:
         __builtin_unreachable();
       VERBOSE:
         if (print.verbose) {
@@ -246,8 +169,8 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   }
 
   // Only print if some data has been correctly received
-  if (print.print && (err.errno < STARTBIT_TOO_SHORT)) {
-    if (err.errno > BAD_DATA_PARITY)
+  if (print.print && (err.errno < rSTARTBIT_TOO_SHORT)) {
+    if (err.errno > rBAD_DATA_PARITY)
       frame->length = 0;
     AVCLAN_printframe(frame, print.binary);
   }
@@ -255,59 +178,27 @@ uint8_t AVCLAN_readframe(AVCLAN_frame_t *frame, log_t print) {
   return err.errno;
 }
 
-uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
+avclan_senderr_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
   struct errtype {
     // Error enum is ordered such that a lower numeric value corresponds to more
     // success
-    enum : uint8_t {
-      NO_ERROR = 0x00,
-      NAK_DATA = 0x01,
-      NAK_MESSAGE_LENGTH,
-      NAK_CONTROL,
-      NAK_ADDRESS,
-      BUSY,
-      MUTED,
-    } errno;
+    avclan_senderr_t errno;
     uint8_t val;
   } err = {0};
 
   if (AVCLAN_ismuted()) {
-    err.errno = MUTED;
+    err.errno = sMUTED;
     goto handle_err;
   }
 
   AVCLAN_stopEvent();
 
-  // wait for free line
-  TCB1.CNT = 0;
-  while (BUS_IS_IDLE) {
-    // Wait for 120% of a bit length
-    if (TCB1.CNT >= (uint16_t)(AVCLAN_BIT_LENGTH_MAX * 2))
-      break;
-  }
-
-  // End of first loop could be due to bus being driven
-  TCB1.CNT = 0;
-  if (!BUS_IS_IDLE) {
-    // Some other device started sending
-    // Can't yet simultaneously send and recieve to do proper CSMA/CD
-    err.errno = BUSY;
+  if (!AVCLAN_sendstartbit()) {
+    // Some other device is already driving the bus
+    err.errno = sBUSY;
     goto handle_err;
-
-    // Beginnings of CSMA/CD
-    // do {
-    //   if (TCB1.CNT >= (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 1.2))
-    //     return 1; // Something's hinky; nothing is longer than the start bit
-    // } while (!BUS_IS_IDLE);
-    // if (TCB1.CNT <= (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8))
-    //   return 1; // Shouldn't be possible (waiting 2 bit lengths with idle
-    //   bus,
-    //             // then next bit should be a long one ie start)
-    // set_AVC_logic_for(1, AVCLAN_STARTBIT_LOGIC_1); // wait for end of start
-    // bit
-  } else {
-    AVCLAN_sendbit(bit_start);
   }
+
   AVCLAN_sendbits(&(uint8_t){frame->is_unicast}, 1);
 
   avclan_bit_t parity = AVCLAN_sendbits(&frame->controller_addr, 12);
@@ -317,7 +208,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
   AVCLAN_sendbit(parity);
 
   if (frame->is_unicast && !AVCLAN_readbit_ACK()) {
-    err.errno = NAK_ADDRESS;
+    err.errno = sNAK_ADDRESS;
     goto handle_err;
   }
 
@@ -325,7 +216,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
   AVCLAN_sendbit(parity);
 
   if (frame->is_unicast && !AVCLAN_readbit_ACK()) {
-    err.errno = NAK_CONTROL;
+    err.errno = sNAK_CONTROL;
     goto handle_err;
   }
 
@@ -333,7 +224,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
   AVCLAN_sendbit(parity);
 
   if (frame->is_unicast && !AVCLAN_readbit_ACK()) {
-    err.errno = NAK_MESSAGE_LENGTH;
+    err.errno = sNAK_MESSAGE_LENGTH;
     goto handle_err;
   }
 
@@ -344,7 +235,7 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
     // necessary (i.e. This deviates from the previous broadcast specific
     // function that sent an extra `1` bit after each byte/parity)
     if (frame->is_unicast && !AVCLAN_readbit_ACK()) {
-      err.errno = NAK_DATA;
+      err.errno = sNAK_DATA;
       err.val = i;
       goto handle_err;
     }
@@ -358,28 +249,28 @@ uint8_t AVCLAN_sendframe(const AVCLAN_frame_t *frame, log_t print) {
     AVCLAN_startEvent();
     RS232_Print("Error");
     switch (err.errno) {
-      case MUTED: RS232_Print(": Device muted"); break;
-      case BUSY: RS232_Print(": Busy bus"); break;
-      case NAK_ADDRESS:
-      case NAK_CONTROL:
-      case NAK_MESSAGE_LENGTH:
-      case NAK_DATA:
+      case sMUTED: RS232_Print(": Device muted"); break;
+      case sBUSY: RS232_Print(": Busy bus"); break;
+      case sNAK_ADDRESS:
+      case sNAK_CONTROL:
+      case sNAK_MESSAGE_LENGTH:
+      case sNAK_DATA:
         RS232_Print(" NAK: ");
         switch (err.errno) {
-          case NAK_ADDRESS: RS232_Print("address"); break;
-          case NAK_CONTROL: RS232_Print("Control"); break;
-          case NAK_MESSAGE_LENGTH: RS232_Print("Message length"); break;
-          case NAK_DATA:
+          case sNAK_ADDRESS: RS232_Print("address"); break;
+          case sNAK_CONTROL: RS232_Print("Control"); break;
+          case sNAK_MESSAGE_LENGTH: RS232_Print("Message length"); break;
+          case sNAK_DATA:
             RS232_Print(" data[");
             RS232_PrintDec(err.val);
             RS232_Print("]");
             break;
-          case NO_ERROR:
-          case MUTED:
-          case BUSY: __builtin_unreachable();
+          case sNO_ERROR:
+          case sMUTED:
+          case sBUSY: __builtin_unreachable();
         }
         break;
-      case NO_ERROR: __builtin_unreachable();
+      case sNO_ERROR: __builtin_unreachable();
     }
     RS232_Print("\n");
   } else {
@@ -494,46 +385,3 @@ uint8_t AVCLAN_parseframe(const uint8_t *bytes, uint8_t len,
 
   return err.errno;
 }
-
-#ifndef NDEBUG
-  // Only used immediately below
-  #define XSTR(x) #x
-  #define STR(x)  XSTR(x)
-
-uint16_t pulses[100];
-uint16_t periods[100];
-
-void AVCLan_Measure() {
-  AVCLAN_stopEvent();
-
-  uint8_t tmp = 0;
-
-  RS232_Print(
-      "Timing config: F_CPU=" STR(F_CPU) ", TCB_CLKSEL=" STR(TCB_CLKSEL) "\n");
-  RS232_Print("Sampling bit (pulse-width and period) timing...\n");
-
-  for (uint8_t n = 0; n < 100; n++) {
-    while (pulse_count == tmp) {}
-    pulses[n] = pulsewidth;
-    periods[n] = period;
-    tmp = pulse_count;
-  }
-
-  RS232_Print("Pulses:\n");
-  for (uint8_t i = 0; i < 100; i++) {
-    RS232_PrintHex8((uint8_t)(pulses[i] >> 8));
-    RS232_PrintHex8((uint8_t)pulses[i]);
-    RS232_Print("\n");
-  }
-
-  RS232_Print("Periods:\n");
-  for (uint8_t i = 0; i < 100; i++) {
-    RS232_PrintHex8((uint8_t)(periods[i] >> 8));
-    RS232_PrintHex8((uint8_t)periods[i]);
-    RS232_Print("\n");
-  }
-  RS232_Print("\nDone.\n");
-
-  AVCLAN_startEvent();
-}
-#endif

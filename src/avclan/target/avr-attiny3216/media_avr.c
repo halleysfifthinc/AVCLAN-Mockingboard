@@ -21,11 +21,12 @@
 #include <stdint.h>
 #include <util/atomic.h>
 
+#include "media_avr.h"   // mediacontrol_syncDuringMask (used by the bus guard)
 #include "mediacontrol.h"
 
-// F_CPU defined in timing.h; the mic tick constants below are derived from it.
-// TODO(HAL): re-derive these from a target-agnostic TICK_NS instead of F_CPU.
-#include "timing.h"
+// F_CPU defined in timing_avr.h; the mic tick constants below are derived from
+// it (this hardware generation's TCA0/PB1 button-press implementation).
+#include "timing_avr.h"
 
 // pending WO1 toggles (even); signed to avoid underflows from a stray OVF
 static volatile int8_t mic_ntoggles = 0;
@@ -111,12 +112,15 @@ static inline void mic_timer_isr_body(bool is_early) {
 
 ISR(TCA0_OVF_vect) { mic_timer_isr_body(false); }
 
-// Emulate a single play/pause button press on the source device.
-void AVCLAN_micPlayPause() { mic_pulse(1); }
-
-// Emulate skip-forward/backward button presses
-void AVCLAN_micSkipForward() { mic_pulse(3); }  //  double-press
-void AVCLAN_micSkipBackward() { mic_pulse(5); } // triple-press
+// Emulate a transport-control button press on the source device. Each action
+// maps to a press-train of a given length on MIC_CONTROL.
+void AVCLAN_mediaFunction(AVCLAN_media_fn_t fn) {
+  switch (fn) {
+    case MEDIA_PLAY_PAUSE: mic_pulse(1); break;    // single press
+    case MEDIA_SKIP_FORWARD: mic_pulse(3); break;  // double-press
+    case MEDIA_SKIP_BACKWARD: mic_pulse(5); break; // triple-press
+  }
+}
 
 // Pre-emptively "overflow" and run the OVF ISR body early if a press is in
 // progress and likely to overflow within the masked window. This maintains:

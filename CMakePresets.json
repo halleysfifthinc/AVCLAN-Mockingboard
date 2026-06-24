@@ -1,12 +1,12 @@
 {
-    "version": 2,
+    "version": 3,
     "configurePresets": [
         {
             "name": "usb0",
             "hidden": true,
             "description": "Program over /dev/ttyUSB0",
             "cacheVariables": {
-                "AVR_UPLOADTOOL_PORT": "/dev/ttyUSB0"
+                "AVRDUDE_PORT": "/dev/ttyUSB0"
             }
         },
         {
@@ -14,7 +14,19 @@
             "hidden": true,
             "description": "Program over /dev/ttyUSB1",
             "cacheVariables": {
-                "AVR_UPLOADTOOL_PORT": "/dev/ttyUSB1"
+                "AVRDUDE_PORT": "/dev/ttyUSB1"
+            }
+        },
+        {
+            "name": "avr-attiny3216",
+            "hidden": true,
+            "description": "AVR ATtiny3216 cross-compile toolchain + matching port",
+            "toolchainFile": "${sourceDir}/cmake/avr-gcc-toolchain.cmake",
+            "cacheVariables": {
+                "AVCLAN_TARGET": "avr-attiny3216",
+                "FREQSEL": "20MHz",
+                "TCB_CLKSEL": "TCB_CLKSEL_CLKDIV1_gc",
+                "USART_RXMODE": "USART_RXMODE_CLK2X_gc"
             }
         },
         {
@@ -24,9 +36,7 @@
             "generator": "Unix Makefiles",
             "binaryDir": "${sourceDir}/build",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "FREQSEL": "20MHz",
-                "TCB_CLKSEL": "TCB_CLKSEL_CLKDIV1_gc"
+                "CMAKE_BUILD_TYPE": "Debug"
             }
         },
         {
@@ -35,44 +45,47 @@
             "description": "RelWithDebInfo build settings",
             "inherits": "debug-base",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-                "USART_RXMODE": "USART_RXMODE_CLK2X_gc"
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
         },
         {
-            "name": "default",
-            "displayName": "Debug (ttyUSB0)",
-            "description": "Debug build, program over /dev/ttyUSB0",
+            "name": "attiny3216-debug-usb0",
+            "displayName": "ATtiny3216 Debug (ttyUSB0)",
+            "description": "ATtiny3216 Debug build, program over /dev/ttyUSB0",
             "inherits": [
+                "avr-attiny3216",
                 "debug-base",
                 "usb0"
             ]
         },
         {
-            "name": "default-usb1",
-            "displayName": "Debug (ttyUSB1)",
-            "description": "Debug build, program over /dev/ttyUSB1",
+            "name": "attiny3216-debug-usb1",
+            "displayName": "ATtiny3216 Debug (ttyUSB1)",
+            "description": "ATtiny3216 Debug build, program over /dev/ttyUSB1",
             "inherits": [
+                "avr-attiny3216",
                 "debug-base",
                 "usb1"
             ]
         },
         {
-            "name": "relwithdebinfo",
-            "displayName": "RelWithDebInfo (ttyUSB1)",
-            "description": "RelWithDebInfo build, program over /dev/ttyUSB1",
+            "name": "attiny3216-relwithdebinfo-usb0",
+            "displayName": "ATtiny3216 RelWithDebInfo (ttyUSB0)",
+            "description": "ATtiny3216 RelWithDebInfo build, program over /dev/ttyUSB0",
             "inherits": [
+                "avr-attiny3216",
                 "relwithdebinfo-base",
-                "usb1"
+                "usb0"
             ]
         },
         {
-            "name": "relwithdebinfo-usb0",
-            "displayName": "RelWithDebInfo (ttyUSB0)",
-            "description": "RelWithDebInfo build, program over /dev/ttyUSB0",
+            "name": "attiny3216-relwithdebinfo-usb1",
+            "displayName": "ATtiny3216 RelWithDebInfo (ttyUSB1)",
+            "description": "ATtiny3216 RelWithDebInfo build, program over /dev/ttyUSB1",
             "inherits": [
+                "avr-attiny3216",
                 "relwithdebinfo-base",
-                "usb0"
+                "usb1"
             ]
         }
     ]

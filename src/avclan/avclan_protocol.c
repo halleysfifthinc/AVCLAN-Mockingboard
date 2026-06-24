@@ -235,7 +235,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         cd_status.secs = 0x7f;
         cd_status.flags2 = 0xc0;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        AVCLAN_micSkipForward();
+        AVCLAN_mediaFunction(MEDIA_SKIP_FORWARD);
         respond = r_TrackChange;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Seek_Down):
@@ -251,7 +251,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         cd_status.secs = 0x7f;
         cd_status.flags2 = 0xc0;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        AVCLAN_micSkipBackward();
+        AVCLAN_mediaFunction(MEDIA_SKIP_BACKWARD);
         respond = r_TrackChange;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Fast_Forward): {
@@ -262,7 +262,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
           ++cd_status.mins;
         }
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        AVCLAN_micSkipForward();
+        AVCLAN_mediaFunction(MEDIA_SKIP_FORWARD);
         statustimer_reset(); // Skipped to a whole/round sec; ensure next tick is
                              // ~1 sec from now
         respond = r_Handled;
@@ -282,7 +282,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         } else
           cd_status.secs -= 15;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        AVCLAN_micSkipBackward();
+        AVCLAN_mediaFunction(MEDIA_SKIP_BACKWARD);
         statustimer_reset(); // Skipped to a whole/round sec; ensure next tick is
                              // ~1 sec from now
         respond = r_Handled;

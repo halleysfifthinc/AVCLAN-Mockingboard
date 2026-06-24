@@ -68,16 +68,25 @@
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
 #include <stdint.h>
+#include <util/atomic.h>
 
 #include "avclan_phy.h"
+#include "cdchanger.h"   // AVCLAN_isPlaying (startEvent)
+#include "com232.h"      // RS232_setRxInterrupt (guard); RS232_Print (Measure)
+#include "media_avr.h"   // mediacontrol_syncDuringMask (guard)
+#include "statustimer.h" // statustimer_enable/disable (guard)
 
-// F_CPU defined in timing.h and potentially needed by avr-libc (e.g. delay.h)
-#include "timing.h"
+// F_CPU + TICK_US (timing.h) defined here; F_CPU potentially needed by
+// avr-libc.
+#include "timing_avr.h"
 
 // Name difference between avr-libc and Microchip pack
 #if defined(EVSYS_ASYNCCH00_bm)
   #define EVSYS_ASYNCCH0_0_bm EVSYS_ASYNCCH00_bm
 #endif
+
+// AVC LAN bus on AC2 (PA6/7): PA6 AINP0 (+), PA7 AINN1 (-)
+#define BUS_IS_IDLE (bit_is_clear(AC2_STATUS, AC_STATE_bp))
 
 #define READING_BYTE   GPIOR1
 #define READING_NBITS  GPIOR2
@@ -85,11 +94,11 @@
 
 #define TCB_CNTMODE TCB_CNTMODE_PW_gc
 
-volatile uint16_t pulsewidth;
+static volatile uint16_t pulsewidth;
 
 #ifndef NDEBUG
-volatile uint8_t pulse_count = 0;
-volatile uint16_t period = 0;
+static volatile uint8_t pulse_count = 0;
+static volatile uint16_t period = 0;
 #endif
 
 // clang-format off
@@ -108,6 +117,15 @@ static inline void AVCLAN_setBusDriven() {
         [vportc_out] "I"(_SFR_IO_ADDR(VPORTC_OUT)));
 }
 // clang-format on
+
+// Returns true if device TX is muted on the AVCLAN bus (both drive pins are
+// configured as inputs).
+bool AVCLAN_ismuted() {
+  return (((VPORTA_DIR & PIN4_bm) | (VPORTA_DIR & PIN0_bm)) == 0);
+}
+
+// True when the bus is being driven (i.e. not idle/floating).
+bool AVCLAN_busActive() { return !BUS_IS_IDLE; }
 
 // Mute device TX on AVCLAN bus
 void AVCLAN_muteDevice(bool mute) {
@@ -333,7 +351,7 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
   return (parity & 1);
 }
 
-void AVCLAN_phyInit() {
+void AVCLAN_busInit() {
   // Set pin 6 and 7 as input
   PORTA.DIRCLR = (PIN6_bm | PIN7_bm);
   // Disable input buffer; recommended when using AC
@@ -367,3 +385,141 @@ void AVCLAN_phyInit() {
 
   AVCLAN_muteDevice(false); // unmute AVCLAN bus TX
 }
+
+// Wait for and validate an incoming start bit. On an over-long "driven" bus
+// (AC2 latched high because the bus is actually floating) this kicks PA7 hard
+// high to unlatch the comparator. The framing layer maps the result to its own
+// error reporting; no printing happens here.
+avclan_readerr_t AVCLAN_readstartbit() {
+  uint16_t startbitlen = TCB1.CNT = 0;
+  while (!BUS_IS_IDLE) {
+    startbitlen = TCB1.CNT;
+    if (startbitlen > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
+      avclan_readerr_t result = rSTARTBIT_TOO_LONG;
+      while (!BUS_IS_IDLE) {
+        // If bus is "driven" too long, assume the AC2 is latched (e.g.
+        // because the bus is actually floating). Kick it if so.
+        // This should prevent/resolve a flood of "STARTBIT_TOO_LONG" errors
+        if (TCB1.CNT > (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 3)) {
+          result = rLATCHED_COMPARATOR;
+          PORTA.OUTSET = PIN7_bm; // preset high before enabling the driver
+          PORTA.DIRSET = PIN7_bm; // drive (-) hard high
+          TCB1.CNT = 0;
+          while (!BUS_IS_IDLE && TCB1.CNT < (uint16_t)AVCLAN_BIT0_LOGIC_1) {
+            // Wait a max of ~6μs until bus is idle
+          }
+          PORTA.DIRCLR = PIN7_bm; // back to high-Z comparator input
+          PORTA.OUTCLR = PIN7_bm;
+        }
+      }
+      return result;
+    }
+  }
+  if (startbitlen < (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8)) {
+    // We missed the beginning of this message; wait for it to finish (bus
+    // continuously idle for >1 bit length) before returning, so we don't have
+    // multiple false-starts while the in-progress message keeps sending more
+    // bits.
+    TCB1.CNT = 0;
+    while (TCB1.CNT < (uint16_t)(AVCLAN_BIT_LENGTH_MAX * 1.2)) {
+      if (!BUS_IS_IDLE)
+        TCB1.CNT = 0;
+    }
+    return rSTARTBIT_TOO_SHORT;
+  }
+  return rNO_ERROR; // that was a start bit
+}
+
+// Acquire the bus and emit a start bit. Returns false if another device is
+// already driving the bus (we can't yet do proper CSMA/CD).
+bool AVCLAN_sendstartbit() {
+  // wait for free line
+  TCB1.CNT = 0;
+  while (BUS_IS_IDLE) {
+    // Wait for 120% of a bit length
+    if (TCB1.CNT >= (uint16_t)(AVCLAN_BIT_LENGTH_MAX * 2))
+      break;
+  }
+
+  // End of first loop could be due to bus being driven
+  TCB1.CNT = 0;
+  if (!BUS_IS_IDLE) {
+    // Some other device started sending
+    // Can't yet simultaneously send and receive to do proper CSMA/CD
+
+    // Beginnings of CSMA/CD
+    // do {
+    //   if (TCB1.CNT >= (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 1.2))
+    //     return false; // Something's hinky; nothing is longer than start bit
+    // } while (!BUS_IS_IDLE);
+    // if (TCB1.CNT <= (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8))
+    //   return false; // Shouldn't be possible
+    // set_AVC_logic_for(1, AVCLAN_STARTBIT_LOGIC_1); // wait for end of start
+    return false;
+  }
+  AVCLAN_sendbit(bit_start);
+  return true;
+}
+
+/* Disable non-read related interrupts (USART RX, RTC status tick, mic timer)
+   during AVCLAN bus transactions so framing isn't disturbed. TCB0 must remain
+   enabled. */
+void AVCLAN_stopEvent() {
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    statustimer_disable();
+    RS232_setRxInterrupt(false);
+    mediacontrol_syncDuringMask();
+  }
+}
+
+// Re-enable serial and periodic interrupts after a bus transaction.
+void AVCLAN_startEvent() {
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    if (AVCLAN_isPlaying()) // Reenable status interrupt if currently playing
+      statustimer_enable();
+    RS232_setRxInterrupt(true);
+  }
+}
+
+#ifndef NDEBUG
+  // Only used immediately below
+  #define XSTR(x) #x
+  #define STR(x)  XSTR(x)
+
+static uint16_t pulses[100];
+static uint16_t periods[100];
+
+void AVCLan_Measure() {
+  AVCLAN_stopEvent();
+
+  uint8_t tmp = 0;
+
+  RS232_Print(
+      "Timing config: F_CPU=" STR(F_CPU) ", TCB_CLKSEL=" STR(TCB_CLKSEL) "\n");
+  RS232_Print("Sampling bit (pulse-width and period) timing...\n");
+
+  for (uint8_t n = 0; n < 100; n++) {
+    while (pulse_count == tmp) {}
+    pulses[n] = pulsewidth;
+    periods[n] = period;
+    tmp = pulse_count;
+  }
+
+  RS232_Print("Pulses:\n");
+  for (uint8_t i = 0; i < 100; i++) {
+    RS232_PrintHex8((uint8_t)(pulses[i] >> 8));
+    RS232_PrintHex8((uint8_t)pulses[i]);
+    RS232_Print("\n");
+  }
+
+  RS232_Print("Periods:\n");
+  for (uint8_t i = 0; i < 100; i++) {
+    RS232_PrintHex8((uint8_t)(periods[i] >> 8));
+    RS232_PrintHex8((uint8_t)periods[i]);
+    RS232_Print("\n");
+  }
+  RS232_Print("\nDone.\n");
+
+  AVCLAN_startEvent();
+}
+#endif

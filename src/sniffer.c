@@ -20,10 +20,6 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <avr/interrupt.h>
-#include <avr/io.h>
-#include <avr/sfr_defs.h>
-#include <avr/xmega.h>
 #include <ctype.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -31,6 +27,7 @@
 #include <string.h>
 
 #include "avclandrv.h"
+#include "board.h"
 #include "com232.h"
 #include "queue.h"
 
@@ -51,10 +48,7 @@ static void *outgoingSlots[CACHE_SIZE];
 
 static Queue_t cache, rcache, incoming, outgoing;
 
-static volatile bool enqueueStatus = false;
-
 void Setup();
-void general_GPIO_init();
 void print_help();
 
 static uint8_t return_resp(RFrame_t *resp) {
@@ -129,8 +123,7 @@ int main() {
   print_help();
 
   while (true) {
-
-    if (!BUS_IS_IDLE) {
+    if (AVCLAN_busActive()) {
       if (AVCLAN_frame_t *msg = popQueue(&cache)) {
         err = AVCLAN_readframe(msg, (log_t){.print = printAllFrames,
                                             .binary = printBinary,
@@ -181,7 +174,7 @@ int main() {
         resp = AVCLAN_statemachine(resp);
         push_or_return_resp(resp);
       }
-    } else if (enqueueStatus) {
+    } else if (statustimer_tickPending()) {
       AVCLAN_frame_t *status = AVCLAN_getStatusFrame();
       AVCLAN_generateStatus(status, true, dev_STATUS);
       if (RFrame_t *resp = (RFrame_t *)popQueue(&rcache)) {
@@ -191,18 +184,14 @@ int main() {
           RS232_Print("Outgoing queue full; unable to send status update\n");
           pushQueue(&rcache, resp);
         } else
-          enqueueStatus = false; // Only clear if successful
+          statustimer_clearTick(); // Only clear if successful
       }
       // no further error handling needed; status isn't part of the cache
     }
 
     // Key handler
-    if (RS232_RxCharEnd) {
-      cli();
-      char readkey = RS232_RxCharBuffer[RS232_RxCharBegin++];
-      if (RS232_RxCharBegin == RS232_RxCharEnd)  // if buffer is consumed
-        RS232_RxCharBegin = RS232_RxCharEnd = 0; // reset buffer
-      sei();
+    if (RS232_hasChar()) {
+      char readkey = RS232_getChar();
       switch (readkey) {
         case '?': print_help(); break;
         case 'v': toggle_flag(&verbose, "Verbose errors: "); break;
@@ -260,22 +249,22 @@ int main() {
         case 'g': AVCLAN_micToggle(); break;
         case 'p':
           RS232_Print("First play/pause begin ... ");
-          AVCLAN_micPlayPause();
+          AVCLAN_mediaFunction(MEDIA_PLAY_PAUSE);
           while (AVCLAN_isMediaFunctioning()) {}
           RS232_Print("end\nSecond play/pause begin ... ");
-          AVCLAN_micPlayPause();
+          AVCLAN_mediaFunction(MEDIA_PLAY_PAUSE);
           while (AVCLAN_isMediaFunctioning()) {}
           RS232_Print("end\n");
           break;
         case 's':
           RS232_Print("Skip begin ... ");
-          AVCLAN_micSkipForward();
+          AVCLAN_mediaFunction(MEDIA_SKIP_FORWARD);
           while (AVCLAN_isMediaFunctioning()) {}
           RS232_Print("end\n");
           break;
         case 'b':
           RS232_Print("Skip back begin ... ");
-          AVCLAN_micSkipBackward();
+          AVCLAN_mediaFunction(MEDIA_SKIP_BACKWARD);
           while (AVCLAN_isMediaFunctioning()) {}
           RS232_Print("end\n");
           break;
@@ -373,52 +362,16 @@ int main() {
             }
           }
       } // switch (readkey)
-    } // if (RS232_RxCharEnd)
+    } // if (RS232_hasChar())
   }
   return 0;
 }
 
 void Setup() {
-
-  _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, (CLK_PRESCALE | CLK_PRESCALE_DIV));
-
-  general_GPIO_init();
+  board_init(); // clock + GPIO bring-up (target-specific)
   RS232_Init();
   AVCLAN_init();
-
-  sei();
-}
-
-/* Configure pin settings which are not configured by peripherals */
-void general_GPIO_init() {
-  // Set pins PC2-3, PB0,3-5 as inputs
-  PORTC.DIRCLR = (PIN2_bm | // Unconnected
-                  PIN3_bm); // CTS
-  PORTB.DIRCLR = (PIN0_bm | // Unconnected
-                  PIN3_bm | // IGN_SENSE
-                  PIN4_bm | // Unused, but connected to WOC (PC0)
-                  PIN5_bm); // Unused, but connected to WOD (PC1)
-
-  // Enable pull-up resistor and disable input buffer (reduces any EM caused
-  // pin toggling and saves power) for unused and unconnected pins
-  PORTC.PIN2CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
-  PORTB.PIN0CTRL = PORT_PULLUPEN_bm | PORT_ISC_INPUT_DISABLE_gc;
-
-  // TODO: Remove once IGN_SENSE hardware is fixed
-  PORTB.DIRSET = PIN3_bm;
-  PORTB.OUTSET = PIN3_bm;
-
-  // Output only pins: PA3-5, PB1-2,4-5; PC0-1
-  // TODO: TxD (PA1), RTS (PA3) is output only, test if RxD needs the input
-  // buffer or if the UART peripheral bypasses it
-  PORTA.PIN3CTRL = PORT_ISC_INPUT_DISABLE_gc; // RTS
-  PORTA.PIN4CTRL = PORT_ISC_INPUT_DISABLE_gc; // WOA
-  PORTA.PIN5CTRL = PORT_ISC_INPUT_DISABLE_gc; // WOB
-  PORTB.PIN1CTRL = PORT_ISC_INPUT_DISABLE_gc; // MIC_CONTROL
-  PORTB.PIN4CTRL = PORT_ISC_INPUT_DISABLE_gc; // non-driving WOC
-  PORTB.PIN5CTRL = PORT_ISC_INPUT_DISABLE_gc; // non-driving WOD
-  PORTC.PIN0CTRL = PORT_ISC_INPUT_DISABLE_gc; // WOC
-  PORTC.PIN1CTRL = PORT_ISC_INPUT_DISABLE_gc; // WOD
+  board_interruptsEnable();
 }
 
 void print_help() {
@@ -441,11 +394,4 @@ void print_help() {
               "M - Measure bit-timing (pulse-widths and periods)\n"
 #endif
               "? - Print this message\n");
-}
-
-// Periodic interrupt with a ~1 sec period; only enabled when playing
-ISR(RTC_CNT_vect) {
-  AVCLAN_incrementTime();
-  enqueueStatus = true;
-  RTC.INTFLAGS = RTC_OVF_bm;
 }

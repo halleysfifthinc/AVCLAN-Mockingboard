@@ -80,13 +80,14 @@ I ordered a [cable harness](https://www.amazon.com/dp/B01EUZ8CFU) from Amazon to
 
 #### Natively/without VS Code Dev Containers
 1. Install avr-gcc >= v13.1, binutils >= v2.39, cmake >= v3.24
-2. Configure cmake in repo with `cmake -B build`
+2. Configure cmake with a hardware-target preset, e.g. `cmake --preset attiny3216-debug-usb0`
+    (the preset selects the AVR cross-compile toolchain; `cmake --list-presets` shows the rest)
     - Trigger builds with `cmake --build build`
 3. Start developing!
 
 ### Flashing
 
-The CMake target `upload_mockingboard` uses the AVRDude utility using the "serialupdi" programmer type. I use a [USB => Serial converter](https://www.adafruit.com/product/5335) with the Rx and Tx lines connected, using one of the options described [by SpenceKonde here](https://github.com/SpenceKonde/AVR-Guidance/blob/master/UPDI/jtag2updi.md).
+The CMake target `flash` uses the AVRDude utility using the "serialupdi" programmer type. I use a [USB => Serial converter](https://www.adafruit.com/product/5335) with the Rx and Tx lines connected, using one of the options described [by SpenceKonde here](https://github.com/SpenceKonde/AVR-Guidance/blob/master/UPDI/jtag2updi.md).
 
 # Protocol reverse-engineering
 
