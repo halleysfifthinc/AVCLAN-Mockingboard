@@ -34,7 +34,7 @@
             "hidden": true,
             "description": "Debug build settings",
             "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/build",
+            "binaryDir": "${sourceDir}/out/build",
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "Debug"
             }
