@@ -1,3 +1,6 @@
+// Copyright (C) 2015 Allen Hill <allenofthehills@gmail.com>
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #ifndef _TIMING_HPP_
 #define _TIMING_HPP_
 

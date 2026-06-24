@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Allen Hill <allenofthehills@gmail.com>
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #pragma once
 
 #include <stdint.h>

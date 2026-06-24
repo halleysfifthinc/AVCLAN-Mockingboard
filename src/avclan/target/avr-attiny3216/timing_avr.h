@@ -1,12 +1,16 @@
+// Copyright (C) 2015 Allen Hill <allenofthehills@gmail.com>
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #ifndef TIMING_AVR_H
 #define TIMING_AVR_H
 
 // AVR ATtiny3216 timing parameters. Derives F_CPU (needed by avr-libc, e.g.
 // util/delay.h) and the bus-timer (TCB) tick period from the CMake-provided
-// FREQSEL / CLK_PRESCALE / TCB_CLKSEL, then hands the generic timing.h a TICK_US
-// (microseconds per TCB tick) so the physical bit-phase durations resolve to
-// TCB-tick counts. TICK_US == TCB_TICK / 1000, so every derived constant is
-// numerically identical to the previous F_CPU/TCB_CLKSEL formulation.
+// FREQSEL / CLK_PRESCALE / TCB_CLKSEL, then hands the generic timing.h a
+// TICK_US (microseconds per TCB tick) so the physical bit-phase durations
+// resolve to TCB-tick counts. TICK_US == TCB_TICK / 1000, so every derived
+// constant is numerically identical to the previous F_CPU/TCB_CLKSEL
+// formulation.
 
 #define __CLKCTRL_PDIV_2X_gc  2
 #define __CLKCTRL_PDIV_4X_gc  4
