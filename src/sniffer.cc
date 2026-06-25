@@ -3,54 +3,27 @@
 // Copyright (C) 2015 Allen Hill <allenofthehills@gmail.com>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include <ctype.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cctype>
+#include <cstdint>
+#include <cstring>
 
 #include "avclandrv.h"
 #include "board.h"
 #include "com232.h"
-#include "queue.h"
+#include "queue.hpp"
 
 const char *const offon[] = {"OFF", "ON"};
 
-#define CACHE_SIZE 16
-static_assert((CACHE_SIZE & (CACHE_SIZE - 1)) == 0,
-              "CACHE_SIZE must be a power of two (qMask depends on it)");
+static constexpr uint8_t CACHE_SIZE = 32;
 
 static AVCLAN_frame_t frames[CACHE_SIZE];
-static RFrame_t responses[CACHE_SIZE];
-static uint8_t framesdata[CACHE_SIZE][MAXMSGLEN];
 
-static void *cacheSlots[CACHE_SIZE];
-static void *rcacheSlots[CACHE_SIZE];
-static void *incomingSlots[CACHE_SIZE];
-static void *outgoingSlots[CACHE_SIZE];
-
-static Queue_t cache, rcache, incoming, outgoing;
+constinit static Queue cache(frames);
+constinit static Queue incoming = cache;
+constinit static Queue outgoing = cache;
 
 void Setup();
 void print_help();
-
-static uint8_t return_resp(RFrame_t *resp) {
-  uint8_t err;
-  AVCLAN_frame_t *out = resp->frame;
-  if ((out >= frames) && (out < &frames[CACHE_SIZE]))
-    // only return cache-owned frames (e.g. not status, etc)
-    err = pushQueue(&cache, out);
-  err = pushQueue(&rcache, resp);
-  return err;
-}
-
-static void push_or_return_resp(RFrame_t *resp) {
-  // r_Nothing == don't respond/send; should never be added to outgoing
-  if (resp->r != r_Nothing && !pushQueue(&outgoing, resp))
-    return;
-
-  return_resp(resp);
-}
 
 static void toggle_flag(bool *flag, const char *msg) {
   *flag = !*flag;
@@ -89,87 +62,65 @@ int main() {
   uint8_t err = 0;
   uint8_t failedStatusReports = 0;
 
+  // Temporary, direct access is questionable since cache has ownership
   for (uint8_t i = 0; i < CACHE_SIZE; ++i) {
     frames[i].control = 0x0f;
-    frames[i].data = framesdata[i];
   }
 
-  constructQueue(&cache, cacheSlots, frames, sizeof(AVCLAN_frame_t), CACHE_SIZE,
-                 true);
-  constructEmptyQueue(&incoming, incomingSlots, CACHE_SIZE);
-
-  constructQueue(&rcache, rcacheSlots, responses, sizeof(RFrame_t), CACHE_SIZE,
-                 true);
-  constructEmptyQueue(&outgoing, outgoingSlots, CACHE_SIZE);
+  const AVCLAN_frame_t *lastStatus = nullptr;
 
   Setup();
   print_help();
 
   while (true) {
     if (AVCLAN_busActive()) {
-      if (AVCLAN_frame_t *msg = popQueue(&cache)) {
-        err = AVCLAN_readframe(msg, (log_t){.print = printAllFrames,
-                                            .binary = printBinary,
-                                            .verbose = verbose});
+      if (auto msg = cache.pop()) {
+        err = AVCLAN_readframe(msg.get(), (log_t){.print = printAllFrames,
+                                                  .binary = printBinary,
+                                                  .verbose = verbose});
         if (!err)
-          err = pushQueue(&incoming, msg);
-
-        if (err)
-          pushQueue(&cache, msg);
+          incoming.push(std::move(msg));
       } else {
         RS232_Print("!! Dropping an incoming message; cache is empty !!\n");
       }
     }
 
-    if (AVCLAN_frame_t *in = peekQueue(&incoming)) {
-      if (AVCLAN_frame_t *out = popQueue(&cache)) {
-        incrementRead(&incoming); // successful out = pop cache; claim the
-                                  // peeked incoming
-        response_t respond = AVCLAN_handleframe(in, out);
-        pushQueue(&cache, in); // return in after use
+    if (auto in = incoming.peek()) {
+      if (auto out = cache.pop()) {
+        AVCLAN_handleframe(in, out.get());
+        incoming.pop();
 
-        if (respond) {
-          if (RFrame_t *resp = popQueue(&rcache)) {
-            *resp = (RFrame_t){.r = respond, .frame = out};
-            push_or_return_resp(resp);
-          } else
-            pushQueue(&cache, out); // rcache exhausted — don't leak the frame
-        } else                      // no response needed; return to circulation
-          pushQueue(&cache, out);
+        if (out->reaction)
+          outgoing.push(std::move(out));
       } else {
         RS232_Print("!! Unable to respond; cache is empty !!\n");
       }
     }
 
-    if (RFrame_t *resp = popQueue(&outgoing)) {
-      AVCLAN_frame_t *out = resp->frame;
+    if (statustimer_tickPending()) {
+      if (auto status = cache.pop()) {
+        lastStatus = status.get();
+        AVCLAN_generateStatus(status.get(), true, dev_STATUS);
+        status->reaction = r_SendOnly;
+        outgoing.push(std::move(status));
+        statustimer_clearTick();
+      }
+    }
+
+    if (auto out = outgoing.pop()) {
       err = AVCLAN_sendframe(
-          out, (log_t){.print = printAllFrames, .binary = printBinary});
-      if (err || resp->r == r_Handled) {
-        if (err && out == AVCLAN_getStatusFrame() &&
-            ++failedStatusReports > 1) {
+          out.get(), (log_t){.print = printAllFrames, .binary = printBinary});
+      if (err || (reaction_t)out->reaction == r_SendOnly) {
+        if (err && out.get() == lastStatus && ++failedStatusReports > 1) {
           failedStatusReports = 0;
           AVCLAN_stopPlaying(); // Disable periodic updates if e.g. no-one's
                                 // listening (car was turned off?)
         }
-        return_resp(resp);
       } else {
-        resp = AVCLAN_statemachine(resp);
-        push_or_return_resp(resp);
+        AVCLAN_statemachine(out.get());
+        if (out->reaction)
+          outgoing.push(std::move(out));
       }
-    } else if (statustimer_tickPending()) {
-      AVCLAN_frame_t *status = AVCLAN_getStatusFrame();
-      AVCLAN_generateStatus(status, true, dev_STATUS);
-      if (RFrame_t *resp = (RFrame_t *)popQueue(&rcache)) {
-        *resp = (RFrame_t){.r = r_Handled, .frame = status};
-        err = pushQueue(&outgoing, resp);
-        if (err) {
-          RS232_Print("Outgoing queue full; unable to send status update\n");
-          pushQueue(&rcache, resp);
-        } else
-          statustimer_clearTick(); // Only clear if successful
-      }
-      // no further error handling needed; status isn't part of the cache
     }
 
     // Key handler
@@ -192,39 +143,33 @@ int main() {
         case 'x': set_flag(&printBinary, false, "Binary: "); break;
 
         case 'E': // Beep
-          if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
-            if (RFrame_t *resp = popQueue(&rcache)) {
-              out->is_unicast = true;
-              out->controller_addr = DEVICE_ADDR;
-              out->peripheral_addr = HU_ADDR;
-              {
-                const uint8_t beep[] = {0x00, dev_CD_CHANGER, dev_BEEP_SPEAKERS,
-                                        0x60, 0x01};
-                out->length = sizeof(beep);
-                memcpy(out->data, beep, sizeof(beep));
-              }
-              *resp = (RFrame_t){.r = r_Handled, .frame = out};
-              push_or_return_resp(resp);
-            } else
-              pushQueue(&cache, out);
+          if (auto out = cache.pop()) {
+            out->is_unicast = true;
+            out->controller_addr = DEVICE_ADDR;
+            out->peripheral_addr = HU_ADDR;
+            {
+              const uint8_t beep[] = {0x00, dev_CD_CHANGER, dev_BEEP_SPEAKERS,
+                                      0x60, 0x01};
+              out->length = sizeof(beep);
+              memcpy(out->data, beep, sizeof(beep));
+            }
+            out->reaction = r_SendOnly;
+            outgoing.push(std::move(out));
           }
           break;
         case 'P':
-          if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
-            if (RFrame_t *resp = popQueue(&rcache)) {
-              out->is_unicast = true;
-              out->controller_addr = DEVICE_ADDR;
-              out->peripheral_addr = HU_ADDR;
-              {
-                const uint8_t play[] = {0x00,     dev_COMM_CTRL,  dev_COMM_v1,
-                                        Ejection, dev_CD_CHANGER, 0x01};
-                out->length = sizeof(play);
-                memcpy(out->data, play, sizeof(play));
-              }
-              *resp = (RFrame_t){.r = r_Ejection, .frame = out};
-              push_or_return_resp(resp);
-            } else
-              pushQueue(&cache, out);
+          if (auto out = cache.pop()) {
+            out->is_unicast = true;
+            out->controller_addr = DEVICE_ADDR;
+            out->peripheral_addr = HU_ADDR;
+            {
+              const uint8_t play[] = {0x00,     dev_COMM_CTRL,  dev_COMM_v1,
+                                      Ejection, dev_CD_CHANGER, 0x01};
+              out->length = sizeof(play);
+              memcpy(out->data, play, sizeof(play));
+            }
+            out->reaction = r_Ejection;
+            outgoing.push(std::move(out));
           }
           break;
 
@@ -284,32 +229,25 @@ int main() {
           if (readSeq) {
             if (readBinary) {
               if (data_tmp[seqIdx] == 0x17) {
-                if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
-                  if (!AVCLAN_parseframe(data_tmp, --seqIdx, out)) {
-                    if (RFrame_t *resp = popQueue(&rcache)) {
-                      *resp = (RFrame_t){.r = r_Handled, .frame = out};
-                      push_or_return_resp(resp);
-                    } else
-                      pushQueue(&cache, out);
-                  } else
-                    pushQueue(&cache, out);
+                if (auto out = cache.pop()) {
+                  if (!AVCLAN_parseframe(data_tmp, --seqIdx, out.get())) {
+                    out->reaction = r_SendOnly;
+                    outgoing.push(std::move(out));
+                  }
                 }
                 readSeq = readBinary = false;
               } else
                 goto DEFAULT; // reading binary and this is a real data byte;
                               // fall through to default
             } else {
-              if (AVCLAN_frame_t *out = (AVCLAN_frame_t *)popQueue(&cache)) {
-                if (RFrame_t *resp = popQueue(&rcache)) {
-                  out->is_unicast = seqIsUnicast;
-                  out->controller_addr = DEVICE_ADDR;
-                  out->peripheral_addr = seqIsUnicast ? HU_ADDR : 0x1FF;
-                  out->length = seqIdx;
-                  memcpy(out->data, data_tmp, seqIdx);
-                  *resp = (RFrame_t){.r = r_Handled, .frame = out};
-                  push_or_return_resp(resp);
-                } else
-                  pushQueue(&cache, out);
+              if (auto out = cache.pop()) {
+                out->is_unicast = seqIsUnicast;
+                out->controller_addr = DEVICE_ADDR;
+                out->peripheral_addr = seqIsUnicast ? HU_ADDR : 0x1FF;
+                out->length = seqIdx;
+                memcpy(out->data, data_tmp, seqIdx);
+                out->reaction = r_SendOnly;
+                outgoing.push(std::move(out));
               }
               printAllFrames = lastPrintAllFrames;
             }

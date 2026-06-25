@@ -75,30 +75,14 @@ void AVCLAN_setTime(uint8_t mins, uint8_t secs) {
   cd_status.secs = secs;
 }
 
-// Only used for regularly scheduled periodic updates
-AVCLAN_frame_t *AVCLAN_getStatusFrame() {
-  static uint8_t status_data[sizeof(AVCLAN_CD_Status_t) + 3] = {0};
-  static AVCLAN_frame_t status = {.is_unicast = false,
-                                  .controller_addr = DEVICE_ADDR,
-                                  .peripheral_addr = 0x1FF,
-                                  .control = 0xF,
-                                  .length = sizeof(status_data),
-                                  .data = status_data};
-
-  return &status;
-}
-
 // Used for changed status messages
 void AVCLAN_generateStatus(AVCLAN_frame_t *status, bool is_unicast,
                            devices to) {
-  *status = (AVCLAN_frame_t){
-      .is_unicast = is_unicast,
-      .controller_addr = DEVICE_ADDR,
-      .peripheral_addr = (is_unicast) ? HU_ADDR : 0x1FF,
-      .control = 0xF,
-      .length = sizeof(AVCLAN_CD_Status_t) + ((is_unicast) ? 4 : 3),
-      .data = status->data, // don't overwrite data pointer
-  };
+  status->is_unicast = is_unicast;
+  status->controller_addr = DEVICE_ADDR;
+  status->peripheral_addr = (is_unicast) ? HU_ADDR : 0x1FF;
+  status->control = 0xF;
+  status->length = sizeof(AVCLAN_CD_Status_t) + ((is_unicast) ? 4 : 3);
 
   uint8_t *data = status->data;
   if (is_unicast)

@@ -1,13 +1,16 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(avclan-mockingboard VERSION 1 LANGUAGES C CXX ASM)
+project(avclan-mockingboard VERSION 1.1 LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(
     -Wall -Wswitch-enum -Werror
-    "$<$<CONFIG:Debug>:-fanalyzer>")
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+    $<$<CONFIG:Debug>:-fanalyzer>)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "13")
@@ -33,10 +36,9 @@ add_library(avclan STATIC
     src/avclan/cdchanger.c)
 
 add_executable(mockingboard
-    src/sniffer.c
-    src/com232.c
-    src/queue.c)
-
+    src/sniffer.cc
+    src/com232.c)
+    
 # avclan exports its public generic headers (src/avclan) to consumers and
 # reaches into src/ for sibling headers (com232.h, board.h) during its own
 # build. The selected target adds its own per-target include path.

@@ -116,12 +116,13 @@ typedef struct print_struct {
 } log_t;
 
 typedef struct AVCLAN_frame_struct {
+  uint8_t reaction;
   bool is_unicast;
   uint16_t controller_addr; // formerly "master"
   uint16_t peripheral_addr; // formerly "slave"
   uint8_t control;
   uint8_t length;
-  uint8_t *data;
+  uint8_t data[MAXMSGLEN];
 } AVCLAN_frame_t;
 
 // A single bus symbol. bit_zero/bit_one carry data (and double as parity

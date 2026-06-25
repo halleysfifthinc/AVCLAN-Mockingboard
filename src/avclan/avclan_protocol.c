@@ -25,11 +25,11 @@ static const uint8_t cdloading_resp[] = {dev_CD_CHANGER,
                                          0x01,
                                          0x02};
 
-response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
-  response_t respond = r_Nothing;
+void AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
+  out->reaction = r_Nothing;
 
   if (AVCLAN_ismuted() || in->length < 3)
-    return respond;
+    return;
 
   // 0xFF placeholders are variant bytes filled by writing directly to
   // out->data[N] after memcpy.
@@ -60,7 +60,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         memcpy(out->data, lancheck_resp, sizeof(lancheck_resp));
         out->data[3] = Lancheck_Scan_Resp;
         out->data[4] = 0x01;
-        respond = r_Handled;
+        out->reaction = r_SendOnly;
         break;
       case PACK3(dev_LAN, dev_COMM_CTRL, Lancheck_Req):
         out->length = sizeof(lancheck_resp);
@@ -69,7 +69,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         memcpy(out->data, lancheck_resp, sizeof(lancheck_resp));
         out->data[3] = Lancheck_Resp;
         out->data[4] = 0x00;
-        respond = r_Handled;
+        out->reaction = r_SendOnly;
         break;
       case PACK3(dev_LAN, dev_COMM_CTRL, Lancheck_End_Req):
         out->is_unicast = true;
@@ -77,7 +77,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         out->length = sizeof(lancheck_resp) - 1;
         memcpy(out->data, lancheck_resp, out->length);
         out->data[3] = Lancheck_End_Resp;
-        respond = r_Handled;
+        out->reaction = r_SendOnly;
         break;
       case PACK3(dev_COMM_v1, dev_COMM_CTRL, Current_Function):
       case PACK3(dev_COMM_v2, dev_COMM_CTRL, Current_Function):
@@ -89,7 +89,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
           cd_status.state = cd_SEEKING | cd_SEEKING_TRACK;
           cd_status.flags2 = 0xc0;
           AVCLAN_generateStatus(out, true, dev_STATUS);
-          respond = r_StartPlaying;
+          out->reaction = r_StartPlaying;
         }
         break;
       case PACK3(dev_COMM_v1, dev_COMM_CTRL, Ping_Req):
@@ -100,7 +100,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
                                      Ping_Resp, 0xFF,          b3};
         out->length = sizeof(ping_resp);
         memcpy(out->data, ping_resp, sizeof(ping_resp));
-        respond = r_Handled;
+        out->reaction = r_SendOnly;
         break;
       }
       case PACK3(dev_COMM_v1, dev_COMM_CTRL, List_Functions_Req):
@@ -112,7 +112,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
                                                dev_CD_CHANGER};
         out->length = sizeof(list_functions_resp);
         memcpy(out->data, list_functions_resp, sizeof(list_functions_resp));
-        respond = r_Handled;
+        out->reaction = r_SendOnly;
         break;
       }
         // case Restart_Lan: not handled
@@ -130,7 +130,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         out->data[3] = Enable_Function_Resp;
         cd_status.state = 0;
         cd_status.flags2 = 0x80;
-        respond = r_StatusReport;
+        out->reaction = r_StatusReport;
         break;
       case PACK3(dev_COMM_v1, dev_CD_CHANGER, Disable_Function_Req):
         [[fallthrough]];
@@ -145,7 +145,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
           cd_status.flags2 = 0x80;
           out->is_unicast = true;
           out->peripheral_addr = HU_ADDR;
-          respond = r_StatusReport;
+          out->reaction = r_StatusReport;
         }
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Eject): {
@@ -166,7 +166,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
             out->length = sizeof(msg);
             memcpy(out->data, msg, sizeof(msg));
           }
-          respond = r_Handled;
+          out->reaction = r_SendOnly;
         }
         break;
       }
@@ -182,7 +182,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
             0x10, 0x01,           0x01};
         out->length = sizeof(cdinitreport_resp);
         memcpy(&out->data[1], cdinitreport_resp, sizeof(cdinitreport_resp));
-        respond = r_Handled;
+        out->reaction = r_SendOnly;
         break;
       }
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Playback_Request): [[fallthrough]];
@@ -195,7 +195,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         serializeCDStatus(&out->data[4]);
         out->is_unicast = true;
         out->peripheral_addr = HU_ADDR;
-        respond = r_Handled;
+        out->reaction = r_SendOnly;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Loading_Request2): [[fallthrough]];
       case PACK3(dev_STATUS, dev_CD_CHANGER, Loading_Request2):
@@ -206,7 +206,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         out->data[3] = Loading_Response2;
         out->is_unicast = true;
         out->peripheral_addr = HU_ADDR;
-        respond = r_Handled;
+        out->reaction = r_SendOnly;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Seek_Up):
         cd_status.state = cd_SEEKING_TRACK;
@@ -219,7 +219,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         cd_status.flags2 = 0xc0;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
         AVCLAN_mediaFunction(MEDIA_SKIP_FORWARD);
-        respond = r_TrackChange;
+        out->reaction = r_TrackChange;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Seek_Down):
         cd_status.state = cd_SEEKING_TRACK;
@@ -235,7 +235,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         cd_status.flags2 = 0xc0;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
         AVCLAN_mediaFunction(MEDIA_SKIP_BACKWARD);
-        respond = r_TrackChange;
+        out->reaction = r_TrackChange;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Fast_Forward): {
         cd_status.state |= cd_SEEKING;
@@ -248,7 +248,7 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         AVCLAN_mediaFunction(MEDIA_SKIP_FORWARD);
         statustimer_reset(); // Skipped to a whole/round sec; ensure next tick
                              // is ~1 sec from now
-        respond = r_Handled;
+        out->reaction = r_SendOnly;
         break;
       }
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, Track_Rewind): {
@@ -268,67 +268,66 @@ response_t AVCLAN_handleframe(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
         AVCLAN_mediaFunction(MEDIA_SKIP_BACKWARD);
         statustimer_reset(); // Skipped to a whole/round sec; ensure next tick
                              // is ~1 sec from now
-        respond = r_Handled;
+        out->reaction = r_SendOnly;
         break;
       }
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Random):
         cd_status.flags |= cd_RANDOM;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        respond = r_StatusReport;
+        out->reaction = r_StatusReport;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Random):
         cd_status.flags &= ~cd_RANDOM;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        respond = r_StatusReport;
+        out->reaction = r_StatusReport;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Repeat):
         cd_status.flags |= cd_REPEAT;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        respond = r_StatusReport;
+        out->reaction = r_StatusReport;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Repeat):
         cd_status.flags &= ~cd_REPEAT;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        respond = r_StatusReport;
+        out->reaction = r_StatusReport;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Disk_Random):
         cd_status.flags |= cd_DISK_RANDOM;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        respond = r_StatusReport;
+        out->reaction = r_StatusReport;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Disk_Random):
         cd_status.flags &= ~cd_DISK_RANDOM;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        respond = r_StatusReport;
+        out->reaction = r_StatusReport;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Enable_Disk_Repeat):
         cd_status.flags |= cd_DISK_REPEAT;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        respond = r_StatusReport;
+        out->reaction = r_StatusReport;
         break;
       case PACK3(dev_CMD_SW, dev_CD_CHANGER, CD_Disable_Disk_Repeat):
         cd_status.flags &= ~cd_DISK_REPEAT;
         AVCLAN_generateStatus(out, true, dev_CMD_SW);
-        respond = r_StatusReport;
+        out->reaction = r_StatusReport;
         break;
     }
   }
-
-  return respond;
 }
 
 #undef PACK3
 
-RFrame_t *AVCLAN_statemachine(RFrame_t *resp) {
-  AVCLAN_frame_t *out = resp->frame;
-  switch (resp->r) {
+void AVCLAN_statemachine(AVCLAN_frame_t *out) {
+  reaction_t r = out->reaction;
+  out->reaction = r_Nothing;
+  switch (r) {
     case r_Ejection: {
       const uint8_t play[] = {0x00,      dev_COMM_CTRL,  dev_COMM_v1,
                               Insertion, dev_CD_CHANGER, 0x01};
       out->length = sizeof(play);
       memcpy(out->data, play, sizeof(play));
     }
-      resp->r = r_Report_Load;
+      out->reaction = r_Report_Load;
       break;
     case r_Report_Load:
       out->is_unicast = false;
@@ -337,7 +336,7 @@ RFrame_t *AVCLAN_statemachine(RFrame_t *resp) {
       memcpy(out->data, cdloading_resp, sizeof(cdloading_resp));
       out->data[1] = dev_STATUS;
       out->data[2] = Loading_Status_Report;
-      resp->r = r_Handled;
+      out->reaction = r_SendOnly;
       break;
     case r_TrackChange:
       AVCLAN_setTime(0x00, 0x00);
@@ -347,24 +346,23 @@ RFrame_t *AVCLAN_statemachine(RFrame_t *resp) {
     case r_NormalizeState:
       AVCLAN_normalizeState();
       AVCLAN_generateStatus(out, true, dev_STATUS);
-      resp->r = r_Handled;
+      out->reaction = r_SendOnly;
       break;
     case r_StartPlaying:
       AVCLAN_normalizeState();
       AVCLAN_generateStatus(out, true, dev_STATUS);
-      resp->r = r_BeganPlaying;
+      out->reaction = r_BeganPlaying;
       break;
     case r_BeganPlaying:
       AVCLAN_startPlaying(); // only start PIT after normalizing state
-      resp->r = r_Nothing;
+      out->reaction = r_Nothing;
       break;
     case r_StatusReport:
       AVCLAN_generateStatus(out, true, dev_STATUS);
-      resp->r = r_Handled;
+      out->reaction = r_SendOnly;
       break;
-    case r_Handled: [[fallthrough]];
+    case r_SendOnly: [[fallthrough]];
     case r_Nothing: [[fallthrough]];
-    default: resp->r = r_Nothing;
+    default: out->reaction = r_Nothing;
   }
-  return resp;
 }
