@@ -71,7 +71,8 @@ int main() {
 
   const AVCLAN_frame_t *lastStatus = nullptr;
 
-  avclan::Peripheral cd_changer(0x360);
+  avclan::Bus phy;
+  avclan::Peripheral cd_changer(phy, 0x360);
   using Error = avclan::Peripheral::Error;
 
   Setup();

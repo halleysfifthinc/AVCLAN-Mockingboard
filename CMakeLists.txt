@@ -35,6 +35,7 @@ add_library(avclan STATIC
     src/avclan/avclan_protocol.c
     src/avclan/cdchanger.c
     src/avclan/peripheral.cc
+    src/avclan/bus.cc
 )
 
 # avclan exports its public generic headers (src/avclan) to consumers and
