@@ -15,30 +15,32 @@
 
 const char *const offon[] = {"OFF", "ON"};
 
-static constexpr uint8_t CACHE_SIZE = 32;
+constexpr uint8_t CACHE_SIZE = 32;
 
-static AVCLAN_frame_t frames[CACHE_SIZE];
+namespace {
+AVCLAN_frame_t frames[CACHE_SIZE];
 
-constinit static Queue cache(frames);
-constinit static Queue incoming = cache;
-constinit static Queue outgoing = cache;
+constinit Queue cache(frames);
+constinit Queue incoming = cache;
+constinit Queue outgoing = cache;
 
-void Setup();
-void print_help();
-
-static void toggle_flag(bool *flag, const char *msg) {
+void toggle_flag(bool *flag, const char *msg) {
   *flag = !*flag;
   RS232_Print(msg);
   RS232_Print(offon[*flag]);
   RS232_Print("\n");
 }
 
-static void set_flag(bool *flag, bool val, const char *msg) {
+void set_flag(bool *flag, bool val, const char *msg) {
   *flag = val;
   RS232_Print(msg);
   RS232_Print(offon[val]);
   RS232_Print("\n");
 }
+
+void Setup();
+void print_help();
+} // namespace
 
 int main() {
   uint8_t hexChars[2];
@@ -63,8 +65,8 @@ int main() {
   uint8_t failedStatusReports = 0;
 
   // Temporary, direct access is questionable since cache has ownership
-  for (uint8_t i = 0; i < CACHE_SIZE; ++i) {
-    frames[i].control = 0x0f;
+  for (auto &frame : frames) {
+    frame.control = 0x0f;
   }
 
   const AVCLAN_frame_t *lastStatus = nullptr;
@@ -291,6 +293,7 @@ int main() {
   return 0;
 }
 
+namespace {
 void Setup() {
   board_init(); // clock + GPIO bring-up (target-specific)
   RS232_Init();
@@ -319,3 +322,5 @@ void print_help() {
 #endif
               "? - Print this message\n");
 }
+
+} // namespace
