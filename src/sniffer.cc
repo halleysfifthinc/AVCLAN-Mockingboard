@@ -10,6 +10,7 @@
 #include "avclandrv.h"
 #include "board.h"
 #include "com232.h"
+#include "peripheral.hpp"
 #include "queue.hpp"
 
 const char *const offon[] = {"OFF", "ON"};
@@ -59,7 +60,6 @@ int main() {
   uint8_t data_tmp[MAXMSGLEN + sizeof(AVCLAN_frame_t)];
   uint8_t seqIdx = 0; // current index in data_tmp
 
-  uint8_t err = 0;
   uint8_t failedStatusReports = 0;
 
   // Temporary, direct access is questionable since cache has ownership
@@ -69,16 +69,19 @@ int main() {
 
   const AVCLAN_frame_t *lastStatus = nullptr;
 
+  avclan::Peripheral cd_changer(0x360);
+  using Error = avclan::Peripheral::Error;
+
   Setup();
   print_help();
 
   while (true) {
     if (AVCLAN_busActive()) {
       if (auto msg = cache.pop()) {
-        err = AVCLAN_readframe(msg.get(), (log_t){.print = printAllFrames,
-                                                  .binary = printBinary,
-                                                  .verbose = verbose});
-        if (!err)
+        auto err = cd_changer.read(msg.get(), (log_t){.print = printAllFrames,
+                                                      .binary = printBinary,
+                                                      .verbose = verbose});
+        if (err == Error::Read{0x00})
           incoming.push(std::move(msg));
       } else {
         RS232_Print("!! Dropping an incoming message; cache is empty !!\n");
@@ -108,18 +111,18 @@ int main() {
     }
 
     if (auto out = outgoing.pop()) {
-      err = AVCLAN_sendframe(
+      auto err = cd_changer.send(
           out.get(), (log_t){.print = printAllFrames, .binary = printBinary});
-      if (err || (reaction_t)out->reaction == r_SendOnly) {
-        if (err && out.get() == lastStatus && ++failedStatusReports > 1) {
-          failedStatusReports = 0;
-          AVCLAN_stopPlaying(); // Disable periodic updates if e.g. no-one's
-                                // listening (car was turned off?)
-        }
-      } else {
+      if (err == Error::Send{0x00} && (reaction_t)out->reaction > r_SendOnly) {
         AVCLAN_statemachine(out.get());
         if (out->reaction)
           outgoing.push(std::move(out));
+
+      } else if (err == Error::Send::NAK_ADDRESS && out.get() == lastStatus &&
+                 ++failedStatusReports > 1) {
+        failedStatusReports = 0;
+        AVCLAN_stopPlaying(); // Disable periodic updates if e.g. no-one's
+                              // listening (car was turned off?)
       }
     }
 

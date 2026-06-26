@@ -137,7 +137,7 @@ typedef enum avclan_bit : uint8_t {
 // progress/success before an error occured, with 0 being no errors
 typedef enum : uint8_t {
   rNO_ERROR = 0x00,
-  rBAD_DATA_PARITY,
+  rBAD_DATA_PARITY = 0x01,
   rBAD_LENGTH_RANGE,
   rBAD_LENGTH_PARITY,
   rBAD_PERIPHERAL_PARITY,
@@ -150,7 +150,7 @@ typedef enum : uint8_t {
 
 typedef enum : uint8_t {
   sNO_ERROR = 0x00,
-  sNAK_DATA,
+  sNAK_DATA = 0x01,
   sNAK_MESSAGE_LENGTH,
   sNAK_CONTROL,
   sNAK_ADDRESS,

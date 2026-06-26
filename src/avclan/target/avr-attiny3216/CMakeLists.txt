@@ -89,7 +89,7 @@ FetchContent_MakeAvailable(avr_libstdcpp)
 add_library(libstdcpp INTERFACE)
 target_include_directories(libstdcpp SYSTEM
     INTERFACE ${avr_libstdcpp_SOURCE_DIR}/include)
-target_link_libraries(avclan INTERFACE libstdcpp)
+target_link_libraries(avclan PUBLIC libstdcpp)
 endif()
 
 

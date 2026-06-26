@@ -33,22 +33,25 @@ set(AVCLAN_TARGET avr-attiny3216 CACHE STRING "Hardware target (port) to build")
 add_library(avclan STATIC
     src/avclan/avclan_frame.c
     src/avclan/avclan_protocol.c
-    src/avclan/cdchanger.c)
+    src/avclan/cdchanger.c
+    src/avclan/peripheral.cc
+)
 
-add_executable(mockingboard
-    src/sniffer.cc
-    src/com232.c)
-    
 # avclan exports its public generic headers (src/avclan) to consumers and
 # reaches into src/ for sibling headers (com232.h, board.h) during its own
 # build. The selected target adds its own per-target include path.
-target_include_directories(avclan
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/avclan
-    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
-
-target_link_libraries(mockingboard avclan)
+target_include_directories(avclan PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/avclan
+    ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # Pull in the selected hardware target: its port sources, per-target headers,
 # hardware-specific compile options/definitions, device-pack handling, and the
 # flashing target. Added after the targets above so it can extend them.
 add_subdirectory(src/avclan/target/${AVCLAN_TARGET})
+
+add_executable(mockingboard
+    src/sniffer.cc
+    src/com232.c
+)
+
+target_link_libraries(mockingboard avclan)
