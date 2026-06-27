@@ -10,7 +10,6 @@
 #include <util/atomic.h>
 
 #include "avclan_phy.h"
-#include "cdchanger.h"   // AVCLAN_isPlaying (startEvent)
 #include "com232.h"      // RS232_setRxInterrupt (guard); RS232_Print (Measure)
 #include "media_avr.h"   // mediacontrol_syncDuringMask (guard)
 #include "statustimer.h" // statustimer_enable/disable (guard)
@@ -414,8 +413,7 @@ void AVCLAN_stopEvent() {
 // Re-enable serial and periodic interrupts after a bus transaction.
 void AVCLAN_startEvent() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    if (AVCLAN_isPlaying()) // Reenable status interrupt if currently playing
-      statustimer_enable();
+    statustimer_restore(); // Reenable status interrupt if currently playing
     RS232_setRxInterrupt(true);
   }
 }

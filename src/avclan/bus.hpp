@@ -49,31 +49,24 @@
 
 #include <concepts>
 
+#include "avclan.hpp"
 #include "avclan_defs.h"
 #include "avclan_phy.h" // bridge until phy has been ported
 
 namespace avclan {
 class Bus {
 public:
-  struct Error {
-    enum class Read : uint8_t {
-      BAD_PARITY = 0x01,
-      STARTBIT_TOO_SHORT = 0x80, // Start *well* above Peripher::Error::Read
-                                 // (which ~inherits these values)
-      STARTBIT_TOO_LONG,
-      BAD_STARTBIT,
-    };
-
-    enum class Send : uint8_t {
-      NAK = 0x01,
-    };
-  };
   class Handle;
+  using Error = detail::Error;
 
   void init();
   void mute(bool mute);
   bool is_muted() const;
-  Handle get();
+
+  Error::Read read(uint16_t address, AVCLAN_frame_t *in, log_t print);
+  Error::Send send(const AVCLAN_frame_t *out, log_t print);
+
+  static Handle get();
 };
 
 class Bus::Handle {
@@ -84,6 +77,7 @@ public:
   ~Handle() { AVCLAN_startEvent(); }
   Handle(const Handle &) = delete;
   Handle(Handle &&) = delete;
+  using Error = detail::Error;
 
   bool sendstartbit();
   Error::Read readstartbit();
@@ -108,7 +102,8 @@ public:
     readbits<1>(&read_parity);
     if (calc_parity != read_parity) {
       return Read::BAD_PARITY;
-    } else if (ack()) {
+    }
+    if (ack()) {
       send_ACK();
     } else
       readbits<1>(&read_parity);
@@ -133,8 +128,8 @@ private:
     bit_start = 0x10
   };
 
-  void send_ACK();
-  uint8_t read_ACK();
+  static void send_ACK();
+  static uint8_t read_ACK();
 
   template <auto N, class T> avclan_bit_t sendbits(T bits);
   template <auto N, class T> avclan_bit_t readbits(T *bits);
@@ -163,16 +158,16 @@ private:
   };
 };
 
-template <> inline avclan_bit_t Bus::Handle::sendbits<8>(uint8_t byte) {
-  return AVCLAN_sendbyte(&byte);
+template <> inline avclan_bit_t Bus::Handle::sendbits<8>(uint8_t bits) {
+  return AVCLAN_sendbyte(&bits);
 };
-template <> inline avclan_bit_t Bus::Handle::sendbits<1>(uint8_t byte) {
-  const avclan_bit_t b{static_cast<avclan_bit_t>(byte & 1u)};
-  AVCLAN_sendbit(b);
-  return b;
+template <> inline avclan_bit_t Bus::Handle::sendbits<1>(uint8_t bits) {
+  const avclan_bit_t bit{static_cast<avclan_bit_t>(bits & 1U)};
+  AVCLAN_sendbit(bit);
+  return bit;
 };
-template <> inline avclan_bit_t Bus::Handle::readbits<8>(uint8_t *byte) {
-  return static_cast<avclan_bit_t>(AVCLAN_readbyte(byte));
+template <> inline avclan_bit_t Bus::Handle::readbits<8>(uint8_t *bits) {
+  return static_cast<avclan_bit_t>(AVCLAN_readbyte(bits));
 };
 
 } // namespace avclan

@@ -117,6 +117,7 @@ typedef struct print_struct {
 
 typedef struct AVCLAN_frame_struct {
   uint8_t reaction;
+  uint8_t owning_device;
   bool is_unicast;
   uint16_t controller_addr; // formerly "master"
   uint16_t peripheral_addr; // formerly "slave"

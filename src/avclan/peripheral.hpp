@@ -6,48 +6,149 @@
 
 #include "avclan_defs.h"
 #include "bus.hpp"
+#include "device.hpp"
 
 #include <cstdint>
+#include <cstring>
+#include <tuple>
 
 namespace avclan {
-class Peripheral {
+template <Device... Devs> class Peripheral {
 public:
-  struct Error {
-    // Error enums are ordered such that a lower numeric value corresponds to
-    // more progress/success before an error occured, with 0 being no errors
-    enum class Read : uint8_t {
-      BAD_DATA_PARITY = 0x01,
-      BAD_LENGTH_RANGE,
-      BAD_LENGTH_PARITY,
-      BAD_PERIPHERAL_PARITY,
-      BAD_CONTROLLER_PARITY,
-      BAD_CONTROL_PARITY,
-      STARTBIT_TOO_SHORT =
-          static_cast<uint8_t>(Bus::Error::Read::STARTBIT_TOO_SHORT),
-      STARTBIT_TOO_LONG =
-          static_cast<uint8_t>(Bus::Error::Read::STARTBIT_TOO_LONG),
-      BAD_STARTBIT = static_cast<uint8_t>(Bus::Error::Read::BAD_STARTBIT),
-    };
+  using Error = detail::Error;
 
-    enum class Send : uint8_t {
-      NAK_DATA = 0x01,
-      NAK_MESSAGE_LENGTH,
-      NAK_CONTROL,
-      NAK_ADDRESS,
-      BUSY,
-      MUTED,
-    };
-  };
-
-  Peripheral(Bus bus, uint16_t address) : bus{bus}, address{address} {
+  Peripheral(Bus bus, uint16_t address) : bus{bus}, address_{address} {
     bus.init();
+    (std::get<Devs>(devices_).init(), ...);
   }
 
-  Error::Read read(AVCLAN_frame_t *in, log_t print);
-  Error::Send send(const AVCLAN_frame_t *out, log_t print);
+  uint16_t address() const { return address_; };
+
+  Error::Read read(AVCLAN_frame_t *in, log_t print) {
+    return bus.read(address_, in, print);
+  };
+  Error::Send send(const AVCLAN_frame_t *out, log_t print) {
+    return bus.send(out, print);
+  };
+
+#define PACK3(a, b, c) (((uint32_t)(a) << 16) | ((uint32_t)(b) << 8) | (c))
+
+  void route(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
+    out->reaction = 0;
+
+    if (AVCLAN_ismuted() || in->length < 3)
+      return;
+
+    // 0xFF placeholders are variant bytes filled by writing directly to
+    // out->data[N] after memcpy.
+    static const uint8_t lancheck_resp[] = {0x00, dev_COMM_CTRL, dev_LAN, 0xFF,
+                                            0xFF};
+
+    out->controller_addr = address_;
+    out->peripheral_addr = controller;
+    out->control = 0xF;
+
+    const uint8_t *data = in->data;
+    const uint8_t b0 = *data++;
+    const uint8_t b1 = *data++;
+    const uint8_t b2 = *data++;
+    uint8_t b3 = 0;
+    if (in->length > 3) // the shortest known/valid messages are 3 bytes long
+      b3 = *data++;
+
+    if (!in->is_unicast) {
+      // Broadcast: bytes are (from, to, action, [extra...]).
+      // peripheral_addr unchecked — always 0xFFF or 0x1FF in known traffic.
+      switch (PACK3(b0, b1, b2)) {
+        case PACK3(dev_LAN, dev_COMM_CTRL, Lancheck_Scan_Req):
+          out->length = sizeof(lancheck_resp);
+          out->is_unicast = true;
+          memcpy(out->data, lancheck_resp, sizeof(lancheck_resp));
+          out->data[3] = Lancheck_Scan_Resp;
+          out->data[4] = 0x01;
+          out->reaction = 1;
+          break;
+        case PACK3(dev_LAN, dev_COMM_CTRL, Lancheck_Req):
+          out->length = sizeof(lancheck_resp);
+          out->is_unicast = true;
+          memcpy(out->data, lancheck_resp, sizeof(lancheck_resp));
+          out->data[3] = Lancheck_Resp;
+          out->data[4] = 0x00;
+          out->reaction = 1;
+          break;
+        case PACK3(dev_LAN, dev_COMM_CTRL, Lancheck_End_Req):
+          out->is_unicast = true;
+          out->length = sizeof(lancheck_resp) - 1;
+          memcpy(out->data, lancheck_resp, out->length);
+          out->data[3] = Lancheck_End_Resp;
+          out->reaction = 1;
+          break;
+        case PACK3(dev_COMM_v1, dev_COMM_CTRL, Current_Function):
+        case PACK3(dev_COMM_v2, dev_COMM_CTRL, Current_Function):
+          ((Devs::id == b3 ? std::get<Devs>(devices_).enable(out), 0 : 0), ...);
+          break;
+        case PACK3(dev_COMM_v1, dev_COMM_CTRL, Ping_Req):
+        case PACK3(dev_COMM_v2, dev_COMM_CTRL, Ping_Req): {
+          out->is_unicast = true;
+          const uint8_t ping_resp[] = {0x00,      dev_COMM_CTRL, dev_COMM_v1,
+                                       Ping_Resp, 0xFF,          b3};
+          out->length = sizeof(ping_resp);
+          memcpy(out->data, ping_resp, sizeof(ping_resp));
+          out->reaction = 1;
+          break;
+        }
+        case PACK3(dev_COMM_v1, dev_COMM_CTRL, List_Functions_Req):
+        case PACK3(dev_COMM_v2, dev_COMM_CTRL, List_Functions_Req): {
+          controller = in->controller_addr;
+          out->peripheral_addr = controller;
+          out->is_unicast = true;
+          const uint8_t list_functions_resp[] = {
+              0x00, dev_COMM_CTRL, dev_COMM_v1, List_Functions_Resp,
+              dev_CD_CHANGER};
+          out->length = sizeof(list_functions_resp);
+          memcpy(out->data, list_functions_resp, sizeof(list_functions_resp));
+          out->reaction = 1;
+          break;
+        }
+          // case Restart_Lan: not handled
+      }
+    } else if (in->peripheral_addr == address_ && b0 == 0x00) {
+      ((Devs::id == b2 ? device_preroute(std::get<Devs>(devices_), in, out),
+        0              : 0),
+       ...);
+    }
+  }
+
+  void react(AVCLAN_frame_t *out, Error::Send err) {
+    if (((Devs::id == out->owning_device) || ...))
+      ((Devs::id == out->owning_device
+        ? std::get<Devs>(devices_).react(out, err),
+        0 : 0),
+       ...);
+    else
+      out->reaction = 0;
+  }
+
+#undef PACK3
+
+  template <class F> void poll_devices(F &&fun) {
+    (poller(std::get<Devs>(devices_), fun), ...);
+  }
 
 private:
+  template <Device Dev, class F> void poller(Dev &dev, F &&fun) {
+    if (dev.pending() && fun(dev))
+      dev.resolvepending();
+  }
+  template <Device Dev>
+  void device_preroute(Dev dev, const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
+    out->owning_device = Dev::id;
+    dev.handle(in, out);
+  }
+
   Bus bus;
-  const uint16_t address;
+  uint16_t controller = 0;
+  const uint16_t address_;
+  std::tuple<Devs...> devices_;
 };
 } // namespace avclan

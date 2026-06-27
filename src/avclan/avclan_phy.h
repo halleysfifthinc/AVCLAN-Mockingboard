@@ -61,38 +61,3 @@ void AVCLan_Measure(void);
 #ifdef __cplusplus
 }
 #endif
-
-#ifdef __cplusplus
-template <class T, auto N> avclan_bit_t AVCLAN_sendbits(T bits);
-template <class T, auto N> avclan_bit_t AVCLAN_readbits(T *bits);
-
-// Temporary specializations bridging to legacy C API
-// Replace with proper (single?) template when phy has been ported
-template <auto N>
-  requires(N <= 8)
-avclan_bit_t AVCLAN_sendbits(uint8_t bits) {
-  return AVCLAN_sendbitsi(&bits, N);
-}
-template <auto N>
-  requires(N <= 16)
-avclan_bit_t AVCLAN_sendbits(uint16_t bits) {
-  return AVCLAN_sendbitsl(&bits, N);
-}
-template <> inline avclan_bit_t AVCLAN_sendbits<8>(uint8_t byte) {
-  return AVCLAN_sendbyte(&byte);
-}
-
-template <auto N>
-  requires(N <= 8)
-avclan_bit_t AVCLAN_readbits(uint8_t *bits) {
-  return static_cast<avclan_bit_t>(AVCLAN_readbitsi(bits, N));
-}
-template <auto N>
-  requires(N <= 16)
-avclan_bit_t AVCLAN_readbits(uint16_t *bits) {
-  return static_cast<avclan_bit_t>(AVCLAN_readbitsl(bits, N));
-}
-template <> inline avclan_bit_t AVCLAN_readbits<8>(uint8_t *byte) {
-  return static_cast<avclan_bit_t>(AVCLAN_readbyte(byte));
-}
-#endif

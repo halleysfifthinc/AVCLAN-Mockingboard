@@ -12,13 +12,13 @@ extern "C" {
 #endif
 
 // One-time hardware bring-up. Leaves the tick disabled.
-void statustimer_init(void);
+void statustimer_init(void *ptr, void(clbk)(void *), bool(isplay)(void *));
 
 // Reset the count so the next tick is ~1 s out, and enable the tick.
 void statustimer_reset(void);
 
 // Enable / disable the ~1 Hz tick.
-void statustimer_enable(void);
+void statustimer_restore(void);
 void statustimer_disable(void);
 
 extern volatile bool tick_pending;

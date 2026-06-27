@@ -9,6 +9,7 @@
 
 #include "avclandrv.h"
 #include "board.h"
+#include "cdchanger.hpp"
 #include "com232.h"
 #include "peripheral.hpp"
 #include "queue.hpp"
@@ -62,18 +63,14 @@ int main() {
   uint8_t data_tmp[MAXMSGLEN + sizeof(AVCLAN_frame_t)];
   uint8_t seqIdx = 0; // current index in data_tmp
 
-  uint8_t failedStatusReports = 0;
-
   // Temporary, direct access is questionable since cache has ownership
   for (auto &frame : frames) {
     frame.control = 0x0f;
   }
 
-  const AVCLAN_frame_t *lastStatus = nullptr;
-
   avclan::Bus phy;
-  avclan::Peripheral cd_changer(phy, 0x360);
-  using Error = avclan::Peripheral::Error;
+  avclan::Peripheral<avclan::CDChanger> cd_changer(phy, 0x360);
+  using Error = decltype(cd_changer)::Error;
 
   Setup();
   print_help();
@@ -91,42 +88,33 @@ int main() {
       }
     }
 
-    if (auto in = incoming.peek()) {
+    if (const auto *in = incoming.peek()) {
       if (auto out = cache.pop()) {
-        AVCLAN_handleframe(in, out.get());
+        cd_changer.route(in, out.get());
         incoming.pop();
 
-        if (out->reaction)
+        if (out->reaction > 0)
           outgoing.push(std::move(out));
       } else {
         RS232_Print("!! Unable to respond; cache is empty !!\n");
       }
     }
 
-    if (statustimer_tickPending()) {
+    cd_changer.poll_devices([&](auto dev) {
       if (auto status = cache.pop()) {
-        lastStatus = status.get();
-        AVCLAN_generateStatus(status.get(), true, dev_STATUS);
-        status->reaction = r_SendOnly;
+        dev.emit(status.get());
         outgoing.push(std::move(status));
-        statustimer_clearTick();
+        return true;
       }
-    }
+      return false;
+    });
 
     if (auto out = outgoing.pop()) {
       auto err = cd_changer.send(
           out.get(), (log_t){.print = printAllFrames, .binary = printBinary});
-      if (err == Error::Send{0x00} && (reaction_t)out->reaction > r_SendOnly) {
-        AVCLAN_statemachine(out.get());
-        if (out->reaction)
-          outgoing.push(std::move(out));
-
-      } else if (err == Error::Send::NAK_ADDRESS && out.get() == lastStatus &&
-                 ++failedStatusReports > 1) {
-        failedStatusReports = 0;
-        AVCLAN_stopPlaying(); // Disable periodic updates if e.g. no-one's
-                              // listening (car was turned off?)
-      }
+      cd_changer.react(out.get(), err);
+      if (out->reaction > 0)
+        outgoing.push(std::move(out));
     }
 
     // Key handler
@@ -151,7 +139,7 @@ int main() {
         case 'E': // Beep
           if (auto out = cache.pop()) {
             out->is_unicast = true;
-            out->controller_addr = DEVICE_ADDR;
+            out->controller_addr = cd_changer.address();
             out->peripheral_addr = HU_ADDR;
             {
               const uint8_t beep[] = {0x00, dev_CD_CHANGER, dev_BEEP_SPEAKERS,
@@ -159,14 +147,14 @@ int main() {
               out->length = sizeof(beep);
               memcpy(out->data, beep, sizeof(beep));
             }
-            out->reaction = r_SendOnly;
+            out->reaction = 1;
             outgoing.push(std::move(out));
           }
           break;
         case 'P':
           if (auto out = cache.pop()) {
             out->is_unicast = true;
-            out->controller_addr = DEVICE_ADDR;
+            out->controller_addr = cd_changer.address();
             out->peripheral_addr = HU_ADDR;
             {
               const uint8_t play[] = {0x00,     dev_COMM_CTRL,  dev_COMM_v1,
@@ -174,7 +162,7 @@ int main() {
               out->length = sizeof(play);
               memcpy(out->data, play, sizeof(play));
             }
-            out->reaction = r_Ejection;
+            out->reaction = avclan::CDChanger::reaction_t::r_Ejection;
             outgoing.push(std::move(out));
           }
           break;
@@ -237,7 +225,7 @@ int main() {
               if (data_tmp[seqIdx] == 0x17) {
                 if (auto out = cache.pop()) {
                   if (!AVCLAN_parseframe(data_tmp, --seqIdx, out.get())) {
-                    out->reaction = r_SendOnly;
+                    out->reaction = 1;
                     outgoing.push(std::move(out));
                   }
                 }
@@ -248,11 +236,11 @@ int main() {
             } else {
               if (auto out = cache.pop()) {
                 out->is_unicast = seqIsUnicast;
-                out->controller_addr = DEVICE_ADDR;
+                out->controller_addr = cd_changer.address();
                 out->peripheral_addr = seqIsUnicast ? HU_ADDR : 0x1FF;
                 out->length = seqIdx;
                 memcpy(out->data, data_tmp, seqIdx);
-                out->reaction = r_SendOnly;
+                out->reaction = 1;
                 outgoing.push(std::move(out));
               }
               printAllFrames = lastPrintAllFrames;
@@ -298,7 +286,6 @@ namespace {
 void Setup() {
   board_init(); // clock + GPIO bring-up (target-specific)
   RS232_Init();
-  AVCLAN_init();
   board_interruptsEnable();
 }
 

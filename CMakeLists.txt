@@ -8,6 +8,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_compile_options(
     -Wall -Wswitch-enum -Werror
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-threadsafe-statics>
     $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
     $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
     $<$<CONFIG:Debug>:-fanalyzer>)
@@ -32,9 +33,7 @@ set(AVCLAN_TARGET avr-attiny3216 CACHE STRING "Hardware target (port) to build")
 # are contributed by its subdirectory.
 add_library(avclan STATIC
     src/avclan/avclan_frame.c
-    src/avclan/avclan_protocol.c
-    src/avclan/cdchanger.c
-    src/avclan/peripheral.cc
+    src/avclan/cdchanger.cc
     src/avclan/bus.cc
 )
 
