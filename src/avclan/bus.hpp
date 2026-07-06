@@ -94,9 +94,9 @@ public:
   bool sendstartbit();
   Error::Read readstartbit();
 
-  template <auto N, std::unsigned_integral T, class Trailer>
-    requires(sizeof(T) < 3 && N < 16) &&
-            requires { std::is_base_of_v<trailer_bits_t, Trailer>; }
+  template <auto N, std::unsigned_integral T,
+            std::derived_from<trailer_bits_t> Trailer>
+    requires(sizeof(T) < 3 && N < 16 && !std::same_as<Trailer, with_ack_t>)
   Error::Send send(T bits, Trailer /*tag*/) {
     const auto parity = sendbits<N>(bits);
 
@@ -117,9 +117,9 @@ public:
     return Send{0};
   };
 
-  template <auto N, std::unsigned_integral T, class Trailer>
-    requires(sizeof(T) < 3 && N < 16) &&
-            requires { std::is_base_of_v<trailer_bits_t, Trailer>; }
+  template <auto N, std::unsigned_integral T,
+            std::derived_from<trailer_bits_t> Trailer>
+    requires(sizeof(T) < 3 && N < 16 && !std::same_as<Trailer, with_ack_t>)
   Error::Read read(T *bits, Trailer /*tag*/) {
     const auto calc_parity = readbits<N>(bits);
     if constexpr (std::is_same_v<Trailer, with_parity_t>) {
