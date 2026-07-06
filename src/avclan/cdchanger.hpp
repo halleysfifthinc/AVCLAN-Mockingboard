@@ -7,7 +7,7 @@
 
 #include <cstdint>
 
-#include "avclan.hpp"
+#include "avclan.h"
 #include "avclan_defs.h"
 #include "frame.hpp"
 

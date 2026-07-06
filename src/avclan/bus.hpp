@@ -50,7 +50,7 @@
 #include <concepts>
 #include <type_traits>
 
-#include "avclan.hpp"
+#include "avclan.h"
 #include "avclan_defs.h"
 #include "avclan_phy.h" // bridge until phy has been ported
 #include "frame.hpp"

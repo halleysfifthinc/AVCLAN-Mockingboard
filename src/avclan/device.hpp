@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "avclan.hpp"
+#include "avclan.h"
 #include "frame.hpp"
 
 #include <concepts>

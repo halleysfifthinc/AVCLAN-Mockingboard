@@ -328,18 +328,18 @@ void AVCLAN_busInit() {
 // (AC2 latched high because the bus is actually floating) this kicks PA7 hard
 // high to unlatch the comparator. The framing layer maps the result to its own
 // error reporting; no printing happens here.
-avclan_readerr_t AVCLAN_readstartbit() {
+Read AVCLAN_readstartbit() {
   uint16_t startbitlen = TCB1.CNT = 0;
   while (!BUS_IS_IDLE) {
     startbitlen = TCB1.CNT;
     if (startbitlen > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
-      avclan_readerr_t result = rSTARTBIT_TOO_LONG;
+      Read result = STARTBIT_TOO_LONG;
       while (!BUS_IS_IDLE) {
         // If bus is "driven" too long, assume the AC2 is latched (e.g.
         // because the bus is actually floating). Kick it if so.
         // This should prevent/resolve a flood of "STARTBIT_TOO_LONG" errors
         if (TCB1.CNT > (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 3)) {
-          result = rLATCHED_COMPARATOR;
+          result = BAD_STARTBIT;
           PORTA.OUTSET = PIN7_bm; // preset high before enabling the driver
           PORTA.DIRSET = PIN7_bm; // drive (-) hard high
           TCB1.CNT = 0;
@@ -363,9 +363,9 @@ avclan_readerr_t AVCLAN_readstartbit() {
       if (!BUS_IS_IDLE)
         TCB1.CNT = 0;
     }
-    return rSTARTBIT_TOO_SHORT;
+    return STARTBIT_TOO_SHORT;
   }
-  return rNO_ERROR; // that was a start bit
+  return (Read)0; // that was a start bit
 }
 
 // Acquire the bus and emit a start bit. Returns false if another device is

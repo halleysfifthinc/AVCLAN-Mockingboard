@@ -7,10 +7,14 @@
 
 #include <stdint.h>
 
+#include "avclan.h"
 #include "avclan_defs.h"
 
 #ifdef __cplusplus
+using Read = avclan::detail::Error::Read;
 extern "C" {
+#else
+typedef enum Read Read;
 #endif
 
 // One-time bring-up of the bus hardware. Leaves the bus idle and TX unmuted.
@@ -33,10 +37,10 @@ void AVCLAN_startEvent(void);
 // Start-bit handling, factored out of read/sendframe so the framing layer holds
 // no bus-timing or hardware-recovery logic.
 // - AVCLAN_readstartbit waits for and validates an incoming start bit, doing
-//   any target-specific bus recovery; see avclan_readerr_t.
+//   any target-specific bus recovery; see avclan::detail::Error::Read.
 // - AVCLAN_sendstartbit acquires the bus and emits a start bit; returns false
 //   if the bus was busy.
-avclan_readerr_t AVCLAN_readstartbit(void);
+Read AVCLAN_readstartbit(void);
 bool AVCLAN_sendstartbit(void);
 
 // Per-symbol I/O. The send* helpers return the even parity of the bits sent;

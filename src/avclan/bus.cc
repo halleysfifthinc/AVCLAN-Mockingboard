@@ -30,7 +30,7 @@
 */
 
 #include "bus.hpp"
-#include "avclan.hpp"
+#include "avclan.h"
 #include "avclan_defs.h"
 #include "avclan_phy.h" // bridge until phy has been ported
 #include "com232.h"
@@ -280,20 +280,7 @@ auto Bus::send(const Frame *out, Frame::Print print) -> Error::Send {
 Bus::Handle Bus::get() { return {}; };
 
 bool Bus::Handle::sendstartbit() { return AVCLAN_sendstartbit(); };
-auto Bus::Handle::readstartbit() -> Read {
-  using enum Error::Read;
-  auto err = AVCLAN_readstartbit();
-  if (err == rSTARTBIT_TOO_LONG)
-    return STARTBIT_TOO_LONG;
-
-  if (err == rLATCHED_COMPARATOR)
-    return BAD_STARTBIT;
-
-  if (err == rSTARTBIT_TOO_SHORT)
-    return STARTBIT_TOO_SHORT;
-
-  return Read{0};
-};
+auto Bus::Handle::readstartbit() -> Read { return AVCLAN_readstartbit(); };
 void Bus::Handle::send_ACK() { AVCLAN_sendbit_ACK(); };
 uint8_t Bus::Handle::read_ACK() { return AVCLAN_readbit_ACK(); };
 
