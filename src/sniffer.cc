@@ -158,7 +158,7 @@ int main() {
             {
               const uint8_t play[] = {0x00,
                                       to_underlying(COMM_CTRL),
-                                      to_underlying(COMM_v1),
+                                      to_underlying(COMMUNICATION_V1),
                                       to_underlying(Ejection),
                                       to_underlying(CD_CHANGER),
                                       0x01};

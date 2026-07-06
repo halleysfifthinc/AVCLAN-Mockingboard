@@ -87,19 +87,19 @@ public:
           out->data[3] = to_underlying(Lancheck_End_Resp);
           out->reaction = 1;
           break;
-        case PACK3(COMM_v1, COMM_CTRL, to_underlying(Current_Function)):
-        case PACK3(COMM_v2, COMM_CTRL, to_underlying(Current_Function)):
+        case PACK3(COMMUNICATION_V1, COMM_CTRL, to_underlying(Advertise_Function)):
+        case PACK3(COMMUNICATION_V2, COMM_CTRL, to_underlying(Advertise_Function)):
           ((Devs::id == static_cast<Device>(b3)
             ? std::get<Devs>(devices_).enable(out),
             0 : 0),
            ...);
           break;
-        case PACK3(COMM_v1, COMM_CTRL, to_underlying(Ping_Req)):
-        case PACK3(COMM_v2, COMM_CTRL, to_underlying(Ping_Req)): {
+        case PACK3(COMMUNICATION_V1, COMM_CTRL, to_underlying(Ping_Req)):
+        case PACK3(COMMUNICATION_V2, COMM_CTRL, to_underlying(Ping_Req)): {
           out->is_unicast = true;
           const uint8_t ping_resp[] = {0x00,
                                        to_underlying(COMM_CTRL),
-                                       to_underlying(COMM_v1),
+                                       to_underlying(COMMUNICATION_V1),
                                        to_underlying(Ping_Resp),
                                        0xFF,
                                        b3};
@@ -108,13 +108,13 @@ public:
           out->reaction = 1;
           break;
         }
-        case PACK3(COMM_v1, COMM_CTRL, to_underlying(List_Functions_Req)):
-        case PACK3(COMM_v2, COMM_CTRL, to_underlying(List_Functions_Req)): {
+        case PACK3(COMMUNICATION_V1, COMM_CTRL, to_underlying(List_Functions_Req)):
+        case PACK3(COMMUNICATION_V2, COMM_CTRL, to_underlying(List_Functions_Req)): {
           controller_ = in->controller_addr;
           out->peripheral_addr = controller_;
           out->is_unicast = true;
           const uint8_t list_functions_resp[] = {
-              0x00, to_underlying(COMM_CTRL), to_underlying(COMM_v1),
+              0x00, to_underlying(COMM_CTRL), to_underlying(COMMUNICATION_V1),
               to_underlying(List_Functions_Resp), to_underlying(CD_CHANGER)};
           out->length = sizeof(list_functions_resp);
           memcpy(out->data, list_functions_resp, sizeof(list_functions_resp));

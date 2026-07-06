@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Pre-commit: keep the C++ Device/Action enums in sync with the Lua dissector
+# (scripts/sync_avclan_enums.py in its default lint + drift-check mode). A
+# non-zero exit blocks the commit; fix with `scripts/sync_avclan_enums.py --fix`.
+#
+# Installed by the top-level CMake configure step, which points core.hooksPath
+# at this directory. Bypass a single commit with `git commit --no-verify`.
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+exec python3 "$repo_root/scripts/sync_avclan_enums.py"

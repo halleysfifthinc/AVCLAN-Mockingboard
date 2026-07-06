@@ -19,7 +19,7 @@ using namespace avclan;
 constexpr uint8_t cdloading_resp[] = {
     to_underlying(Device::CD_CHANGER),
     to_underlying(Device::STATUS),
-    to_underlying(Action::Loading_Status_Report),
+    to_underlying(Action::Loading_Status),
     0x00,
     0x01,
     0x00,
@@ -116,14 +116,14 @@ void CDChanger::handle(const Frame *in, Frame *out) {
       }
       break;
     }
-    case Initial_Report_Request: {
+    case Initial_Report_Req: {
       out->is_unicast = true;
       // No knowledge/understanding of field meaning/interpretation
       const uint8_t cdinitreport_resp[] = {
           0x00,
           to_underlying(Device::CD_CHANGER),
           to_underlying(from),
-          to_underlying(Initial_Report_Response),
+          to_underlying(Initial_Report_Resp),
           0x01,
           0x31,
           0x10,
@@ -134,22 +134,22 @@ void CDChanger::handle(const Frame *in, Frame *out) {
       out->reaction = r_SendOnly;
       break;
     }
-    case Playback_Request:
+    case Playback_Req:
       out->data[0] = 0x00;
       out->data[1] = to_underlying(Device::CD_CHANGER);
       out->data[2] = to_underlying(from);
-      out->data[3] = to_underlying(Playback_Report);
+      out->data[3] = to_underlying(Playback_Resp);
       out->length = WIRE_SIZE + 4;
       serialize(&out->data[4]);
       out->is_unicast = true;
       out->reaction = r_SendOnly;
       break;
-    case Loading_Request2:
+    case Loading_Req:
       out->data[0] = 0x00;
       out->length = sizeof(cdloading_resp) + 1;
       memcpy(&out->data[1], cdloading_resp, sizeof(cdloading_resp));
       out->data[2] = to_underlying(from);
-      out->data[3] = to_underlying(Loading_Response2);
+      out->data[3] = to_underlying(Loading_Resp);
       out->is_unicast = true;
       out->reaction = r_SendOnly;
       break;
@@ -276,7 +276,7 @@ void CDChanger::react(Frame *out, detail::Error::Send err) {
     case r_Ejection: {
       const uint8_t play[] = {0x00,
                               to_underlying(Device::COMM_CTRL),
-                              to_underlying(Device::COMM_v1),
+                              to_underlying(Device::COMMUNICATION_V1),
                               to_underlying(Action::Insertion),
                               to_underlying(Device::CD_CHANGER),
                               0x01};
@@ -291,7 +291,7 @@ void CDChanger::react(Frame *out, detail::Error::Send err) {
       out->length = sizeof(cdloading_resp) + 1;
       memcpy(out->data, cdloading_resp, sizeof(cdloading_resp));
       out->data[1] = to_underlying(Device::STATUS);
-      out->data[2] = to_underlying(Action::Loading_Status_Report);
+      out->data[2] = to_underlying(Action::Loading_Status);
       out->reaction = r_SendOnly;
       break;
     case r_TrackChange:
@@ -411,7 +411,7 @@ void CDChanger::generateStatus(Frame *status, bool is_unicast,
     *data++ = 0x00;
   *data++ = to_underlying(Device::CD_CHANGER);
   *data++ = to_underlying(to);
-  *data++ = to_underlying(Action::Status_Report);
+  *data++ = to_underlying(Action::Playback_Status);
   serialize(data);
 }
 

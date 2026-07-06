@@ -21,6 +21,31 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   endif()
 endif()
 
+# Install the repository's git hooks (see .githooks/) by pointing core.hooksPath
+# at them at configure time.
+# Opt out with -DINSTALL_GIT_HOOKS=OFF; a custom core.hooksPath is left untouched, 
+# and `git commit --no-verify` bypasses a single commit.
+option(INSTALL_GIT_HOOKS "Point git core.hooksPath at .githooks/" ON)
+if(INSTALL_GIT_HOOKS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
+  find_program(GIT_EXECUTABLE git)
+  if(GIT_EXECUTABLE)
+    execute_process(
+      COMMAND "${GIT_EXECUTABLE}" config --get core.hooksPath
+      WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+      OUTPUT_VARIABLE _git_hooks_path
+      OUTPUT_STRIP_TRAILING_WHITESPACE
+      ERROR_QUIET)
+    if(_git_hooks_path STREQUAL "" OR _git_hooks_path STREQUAL ".githooks")
+      execute_process(
+        COMMAND "${GIT_EXECUTABLE}" config core.hooksPath .githooks
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+      message(STATUS "git hooks: core.hooksPath -> .githooks")
+    else()
+      message(STATUS "git hooks: core.hooksPath already '${_git_hooks_path}'; leaving as-is")
+    endif()
+  endif()
+endif()
+
 # Hardware target (port) selection. The chosen target/<name>/ directory supplies
 # the port implementation sources, the per-target include path, and all
 # hardware-specific build configuration (compile defs/options, device-pack
