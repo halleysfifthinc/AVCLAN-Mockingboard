@@ -79,7 +79,6 @@ try_compile(LIBC_VERSION_TEST
     COMPILE_DEFINITIONS -mmcu=${AVR_MCU}
 )
 
-if (AVCLAN_TARGET STREQUAL "avr-attiny3216")
 FetchContent_Declare(
     avr_libstdcpp
     GIT_REPOSITORY https://github.com/modm-io/avr-libstdcpp.git
@@ -90,8 +89,6 @@ add_library(libstdcpp INTERFACE)
 target_include_directories(libstdcpp SYSTEM
     INTERFACE ${avr_libstdcpp_SOURCE_DIR}/include)
 target_link_libraries(avclan PUBLIC libstdcpp)
-endif()
-
 
 if(NOT LIBC_VERSION_TEST)
     FetchContent_Declare(
