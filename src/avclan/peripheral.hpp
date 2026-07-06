@@ -143,7 +143,7 @@ private:
       dev.resolvepending();
   }
   template <Device Dev>
-  void device_preroute(Dev dev, const Frame *in, Frame *out) {
+  void device_preroute(Dev &dev, const Frame *in, Frame *out) {
     out->owning_device = Dev::id;
     dev.handle(in, out);
   }

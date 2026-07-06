@@ -99,7 +99,7 @@ int main() {
       }
     }
 
-    peripheral.poll_devices([&](auto dev) {
+    peripheral.poll_devices([&](auto &dev) {
       if (auto status = cache.pop()) {
         dev.emit(status.get());
         outgoing.push(std::move(status));
