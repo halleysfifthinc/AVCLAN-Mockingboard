@@ -295,6 +295,7 @@ local known_actions = {
     -- [0x1d] = "LANCHECK_??_RESP",
 
     [0x20] = "PING_REQ",
+    -- [0x21] = "??" -- Observed as [00 11 00 21] incorrect 0xf0/INITIAL_REPORT_RESP message (double leading zeros instead of single unicast leading zero)
     [0x30] = "PING_RESP",
 
     [0x42] = "ENABLE_FUNCTION_REQ",
