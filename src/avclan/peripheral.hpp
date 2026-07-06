@@ -24,6 +24,7 @@ public:
   }
 
   uint16_t address() const { return address_; };
+  uint16_t controller() const { return controller_; };
 
   Error::Read read(Frame *in, Frame::Print print) {
     return bus.read(address_, in, print);
@@ -46,7 +47,7 @@ public:
                                             0xFF};
 
     out->controller_addr = address_;
-    out->peripheral_addr = controller;
+    out->peripheral_addr = controller_;
     out->control = 0xF;
 
     const uint8_t *data = in->data;
@@ -100,8 +101,8 @@ public:
         }
         case PACK3(dev_COMM_v1, dev_COMM_CTRL, List_Functions_Req):
         case PACK3(dev_COMM_v2, dev_COMM_CTRL, List_Functions_Req): {
-          controller = in->controller_addr;
-          out->peripheral_addr = controller;
+          controller_ = in->controller_addr;
+          out->peripheral_addr = controller_;
           out->is_unicast = true;
           const uint8_t list_functions_resp[] = {
               0x00, dev_COMM_CTRL, dev_COMM_v1, List_Functions_Resp,
@@ -148,7 +149,7 @@ private:
   }
 
   Bus bus;
-  uint16_t controller = 0;
+  uint16_t controller_ = 0;
   const uint16_t address_;
   std::tuple<Devs...> devices_;
 };
