@@ -25,8 +25,8 @@ constexpr uint8_t cdloading_resp[] = {dev_CD_CHANGER,
                                       0x01,
                                       0x02};
 
-constexpr int WIRE_SIZE = 8;
-constexpr int TIME_SKIP = 15;
+constexpr int WIRE_SIZE = 8;  // cd state report size in bytes
+constexpr int TIME_SKIP = 15; // seconds
 constexpr int TWODIGIT_MAX = 99;
 
 /* Pack a 0–TWODIGIT_MAX count into 2-digit BCD. Values >TWODIGIT_MAX (sentinels
@@ -275,7 +275,7 @@ void CDChanger::react(Frame *out, detail::Error::Send err) {
       out->reaction = r_SendOnly;
       break;
     case r_TrackChange:
-      setTime(0x00, 0x00);
+      setTime(0, 0);
       statustimer_reset(); // Skipped to a whole/round sec; ensure next tick is
                            // ~1 sec from now
       [[fallthrough]];
@@ -343,9 +343,8 @@ void CDChanger::stopPlaying() {
   AVCLAN_mediaFunction(MEDIA_PLAY_PAUSE);
 }
 
-// Serialize cd_status into the wire format. The struct layout mirrors the wire
-// format byte-for-byte, except for track/mins/secs, which need converted from
-// decimal to BCD
+// Serialize cd_status into the wire format.
+// track/mins/secs, need converted from decimal to BCD
 void CDChanger::serialize(uint8_t *dst) const {
   *dst++ = cds;
   *dst++ = state;

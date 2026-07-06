@@ -38,7 +38,9 @@
 
 namespace {
 constexpr int ADDR_WIDTH = 12;
-}
+constexpr int CONTROL_WIDTH = 4;
+constexpr int BYTE_WIDTH = 8;
+} // namespace
 
 namespace avclan {
 
@@ -52,13 +54,7 @@ bool Bus::is_muted() const { return AVCLAN_ismuted(); };
 auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
   struct errtype {
     Error::Read errno;
-    union {
-      uint8_t val; // BAD_LENGTH_RANGE: the out-of-range length value
-      struct {
-        uint8_t parity; // received (bad) parity bit
-        uint16_t read_val;
-      };
-    };
+    uint16_t val;
   } err = {};
 
   using enum detail::Error::Read;
@@ -69,18 +65,18 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
     bool shouldACK = false;
     uint8_t tmp = 0;
 
-    err.errno = Error::Read{static_cast<uint8_t>(handle.readstartbit())};
-    if (static_cast<bool>(err.errno))
+    err.errno = handle.readstartbit();
+    if (err.errno != Error::Read{0})
       goto handle_err;
 
     handle.read<1>(&tmp, false);
-    in->is_unicast = tmp;
+    in->is_unicast = (tmp != 0U);
 
     if (auto rerr = handle.read<ADDR_WIDTH>(&in->controller_addr, false);
         rerr == BAD_PARITY) {
       err.errno = BAD_CONTROLLER_PARITY;
       if (print.verbose) {
-        err.read_val = in->controller_addr;
+        err.val = in->controller_addr;
       }
       goto handle_err;
     }
@@ -91,27 +87,27 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
         rerr == BAD_PARITY) {
       err.errno = BAD_PERIPHERAL_PARITY;
       if (print.verbose) {
-        err.read_val = in->peripheral_addr;
+        err.val = in->peripheral_addr;
       }
       goto handle_err;
     }
 
     shouldACK = !is_muted() && (in->peripheral_addr == address);
 
-    if (auto rerr = handle.read<4>(&in->control, shouldACK);
+    if (auto rerr = handle.read<CONTROL_WIDTH>(&in->control, shouldACK);
         rerr == BAD_PARITY) {
       err.errno = BAD_CONTROL_PARITY;
       if (print.verbose) {
-        err.read_val = in->control;
+        err.val = in->control;
       }
       goto handle_err;
     }
 
-    if (auto rerr = handle.read<8>(&in->length, shouldACK);
+    if (auto rerr = handle.read<BYTE_WIDTH>(&in->length, shouldACK);
         rerr == BAD_PARITY) {
       err.errno = BAD_LENGTH_PARITY;
       if (print.verbose) {
-        err.read_val = in->length;
+        err.val = in->length;
       }
       goto handle_err;
     }
@@ -123,11 +119,11 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
     }
 
     for (uint8_t i = 0; i < in->length; i++) {
-      if (auto rerr = handle.read<8>(&in->data[i], shouldACK);
+      if (auto rerr = handle.read<BYTE_WIDTH>(&in->data[i], shouldACK);
           rerr == BAD_PARITY) {
         err.errno = BAD_DATA_PARITY;
         if (print.verbose) {
-          err.read_val = in->data[i];
+          err.val = in->data[i];
         }
         goto handle_err;
       }
@@ -159,9 +155,7 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
       VERBOSE:
         if (print.verbose) {
           RS232_Print("; read 0x");
-          RS232_PrintHex(err.read_val);
-          RS232_Print(" and got bad parity ");
-          RS232_PrintHex4(err.parity);
+          RS232_PrintHex(err.val);
         }
       case BAD_PARITY: __builtin_unreachable();
     }
