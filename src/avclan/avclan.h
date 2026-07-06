@@ -7,10 +7,103 @@
 
 #ifdef __cplusplus
   #define AVCLAN_ENUM_CLASS class
-namespace avclan::detail {
-struct Error {
+
+  #include <type_traits>
+  #include <utility>
+
+namespace avclan {
+
+  #if defined(__cpp_lib_to_underlying) && __cpp_lib_to_underlying >= 202102L
+using std::to_underlying;
+  #else
+template <class Enum>
+  requires std::is_enum_v<Enum>
+constexpr std::underlying_type_t<Enum> to_underlying(Enum e) noexcept {
+  return static_cast<std::underlying_type_t<Enum>>(e);
+}
+  #endif
+
 #else
   #define AVCLAN_ENUM_CLASS
+#endif
+
+enum AVCLAN_ENUM_CLASS Action : uint8_t {
+  // LAN related
+  List_Functions_Req = 0x00,
+  List_Functions_Resp = 0x10,
+  Restart_Lan = 0x01,
+  // Lan_Startup_Complete = 0x58,
+  Lancheck_End_Req = 0x08,
+  Lancheck_End_Resp = 0x18,
+  Lancheck_Scan_Req = 0x0a,
+  Lancheck_Scan_Resp = 0x1a,
+  Lancheck_Req = 0x0c,
+  Lancheck_Resp = 0x1c,
+  // Lancheck_UNK_Req = 0x0d,
+  // Lancheck_UNK_Resp = 0x1d,
+  Ping_Req = 0x20,
+  Ping_Resp = 0x30,
+
+  // Device switching
+  Enable_Function_Req = 0x42,
+  Enable_Function_Resp = 0x52,
+  Disable_Function_Req = 0x43,
+  Disable_Function_Resp = 0x53,
+
+  Current_Function = 0x45,
+  General_Query = 0x46,
+
+  // Events
+  Insertion = 0x50,
+  Ejection = 0x51,
+
+  // Physical interface
+  Backlight_Adjust = 0x59,
+  Beep = 0x60,
+  Eject = 0x80,
+  Disc_Up = 0x90,
+  Disc_Down = 0x91,
+  Track_Seek_Up = 0x94,
+  Track_Seek_Down = 0x95,
+  Track_Fast_Forward = 0x98,
+  Track_Rewind = 0x99,
+  Pwrvol_Knob_Righthand_Turn = 0x9c,
+  Pwrvol_Knob_Lefthand_Turn = 0x9d,
+  CD_Enable_Repeat = 0xa0,
+  CD_Disable_Repeat = 0xa1,
+  CD_Enable_Disk_Repeat = 0xa3,
+  CD_Disable_Disk_Repeat = 0xa4,
+  CD_Enable_Scan = 0xa6,
+  CD_Disable_Scan = 0xa7,
+  CD_Enable_Disk_Scan = 0xa9,
+  CD_Disable_Disk_Scan = 0xaa,
+  CD_Enable_Random = 0xb0,
+  CD_Disable_Random = 0xb1,
+  CD_Enable_Disk_Random = 0xb3,
+  CD_Disable_Disk_Random = 0xb4,
+
+  // Requests and Response pairs
+  Initial_Report_Request = 0xe0,
+  Initial_Report_Response = 0xf0,
+
+  Playback_Request = 0xe2,
+  Playback_Report = 0xf2,
+
+  Loading_Request2 = 0xe4,
+  Loading_Response2 = 0xf4,
+
+  Request_Track_Name = 0xed,
+  Report_Track_Name = 0xfd,
+
+  // Reports
+  Status_Report = 0xf1,         // Typically unprompted, sent to Device::STATUS
+  Loading_Status_Report = 0xf3, // Typically unprompted, sent to Device::STATUS
+  Report_TOC = 0xf9,
+};
+
+#ifdef __cplusplus
+namespace detail {
+struct Error {
 #endif
 
   // Error enums are ordered such that a lower numeric value corresponds to
@@ -49,7 +142,8 @@ enum AVCLAN_ENUM_CLASS Bit : uint8_t {
 };
 
 #ifdef __cplusplus
-} // namespace avclan::detail
+} // namespace detail
+} // namespace avclan
 #endif
 
 #undef AVCLAN_ENUM_CLASS

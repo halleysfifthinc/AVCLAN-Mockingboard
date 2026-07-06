@@ -66,6 +66,8 @@ int main() {
   uint8_t seqIdx = 0; // current index in data_tmp
 
   Bus phy;
+  using enum Action;
+  using enum Device;
   Peripheral<CDChanger> peripheral(phy, 0x360);
   using Error = decltype(peripheral)::Error;
   using Print = Frame::Print;
@@ -139,22 +141,27 @@ int main() {
             out->is_unicast = true;
             out->peripheral_addr = peripheral.controller();
             {
-              const uint8_t beep[] = {0x00, dev_CD_CHANGER, dev_BEEP_SPEAKERS,
-                                      0x60, 0x01};
+              const uint8_t beep[] = {0x00, to_underlying(CD_CHANGER),
+                                      to_underlying(BEEP_SPEAKERS), 0x60, 0x01};
               out->length = sizeof(beep);
               memcpy(out->data, beep, sizeof(beep));
             }
             out->reaction = 1;
             outgoing.push(std::move(out));
-          }
+          } else
+            RS232_Print("!! Cache empty; unable to queue beep request");
           break;
         case 'P':
           if (auto out = cache.pop()) {
             out->is_unicast = true;
             out->peripheral_addr = peripheral.controller();
             {
-              const uint8_t play[] = {0x00,     dev_COMM_CTRL,  dev_COMM_v1,
-                                      Ejection, dev_CD_CHANGER, 0x01};
+              const uint8_t play[] = {0x00,
+                                      to_underlying(COMM_CTRL),
+                                      to_underlying(COMM_v1),
+                                      to_underlying(Ejection),
+                                      to_underlying(CD_CHANGER),
+                                      0x01};
               out->length = sizeof(play);
               memcpy(out->data, play, sizeof(play));
             }

@@ -8,7 +8,7 @@
 #include <cstdint>
 
 #include "avclan.h"
-#include "avclan_defs.h"
+#include "device.hpp"
 #include "frame.hpp"
 
 namespace avclan {
@@ -57,7 +57,7 @@ public:
     r_StateReport, // *IS* a status report (follow-up or unprompted)
   };
 
-  static constexpr uint8_t id = dev_CD_CHANGER;
+  static constexpr Device id = Device::CD_CHANGER;
   void init();
 
   void handle(const Frame *in, Frame *out);
@@ -75,7 +75,7 @@ private:
   void stopPlaying();
   void serialize(uint8_t *dst) const;
   void setTime(uint8_t mins, uint8_t secs);
-  void generateStatus(Frame *status, bool is_unicast, devices to) const;
+  void generateStatus(Frame *status, bool is_unicast, Device to) const;
   void normalizeState();
 
   bool playing = false;

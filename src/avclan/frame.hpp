@@ -8,6 +8,8 @@
 #include <cstdint>
 
 namespace avclan {
+enum class Device : uint8_t;
+
 struct Frame {
   struct Print {
     bool print : 1 = false;   // print at all
@@ -27,7 +29,7 @@ struct Frame {
   void print(Print print) const;
 
   uint8_t reaction;
-  uint8_t owning_device;
+  Device owning_device;
   bool is_unicast;
   uint16_t controller_addr; // formerly "master"
   uint16_t peripheral_addr; // formerly "slave"
