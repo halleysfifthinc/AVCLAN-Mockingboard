@@ -29,7 +29,9 @@ public:
   Error::Read read(Frame *in, Frame::Print print) {
     return bus.read(address_, in, print);
   };
-  Error::Send send(const Frame *out, Frame::Print print) {
+  // To "forge" a controller_addr, instantiate a new/different Peripheral
+  Error::Send send(Frame *out, Frame::Print print) {
+    postmark(out);
     return bus.send(out, print);
   };
 
@@ -46,9 +48,7 @@ public:
     static const uint8_t lancheck_resp[] = {0x00, dev_COMM_CTRL, dev_LAN, 0xFF,
                                             0xFF};
 
-    out->controller_addr = address_;
     out->peripheral_addr = controller_;
-    out->control = 0xF;
 
     const uint8_t *data = in->data;
     const uint8_t b0 = *data++;
@@ -138,6 +138,11 @@ public:
   }
 
 private:
+  void postmark(Frame *out) const {
+    out->controller_addr = address_;
+    out->control = 0xF;
+  }
+
   template <Device Dev, class F> void poller(Dev &dev, F &&fun) {
     if (dev.pending() && fun(dev))
       dev.resolvepending();

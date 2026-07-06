@@ -319,7 +319,8 @@ void CDChanger::enable(Frame *out) {
 bool CDChanger::pending() { return statustimer_tickPending(); }
 void CDChanger::resolvepending() { statustimer_clearTick(); }
 
-void CDChanger::emit(Frame *out) {
+void CDChanger::emit(Frame *out, uint16_t peripheral) {
+  out->peripheral_addr = peripheral;
   generateStatus(out, true, dev_STATUS);
   out->reaction = r_StateReport;
 }

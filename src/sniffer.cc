@@ -101,7 +101,7 @@ int main() {
 
     peripheral.poll_devices([&](auto &dev) {
       if (auto status = cache.pop()) {
-        dev.emit(status.get());
+        dev.emit(status.get(), peripheral.controller());
         outgoing.push(std::move(status));
         return true;
       }
@@ -138,7 +138,6 @@ int main() {
         case 'E': // Beep
           if (auto out = cache.pop()) {
             out->is_unicast = true;
-            out->controller_addr = peripheral.address();
             out->peripheral_addr = peripheral.controller();
             {
               const uint8_t beep[] = {0x00, dev_CD_CHANGER, dev_BEEP_SPEAKERS,
@@ -153,7 +152,6 @@ int main() {
         case 'P':
           if (auto out = cache.pop()) {
             out->is_unicast = true;
-            out->controller_addr = peripheral.address();
             out->peripheral_addr = peripheral.controller();
             {
               const uint8_t play[] = {0x00,     dev_COMM_CTRL,  dev_COMM_v1,
@@ -236,7 +234,6 @@ int main() {
             } else {
               if (auto out = cache.pop()) {
                 out->is_unicast = seqIsUnicast;
-                out->controller_addr = peripheral.address();
                 out->peripheral_addr =
                     seqIsUnicast ? peripheral.controller() : 0x1FF;
                 out->length = seqIdx;
