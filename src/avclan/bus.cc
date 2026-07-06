@@ -83,7 +83,12 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
 
     if (auto rerr = handle.read<ADDR_WIDTH>(
             &in->peripheral_addr,
-            [&]() { return !is_muted() && (in->peripheral_addr == address); });
+            // Using lambda for delayed evaluation of peripheral_addr field
+            // deref, which will be written by the time the lambda is evaluated
+            [&]() {
+              shouldACK = !is_muted() && (in->peripheral_addr == address);
+              return shouldACK;
+            });
         rerr == BAD_PARITY) {
       err.errno = BAD_PERIPHERAL_PARITY;
       if (print.verbose) {
@@ -91,8 +96,6 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
       }
       goto handle_err;
     }
-
-    shouldACK = !is_muted() && (in->peripheral_addr == address);
 
     if (auto rerr = handle.read<CONTROL_WIDTH>(&in->control, shouldACK);
         rerr == BAD_PARITY) {
