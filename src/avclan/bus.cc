@@ -154,15 +154,14 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
         RS232_Print("bad length 0x");
         RS232_PrintHex4(err.val);
         break;
-      case BAD_DATA_PARITY:
-        RS232_Print("reading data");
-        goto VERBOSE;
+      case BAD_DATA_PARITY: RS232_Print("reading data"); goto VERBOSE;
+      case BAD_PARITY:
+        __builtin_unreachable();
       VERBOSE:
         if (print.verbose) {
           RS232_Print("; read 0x");
           RS232_PrintHex(err.val);
         }
-      case BAD_PARITY: __builtin_unreachable();
     }
     RS232_Print("\n");
   }
