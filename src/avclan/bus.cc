@@ -41,6 +41,10 @@ constexpr int ADDR_WIDTH = 12;
 }
 
 namespace avclan {
+
+Bus::Handle::Handle() { AVCLAN_stopEvent(); }
+Bus::Handle::~Handle() { AVCLAN_startEvent(); }
+
 void Bus::init() { AVCLAN_busInit(); };
 void Bus::mute(bool mute) { AVCLAN_muteDevice(mute); };
 bool Bus::is_muted() const { return AVCLAN_ismuted(); };
@@ -290,5 +294,17 @@ auto Bus::Handle::readstartbit() -> Read {
 };
 void Bus::Handle::send_ACK() { AVCLAN_sendbit_ACK(); };
 uint8_t Bus::Handle::read_ACK() { return AVCLAN_readbit_ACK(); };
+
+template <> inline avclan_bit_t Bus::Handle::sendbits<8>(uint8_t bits) {
+  return AVCLAN_sendbyte(&bits);
+};
+template <> inline avclan_bit_t Bus::Handle::sendbits<1>(uint8_t bits) {
+  const avclan_bit_t bit{static_cast<avclan_bit_t>(bits & 1U)};
+  AVCLAN_sendbit(bit);
+  return bit;
+};
+template <> inline avclan_bit_t Bus::Handle::readbits<8>(uint8_t *bits) {
+  return static_cast<avclan_bit_t>(AVCLAN_readbyte(bits));
+};
 
 } // namespace avclan

@@ -71,11 +71,11 @@ public:
 };
 
 class Bus::Handle {
-  Handle() { AVCLAN_stopEvent(); }
+  Handle();
   friend Bus;
 
 public:
-  ~Handle() { AVCLAN_startEvent(); }
+  ~Handle();
   Handle(const Handle &) = delete;
   Handle(Handle &&) = delete;
   using Error = detail::Error;
@@ -157,18 +157,6 @@ private:
   avclan_bit_t readbits(uint16_t *bits) {
     return static_cast<avclan_bit_t>(AVCLAN_readbitsl(bits, N));
   };
-};
-
-template <> inline avclan_bit_t Bus::Handle::sendbits<8>(uint8_t bits) {
-  return AVCLAN_sendbyte(&bits);
-};
-template <> inline avclan_bit_t Bus::Handle::sendbits<1>(uint8_t bits) {
-  const avclan_bit_t bit{static_cast<avclan_bit_t>(bits & 1U)};
-  AVCLAN_sendbit(bit);
-  return bit;
-};
-template <> inline avclan_bit_t Bus::Handle::readbits<8>(uint8_t *bits) {
-  return static_cast<avclan_bit_t>(AVCLAN_readbyte(bits));
 };
 
 } // namespace avclan
