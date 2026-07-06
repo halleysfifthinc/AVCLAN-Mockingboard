@@ -32,9 +32,9 @@
 #include "bus.hpp"
 #include "avclan.hpp"
 #include "avclan_defs.h"
-#include "avclan_frame.h"
 #include "avclan_phy.h" // bridge until phy has been ported
 #include "com232.h"
+#include "frame.hpp"
 
 namespace {
 constexpr int ADDR_WIDTH = 12;
@@ -45,8 +45,7 @@ void Bus::init() { AVCLAN_busInit(); };
 void Bus::mute(bool mute) { AVCLAN_muteDevice(mute); };
 bool Bus::is_muted() const { return AVCLAN_ismuted(); };
 
-auto Bus::read(uint16_t address, AVCLAN_frame_t *in, log_t print)
-    -> Error::Read {
+auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
   struct errtype {
     Error::Read errno;
     union {
@@ -113,7 +112,7 @@ auto Bus::read(uint16_t address, AVCLAN_frame_t *in, log_t print)
       goto handle_err;
     }
 
-    if (in->length == 0 || in->length > MAXMSGLEN) {
+    if (in->length == 0 || in->length > Frame::MAXLENGTH) {
       err.errno = BAD_LENGTH_RANGE;
       err.val = in->length;
       goto handle_err;
@@ -169,13 +168,13 @@ auto Bus::read(uint16_t address, AVCLAN_frame_t *in, log_t print)
   if (print.print && (err.errno < STARTBIT_TOO_SHORT)) {
     if (err.errno > BAD_DATA_PARITY)
       in->length = 0;
-    AVCLAN_printframe(in, print.binary);
+    in->print(print);
   }
 
   return err.errno;
 }
 
-auto Bus::send(const AVCLAN_frame_t *out, log_t print) -> Error::Send {
+auto Bus::send(const Frame *out, Frame::Print print) -> Error::Send {
   struct errtype {
     // Error enum is ordered such that a lower numeric value corresponds to
     // more success
@@ -267,7 +266,7 @@ auto Bus::send(const AVCLAN_frame_t *out, log_t print) -> Error::Send {
   }
 
   if (print.print)
-    AVCLAN_printframe(out, print.binary);
+    out->print(print);
 
   return err.errno;
 }

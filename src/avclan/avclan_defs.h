@@ -11,11 +11,6 @@
 
 #include <stdint.h>
 
-#define MAXMSGLEN 32
-
-#define DEVICE_ADDR 0x360 // CD Changer address
-#define HU_ADDR     0x190 // Head-unit address
-
 typedef enum : uint8_t {
   dev_LAN = 0x00,
   dev_COMM_CTRL = 0x01,
@@ -108,23 +103,6 @@ typedef enum : uint8_t {
   Loading_Status_Report = 0xf3, // Typically unprompted, sent to dev_STATUS
   Report_TOC = 0xf9,
 } actions;
-
-typedef struct print_struct {
-  bool print : 1;   // print at all
-  bool binary : 1;  // when also printing, format as binary instead of text
-  bool verbose : 1; // include extra context in error reports
-} log_t;
-
-typedef struct AVCLAN_frame_struct {
-  uint8_t reaction;
-  uint8_t owning_device;
-  bool is_unicast;
-  uint16_t controller_addr; // formerly "master"
-  uint16_t peripheral_addr; // formerly "slave"
-  uint8_t control;
-  uint8_t length;
-  uint8_t data[MAXMSGLEN];
-} AVCLAN_frame_t;
 
 // A single bus symbol. bit_zero/bit_one carry data (and double as parity
 // values); bit_start marks a frame start bit.

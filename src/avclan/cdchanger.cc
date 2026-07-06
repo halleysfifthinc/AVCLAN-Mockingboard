@@ -8,6 +8,7 @@
 
 #include "avclan_defs.h"
 #include "cdchanger.hpp"
+#include "frame.hpp"
 #include "mediacontrol.h"
 #include "statustimer.h"
 
@@ -53,7 +54,7 @@ void CDChanger::init() {
   statustimer_init(this, &incrementTime_callback, &isPlaying_callback);
 }
 
-void CDChanger::handle(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
+void CDChanger::handle(const Frame *in, Frame *out) {
   const uint8_t *data = &in->data[1];
   const auto from = static_cast<devices>(*data++);
   /* const auto to = */ data++;
@@ -244,7 +245,7 @@ void CDChanger::handle(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
   }
 }
 
-void CDChanger::react(AVCLAN_frame_t *out, detail::Error::Send err) {
+void CDChanger::react(Frame *out, detail::Error::Send err) {
   auto resp = static_cast<reaction_t>(out->reaction);
   out->reaction = r_Nothing;
   switch (resp) {
@@ -302,7 +303,7 @@ void CDChanger::react(AVCLAN_frame_t *out, detail::Error::Send err) {
   }
 }
 
-void CDChanger::enable(AVCLAN_frame_t *out) {
+void CDChanger::enable(Frame *out) {
   if (!isPlaying()) {
     if (mins > TWODIGIT_MAX)
       mins = 0;
@@ -318,7 +319,7 @@ void CDChanger::enable(AVCLAN_frame_t *out) {
 bool CDChanger::pending() { return statustimer_tickPending(); }
 void CDChanger::resolvepending() { statustimer_clearTick(); }
 
-void CDChanger::emit(AVCLAN_frame_t *out) {
+void CDChanger::emit(Frame *out) {
   generateStatus(out, true, dev_STATUS);
   out->reaction = r_StateReport;
 }
@@ -377,7 +378,7 @@ void CDChanger::incrementTime() {
 }
 
 // Used for changed status messages
-void CDChanger::generateStatus(AVCLAN_frame_t *status, bool is_unicast,
+void CDChanger::generateStatus(Frame *status, bool is_unicast,
                                devices to) const {
   status->is_unicast = is_unicast;
   if (!is_unicast)

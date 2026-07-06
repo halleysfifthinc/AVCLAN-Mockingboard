@@ -32,7 +32,7 @@ set(AVCLAN_TARGET avr-attiny3216 CACHE STRING "Hardware target (port) to build")
 # <avr/...>, no register access). The selected target's port sources and flags
 # are contributed by its subdirectory.
 add_library(avclan STATIC
-    src/avclan/avclan_frame.c
+    src/avclan/frame.cc
     src/avclan/cdchanger.cc
     src/avclan/bus.cc
 )

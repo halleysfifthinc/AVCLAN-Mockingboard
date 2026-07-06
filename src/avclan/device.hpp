@@ -4,22 +4,22 @@
 #pragma once
 
 #include "avclan.hpp"
-#include "avclan_defs.h"
+#include "frame.hpp"
 
 #include <concepts>
 #include <cstdint>
 
 namespace avclan {
 template <class T>
-concept Device = requires { std::integral_constant<uint8_t, T::id>{}; } &&
-                 requires(T dev, const AVCLAN_frame_t *in, AVCLAN_frame_t *out,
-                          detail::Error::Send err) {
-                   dev.init();
-                   dev.handle(in, out);
-                   dev.enable(out);
-                   dev.react(out, err);
-                   { dev.pending() } -> std::convertible_to<bool>;
-                   dev.resolvepending();
-                   dev.emit(out);
-                 };
+concept Device = requires {
+  std::integral_constant<uint8_t, T::id>{};
+} && requires(T dev, const Frame *in, Frame *out, detail::Error::Send err) {
+  dev.init();
+  dev.handle(in, out);
+  dev.enable(out);
+  dev.react(out, err);
+  { dev.pending() } -> std::convertible_to<bool>;
+  dev.resolvepending();
+  dev.emit(out);
+};
 } // namespace avclan

@@ -7,6 +7,7 @@
 #include "avclan_defs.h"
 #include "bus.hpp"
 #include "device.hpp"
+#include "frame.hpp"
 
 #include <cstdint>
 #include <cstring>
@@ -24,16 +25,16 @@ public:
 
   uint16_t address() const { return address_; };
 
-  Error::Read read(AVCLAN_frame_t *in, log_t print) {
+  Error::Read read(Frame *in, Frame::Print print) {
     return bus.read(address_, in, print);
   };
-  Error::Send send(const AVCLAN_frame_t *out, log_t print) {
+  Error::Send send(const Frame *out, Frame::Print print) {
     return bus.send(out, print);
   };
 
 #define PACK3(a, b, c) (((uint32_t)(a) << 16) | ((uint32_t)(b) << 8) | (c))
 
-  void route(const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
+  void route(const Frame *in, Frame *out) {
     out->reaction = 0;
 
     if (AVCLAN_ismuted() || in->length < 3)
@@ -119,7 +120,7 @@ public:
     }
   }
 
-  void react(AVCLAN_frame_t *out, Error::Send err) {
+  void react(Frame *out, Error::Send err) {
     if (((Devs::id == out->owning_device) || ...))
       ((Devs::id == out->owning_device
         ? std::get<Devs>(devices_).react(out, err),
@@ -141,7 +142,7 @@ private:
       dev.resolvepending();
   }
   template <Device Dev>
-  void device_preroute(Dev dev, const AVCLAN_frame_t *in, AVCLAN_frame_t *out) {
+  void device_preroute(Dev dev, const Frame *in, Frame *out) {
     out->owning_device = Dev::id;
     dev.handle(in, out);
   }

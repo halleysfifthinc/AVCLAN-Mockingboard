@@ -11,6 +11,7 @@
 #include "board.h"
 #include "cdchanger.hpp"
 #include "com232.h"
+#include "frame.hpp"
 #include "peripheral.hpp"
 #include "queue.hpp"
 
@@ -18,8 +19,10 @@ const char *const offon[] = {"OFF", "ON"};
 
 constexpr uint8_t CACHE_SIZE = 32;
 
+using namespace avclan;
+
 namespace {
-AVCLAN_frame_t frames[CACHE_SIZE];
+Frame frames[CACHE_SIZE];
 
 constinit Queue cache(frames);
 constinit Queue incoming = cache;
@@ -60,17 +63,13 @@ int main() {
 
   // Binary-mode REPL includes the full wire preamble (broadcast + 2*addr +
   // control + length), so size for the worst case.
-  uint8_t data_tmp[MAXMSGLEN + sizeof(AVCLAN_frame_t)];
+  uint8_t data_tmp[Frame::MAXLENGTH + sizeof(Frame)];
   uint8_t seqIdx = 0; // current index in data_tmp
 
-  // Temporary, direct access is questionable since cache has ownership
-  for (auto &frame : frames) {
-    frame.control = 0x0f;
-  }
-
-  avclan::Bus phy;
-  avclan::Peripheral<avclan::CDChanger> cd_changer(phy, 0x360);
-  using Error = decltype(cd_changer)::Error;
+  Bus phy;
+  Peripheral<CDChanger> peripheral(phy, 0x360);
+  using Error = decltype(peripheral)::Error;
+  using Print = Frame::Print;
 
   Setup();
   print_help();
@@ -78,9 +77,9 @@ int main() {
   while (true) {
     if (AVCLAN_busActive()) {
       if (auto msg = cache.pop()) {
-        auto err = cd_changer.read(msg.get(), (log_t){.print = printAllFrames,
-                                                      .binary = printBinary,
-                                                      .verbose = verbose});
+        auto err = peripheral.read(msg.get(), Print{.print = printAllFrames,
+                                                    .binary = printBinary,
+                                                    .verbose = verbose});
         if (err == Error::Read{0x00})
           incoming.push(std::move(msg));
       } else {
@@ -90,7 +89,7 @@ int main() {
 
     if (const auto *in = incoming.peek()) {
       if (auto out = cache.pop()) {
-        cd_changer.route(in, out.get());
+        peripheral.route(in, out.get());
         incoming.pop();
 
         if (out->reaction > 0)
@@ -100,7 +99,7 @@ int main() {
       }
     }
 
-    cd_changer.poll_devices([&](auto dev) {
+    peripheral.poll_devices([&](auto dev) {
       if (auto status = cache.pop()) {
         dev.emit(status.get());
         outgoing.push(std::move(status));
@@ -110,9 +109,9 @@ int main() {
     });
 
     if (auto out = outgoing.pop()) {
-      auto err = cd_changer.send(
-          out.get(), (log_t){.print = printAllFrames, .binary = printBinary});
-      cd_changer.react(out.get(), err);
+      auto err = peripheral.send(
+          out.get(), Print{.print = printAllFrames, .binary = printBinary});
+      peripheral.react(out.get(), err);
       if (out->reaction > 0)
         outgoing.push(std::move(out));
     }
@@ -139,8 +138,8 @@ int main() {
         case 'E': // Beep
           if (auto out = cache.pop()) {
             out->is_unicast = true;
-            out->controller_addr = cd_changer.address();
-            out->peripheral_addr = HU_ADDR;
+            out->controller_addr = peripheral.address();
+            out->peripheral_addr = peripheral.controller();
             {
               const uint8_t beep[] = {0x00, dev_CD_CHANGER, dev_BEEP_SPEAKERS,
                                       0x60, 0x01};
@@ -154,15 +153,15 @@ int main() {
         case 'P':
           if (auto out = cache.pop()) {
             out->is_unicast = true;
-            out->controller_addr = cd_changer.address();
-            out->peripheral_addr = HU_ADDR;
+            out->controller_addr = peripheral.address();
+            out->peripheral_addr = peripheral.controller();
             {
               const uint8_t play[] = {0x00,     dev_COMM_CTRL,  dev_COMM_v1,
                                       Ejection, dev_CD_CHANGER, 0x01};
               out->length = sizeof(play);
               memcpy(out->data, play, sizeof(play));
             }
-            out->reaction = avclan::CDChanger::reaction_t::r_Ejection;
+            out->reaction = CDChanger::reaction_t::r_Ejection;
             outgoing.push(std::move(out));
           }
           break;
@@ -224,7 +223,8 @@ int main() {
             if (readBinary) {
               if (data_tmp[seqIdx] == 0x17) {
                 if (auto out = cache.pop()) {
-                  if (!AVCLAN_parseframe(data_tmp, --seqIdx, out.get())) {
+                  if (out->parse(data_tmp, --seqIdx) ==
+                      Frame::Error::Parse{0}) {
                     out->reaction = 1;
                     outgoing.push(std::move(out));
                   }
@@ -236,8 +236,9 @@ int main() {
             } else {
               if (auto out = cache.pop()) {
                 out->is_unicast = seqIsUnicast;
-                out->controller_addr = cd_changer.address();
-                out->peripheral_addr = seqIsUnicast ? HU_ADDR : 0x1FF;
+                out->controller_addr = peripheral.address();
+                out->peripheral_addr =
+                    seqIsUnicast ? peripheral.controller() : 0x1FF;
                 out->length = seqIdx;
                 memcpy(out->data, data_tmp, seqIdx);
                 out->reaction = 1;

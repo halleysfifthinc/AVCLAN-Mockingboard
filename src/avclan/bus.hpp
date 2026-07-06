@@ -52,6 +52,7 @@
 #include "avclan.hpp"
 #include "avclan_defs.h"
 #include "avclan_phy.h" // bridge until phy has been ported
+#include "frame.hpp"
 
 namespace avclan {
 class Bus {
@@ -63,8 +64,8 @@ public:
   void mute(bool mute);
   bool is_muted() const;
 
-  Error::Read read(uint16_t address, AVCLAN_frame_t *in, log_t print);
-  Error::Send send(const AVCLAN_frame_t *out, log_t print);
+  Error::Read read(uint16_t address, Frame *in, Frame::Print print);
+  Error::Send send(const Frame *out, Frame::Print print);
 
   static Handle get();
 };

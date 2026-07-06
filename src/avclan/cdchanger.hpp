@@ -9,6 +9,7 @@
 
 #include "avclan.hpp"
 #include "avclan_defs.h"
+#include "frame.hpp"
 
 namespace avclan {
 
@@ -59,13 +60,13 @@ public:
   static constexpr uint8_t id = dev_CD_CHANGER;
   void init();
 
-  void handle(const AVCLAN_frame_t *in, AVCLAN_frame_t *out);
-  void react(AVCLAN_frame_t *out, detail::Error::Send err);
-  void enable(AVCLAN_frame_t *out);
-  void disable(AVCLAN_frame_t *out);
+  void handle(const Frame *in, Frame *out);
+  void react(Frame *out, detail::Error::Send err);
+  void enable(Frame *out);
+  void disable(Frame *out);
   static bool pending();
   static void resolvepending();
-  void emit(AVCLAN_frame_t *out);
+  void emit(Frame *out);
   void incrementTime();
   bool isPlaying() const;
 
@@ -74,8 +75,7 @@ private:
   void stopPlaying();
   void serialize(uint8_t *dst) const;
   void setTime(uint8_t mins, uint8_t secs);
-  void generateStatus(AVCLAN_frame_t *status, bool is_unicast,
-                      devices to) const;
+  void generateStatus(Frame *status, bool is_unicast, devices to) const;
   void normalizeState();
 
   bool playing = false;

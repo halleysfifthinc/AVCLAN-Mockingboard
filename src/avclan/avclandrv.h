@@ -9,7 +9,6 @@
 #pragma once
 
 #include "avclan_defs.h"
-#include "avclan_frame.h"
 #include "avclan_phy.h"
 #include "mediacontrol.h"
 #include "statustimer.h"
