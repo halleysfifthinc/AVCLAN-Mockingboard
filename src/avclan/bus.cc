@@ -69,10 +69,10 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
     if (err.errno != Error::Read{0})
       goto handle_err;
 
-    handle.read<1>(&tmp, false);
+    handle.read<1>(&tmp, no_parity);
     in->is_unicast = (tmp != 0U);
 
-    if (auto rerr = handle.read<ADDR_WIDTH>(&in->controller_addr, false);
+    if (auto rerr = handle.read<ADDR_WIDTH>(&in->controller_addr, with_parity);
         rerr == BAD_PARITY) {
       err.errno = BAD_CONTROLLER_PARITY;
       if (print.verbose) {
@@ -82,7 +82,7 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
     }
 
     if (auto rerr = handle.read<ADDR_WIDTH>(
-            &in->peripheral_addr,
+            &in->peripheral_addr, with_ack,
             // Using lambda for delayed evaluation of peripheral_addr field
             // deref, which will be written by the time the lambda is evaluated
             [&]() {
@@ -97,7 +97,8 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
       goto handle_err;
     }
 
-    if (auto rerr = handle.read<CONTROL_WIDTH>(&in->control, shouldACK);
+    if (auto rerr =
+            handle.read<CONTROL_WIDTH>(&in->control, with_ack, shouldACK);
         rerr == BAD_PARITY) {
       err.errno = BAD_CONTROL_PARITY;
       if (print.verbose) {
@@ -106,7 +107,7 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
       goto handle_err;
     }
 
-    if (auto rerr = handle.read<BYTE_WIDTH>(&in->length, shouldACK);
+    if (auto rerr = handle.read<BYTE_WIDTH>(&in->length, with_ack, shouldACK);
         rerr == BAD_PARITY) {
       err.errno = BAD_LENGTH_PARITY;
       if (print.verbose) {
@@ -122,7 +123,8 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
     }
 
     for (uint8_t i = 0; i < in->length; i++) {
-      if (auto rerr = handle.read<BYTE_WIDTH>(&in->data[i], shouldACK);
+      if (auto rerr =
+              handle.read<BYTE_WIDTH>(&in->data[i], with_ack, shouldACK);
           rerr == BAD_PARITY) {
         err.errno = BAD_DATA_PARITY;
         if (print.verbose) {
@@ -199,24 +201,27 @@ auto Bus::send(const Frame *out, Frame::Print print) -> Error::Send {
       goto handle_err;
     }
 
-    handle.send<1>(static_cast<uint8_t>(out->is_unicast), false);
+    handle.send<1>(static_cast<uint8_t>(out->is_unicast), no_parity);
 
-    handle.send<ADDR_WIDTH>(out->controller_addr, false);
+    handle.send<ADDR_WIDTH>(out->controller_addr, with_parity);
 
-    if (auto serr =
-            handle.send<ADDR_WIDTH>(out->controller_addr, out->is_unicast);
+    if (auto serr = handle.send<ADDR_WIDTH>(out->peripheral_addr, with_ack,
+                                            out->is_unicast);
         serr == NAK) {
       err.errno = NAK_ADDRESS;
       goto handle_err;
     }
 
-    if (auto serr = handle.send<4>(out->control, out->is_unicast);
+    if (auto serr =
+            handle.send<CONTROL_WIDTH>(out->control, with_ack, out->is_unicast);
         serr == NAK) {
       err.errno = NAK_CONTROL;
       goto handle_err;
     }
 
-    if (auto serr = handle.send<8>(out->length, out->is_unicast); serr == NAK) {
+    if (auto serr =
+            handle.send<BYTE_WIDTH>(out->length, with_ack, out->is_unicast);
+        serr == NAK) {
       err.errno = NAK_MESSAGE_LENGTH;
       goto handle_err;
     }
@@ -226,7 +231,8 @@ auto Bus::send(const Frame *out, Frame::Print print) -> Error::Send {
       // necessary (i.e. This deviates from the previous broadcast specific
       // function that sent an extra `1` bit after each byte/parity)
       // Explanation for why audio-group broadcast state report isn't working?
-      if (auto serr = handle.send<8>(out->data[i], out->is_unicast);
+      if (auto serr =
+              handle.send<BYTE_WIDTH>(out->data[i], with_ack, out->is_unicast);
           serr == NAK) {
         err.errno = NAK_DATA;
         err.val = i;

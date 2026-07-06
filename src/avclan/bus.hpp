@@ -48,6 +48,7 @@
 #pragma once
 
 #include <concepts>
+#include <type_traits>
 
 #include "avclan.hpp"
 #include "avclan_defs.h"
@@ -55,6 +56,16 @@
 #include "frame.hpp"
 
 namespace avclan {
+
+struct trailer_bits_t {};
+struct no_parity_t : trailer_bits_t {};   // raw bits (the broadcast bit)
+struct with_parity_t : trailer_bits_t {}; // bits + parity (controller address)
+struct with_ack_t : trailer_bits_t {
+}; // bits + parity + ACK slot (all other fields)
+inline constexpr no_parity_t no_parity{};
+inline constexpr with_parity_t with_parity{};
+inline constexpr with_ack_t with_ack{};
+
 class Bus {
 public:
   class Handle;
@@ -83,38 +94,62 @@ public:
   bool sendstartbit();
   Error::Read readstartbit();
 
+  template <auto N, std::unsigned_integral T, class Trailer>
+    requires(sizeof(T) < 3 && N < 16) &&
+            requires { std::is_base_of_v<trailer_bits_t, Trailer>; }
+  Error::Send send(T bits, Trailer /*tag*/) {
+    const auto parity = sendbits<N>(bits);
+
+    if constexpr (std::is_same_v<Trailer, with_parity_t>)
+      sendbits<1>(static_cast<uint8_t>(parity));
+
+    return Send{0};
+  };
+
   template <auto N, std::unsigned_integral T>
     requires(sizeof(T) < 3 && N < 16)
-  Error::Send send(T bits, bool ack) {
-    const auto parity = sendbits<N>(bits);
-    sendbits<1>(static_cast<uint8_t>(parity));
+  Error::Send send(T bits, with_ack_t /*tag*/, bool expect_ack) {
+    send<N>(bits, with_parity);
 
-    if (ack && !read_ACK())
+    if (expect_ack && !read_ACK())
       return Send::NAK;
 
     return Send{0};
   };
 
+  template <auto N, std::unsigned_integral T, class Trailer>
+    requires(sizeof(T) < 3 && N < 16) &&
+            requires { std::is_base_of_v<trailer_bits_t, Trailer>; }
+  Error::Read read(T *bits, Trailer /*tag*/) {
+    const auto calc_parity = readbits<N>(bits);
+    if constexpr (std::is_same_v<Trailer, with_parity_t>) {
+      uint8_t read_parity;
+      readbits<1>(&read_parity);
+      if (calc_parity != read_parity)
+        return Read::BAD_PARITY;
+    }
+    return Read{0};
+  };
+
   template <auto N, std::unsigned_integral T, class F>
     requires(sizeof(T) < 3 && N < 16)
-  Error::Read read(T *bits, F &&ack) {
-    const auto calc_parity = readbits<N>(bits);
-    uint8_t read_parity;
-    readbits<1>(&read_parity);
-    if (calc_parity != read_parity) {
+  Error::Read read(T *bits, with_ack_t /*tag*/, F &&ack) {
+    if (read<N>(bits, with_parity) == Read::BAD_PARITY)
       return Read::BAD_PARITY;
-    }
+
     if (ack()) {
       send_ACK();
-    } else
-      readbits<1>(&read_parity);
+    } else {
+      uint8_t slot;
+      readbits<1>(&slot);
+    }
 
     return Read{0};
   };
   template <auto N, std::unsigned_integral T>
     requires(sizeof(T) < 3 && N < 16)
-  Error::Read read(T *bits, bool ack) {
-    return read<N>(bits, [=]() { return ack; });
+  Error::Read read(T *bits, with_ack_t /*tag*/, bool ack) {
+    return read<N>(bits, with_ack, [=]() { return ack; });
   }
 
 private:
