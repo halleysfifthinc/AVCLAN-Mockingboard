@@ -115,7 +115,7 @@ void CDChanger::handle(const Frame *in, Frame *out) {
           0x00, dev_CD_CHANGER, from, Initial_Report_Response, 0x01, 0x31,
           0x10, 0x01,           0x01};
       out->length = sizeof(cdinitreport_resp);
-      memcpy(&out->data[1], cdinitreport_resp, sizeof(cdinitreport_resp));
+      memcpy(out->data, cdinitreport_resp, sizeof(cdinitreport_resp));
       out->reaction = r_SendOnly;
       break;
     }
