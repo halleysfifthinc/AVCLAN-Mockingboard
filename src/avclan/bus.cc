@@ -31,7 +31,6 @@
 
 #include "bus.hpp"
 #include "avclan.h"
-#include "avclan_defs.h"
 #include "avclan_phy.h" // bridge until phy has been ported
 #include "com232.h"
 #include "frame.hpp"
@@ -284,16 +283,16 @@ auto Bus::Handle::readstartbit() -> Read { return AVCLAN_readstartbit(); };
 void Bus::Handle::send_ACK() { AVCLAN_sendbit_ACK(); };
 uint8_t Bus::Handle::read_ACK() { return AVCLAN_readbit_ACK(); };
 
-template <> inline avclan_bit_t Bus::Handle::sendbits<8>(uint8_t bits) {
+template <> inline Bit Bus::Handle::sendbits<8>(uint8_t bits) {
   return AVCLAN_sendbyte(&bits);
 };
-template <> inline avclan_bit_t Bus::Handle::sendbits<1>(uint8_t bits) {
-  const avclan_bit_t bit{static_cast<avclan_bit_t>(bits & 1U)};
+template <> inline Bit Bus::Handle::sendbits<1>(uint8_t bits) {
+  const Bit bit{static_cast<Bit>(bits & 1U)};
   AVCLAN_sendbit(bit);
   return bit;
 };
-template <> inline avclan_bit_t Bus::Handle::readbits<8>(uint8_t *bits) {
-  return static_cast<avclan_bit_t>(AVCLAN_readbyte(bits));
+template <> inline Bit Bus::Handle::readbits<8>(uint8_t *bits) {
+  return static_cast<Bit>(AVCLAN_readbyte(bits));
 };
 
 } // namespace avclan

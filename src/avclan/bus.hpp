@@ -48,10 +48,10 @@
 #pragma once
 
 #include <concepts>
+#include <cstdint>
 #include <type_traits>
 
 #include "avclan.h"
-#include "avclan_defs.h"
 #include "avclan_phy.h" // bridge until phy has been ported
 #include "frame.hpp"
 
@@ -125,7 +125,7 @@ public:
     if constexpr (std::is_same_v<Trailer, with_parity_t>) {
       uint8_t read_parity;
       readbits<1>(&read_parity);
-      if (calc_parity != read_parity)
+      if (static_cast<uint8_t>(calc_parity) != read_parity)
         return Read::BAD_PARITY;
     }
     return Read{0};
@@ -155,42 +155,35 @@ public:
 private:
   using Read = Error::Read;
   using Send = Error::Send;
-
-  // A single bus symbol. bit_zero/bit_one carry data (and double as parity
-  // values); bit_start marks a frame start bit.
-  enum class avclan_bit : uint8_t {
-    bit_zero = 0x00,
-    bit_one = 0x01,
-    bit_start = 0x10
-  };
+  using Bit = detail::Bit;
 
   static void send_ACK();
   static uint8_t read_ACK();
 
-  template <auto N, class T> avclan_bit_t sendbits(T bits);
-  template <auto N, class T> avclan_bit_t readbits(T *bits);
+  template <auto N, class T> Bit sendbits(T bits);
+  template <auto N, class T> Bit readbits(T *bits);
 
   // Temporary specializations bridging to legacy C API
   // Replace with proper (single?) template when phy has been ported
   template <auto N>
     requires(N > 1 && N < 8)
-  avclan_bit_t sendbits(uint8_t bits) {
+  Bit sendbits(uint8_t bits) {
     return AVCLAN_sendbitsi(&bits, N);
   };
   template <auto N>
     requires(N <= 16)
-  avclan_bit_t sendbits(uint16_t bits) {
+  Bit sendbits(uint16_t bits) {
     return AVCLAN_sendbitsl(&bits, N);
   };
   template <auto N>
     requires(N < 8)
-  avclan_bit_t readbits(uint8_t *bits) {
-    return static_cast<avclan_bit_t>(AVCLAN_readbitsi(bits, N));
+  Bit readbits(uint8_t *bits) {
+    return static_cast<Bit>(AVCLAN_readbitsi(bits, N));
   };
   template <auto N>
     requires(N <= 16)
-  avclan_bit_t readbits(uint16_t *bits) {
-    return static_cast<avclan_bit_t>(AVCLAN_readbitsl(bits, N));
+  Bit readbits(uint16_t *bits) {
+    return static_cast<Bit>(AVCLAN_readbitsl(bits, N));
   };
 };
 

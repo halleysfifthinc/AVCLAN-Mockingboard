@@ -8,13 +8,14 @@
 #include <stdint.h>
 
 #include "avclan.h"
-#include "avclan_defs.h"
 
 #ifdef __cplusplus
 using Read = avclan::detail::Error::Read;
+using Bit = avclan::detail::Bit;
 extern "C" {
 #else
 typedef enum Read Read;
+typedef enum Bit Bit;
 #endif
 
 // One-time bring-up of the bus hardware. Leaves the bus idle and TX unmuted.
@@ -45,13 +46,13 @@ bool AVCLAN_sendstartbit(void);
 
 // Per-symbol I/O. The send* helpers return the even parity of the bits sent;
 // the read* helpers return the even parity of the bits read.
-void AVCLAN_sendbit(avclan_bit_t bit);
+void AVCLAN_sendbit(Bit bit);
 void AVCLAN_sendbit_ACK(void);
 uint8_t AVCLAN_readbit_ACK(void);
 
-avclan_bit_t AVCLAN_sendbitsi(const uint8_t *bits, int8_t len);
-avclan_bit_t AVCLAN_sendbitsl(const uint16_t *bits, int8_t len);
-avclan_bit_t AVCLAN_sendbyte(const uint8_t *byte);
+Bit AVCLAN_sendbitsi(const uint8_t *bits, int8_t len);
+Bit AVCLAN_sendbitsl(const uint16_t *bits, int8_t len);
+Bit AVCLAN_sendbyte(const uint8_t *byte);
 
 uint8_t AVCLAN_readbitsi(uint8_t *bits, uint8_t len);
 uint8_t AVCLAN_readbitsl(uint16_t *bits, int8_t len);

@@ -99,7 +99,7 @@ static void set_AVC_logic_for(uint8_t val, uint16_t period) {
   return;
 }
 
-void AVCLAN_sendbit(avclan_bit_t bit) {
+void AVCLAN_sendbit(Bit bit) {
   uint16_t zero_length, one_length;
   switch (bit) {
     case bit_zero:
@@ -160,7 +160,7 @@ uint8_t AVCLAN_readbit_ACK() {
 }
 
 // Send `len` bits on the AVCLAN bus; returns the even parity
-avclan_bit_t AVCLAN_sendbitsi(const uint8_t *bits, int8_t len) {
+Bit AVCLAN_sendbitsi(const uint8_t *bits, int8_t len) {
   uint8_t b = *bits;
   uint8_t parity = 0;
   int8_t len_mod8 = 8;
@@ -173,7 +173,7 @@ avclan_bit_t AVCLAN_sendbitsi(const uint8_t *bits, int8_t len) {
   while (len > 0) {
     len -= len_mod8;
     for (; len_mod8 > 0; len_mod8--) {
-      avclan_bit_t bit = (b & 0x80) != 0;
+      Bit bit = (b & 0x80) != 0;
       parity += (uint8_t)bit;
       AVCLAN_sendbit(bit);
       b <<= 1;
@@ -185,16 +185,16 @@ avclan_bit_t AVCLAN_sendbitsi(const uint8_t *bits, int8_t len) {
 }
 
 // Send `len` bits on the AVCLAN bus; returns the even parity
-avclan_bit_t AVCLAN_sendbitsl(const uint16_t *bits, int8_t len) {
+Bit AVCLAN_sendbitsl(const uint16_t *bits, int8_t len) {
   return AVCLAN_sendbitsi((const uint8_t *)bits + 1, len);
 }
 
-avclan_bit_t AVCLAN_sendbyte(const uint8_t *byte) {
+Bit AVCLAN_sendbyte(const uint8_t *byte) {
   uint8_t b = *byte;
   uint8_t parity = 0;
 
   for (uint8_t nbits = 8; nbits > 0; nbits--) {
-    avclan_bit_t bit = (b & 0x80) != 0;
+    Bit bit = (b & 0x80) != 0;
     parity += (uint8_t)bit;
     AVCLAN_sendbit(bit);
     b <<= 1;

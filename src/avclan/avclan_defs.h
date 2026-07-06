@@ -103,11 +103,3 @@ typedef enum : uint8_t {
   Loading_Status_Report = 0xf3, // Typically unprompted, sent to dev_STATUS
   Report_TOC = 0xf9,
 } actions;
-
-// A single bus symbol. bit_zero/bit_one carry data (and double as parity
-// values); bit_start marks a frame start bit.
-typedef enum avclan_bit : uint8_t {
-  bit_zero = 0x00,
-  bit_one = 0x01,
-  bit_start = 0x10
-} avclan_bit_t;
