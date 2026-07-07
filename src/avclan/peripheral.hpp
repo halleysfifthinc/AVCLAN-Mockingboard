@@ -103,8 +103,11 @@ public:
         case PACK3(COMMUNICATION_V2, COMM_CTRL,
                    to_underlying(Advertise_Function)):
           ((Devs::id == static_cast<Device>(b3)
-            ? std::get<Devs>(devices_).enable(out),
-            0 : 0),
+            ? [&] {
+                out->owning_device = Devs::id;
+                std::get<Devs>(devices_).enable(out);
+              }()
+            : void()),
            ...);
           break;
         case PACK3(COMMUNICATION_V1, COMM_CTRL, to_underlying(Ping_Req)):
