@@ -957,10 +957,10 @@ end
 local device_decoders = {
     [known_devices_names["TUNER"]]      = decode_radio,
     [known_devices_names["AUDIO_AMP"]]  = decode_amp,
-    [known_devices_names["CD"]]         = decode_cd,
+    [known_devices_names["CD_SINGLE"]]         = decode_cd,
     [known_devices_names["CD_CHANGER"]] = decode_cd,
     [known_devices_names["TAPE_DECK"]]  = decode_tape,
-    [known_devices_names["SW"]]         = decode_touch,
+    [known_devices_names["SW_AUDIO"]]         = decode_touch,
 }
 
 function avclanproto.dissector(buffer, pinfo, tree)
