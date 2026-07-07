@@ -11,9 +11,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <util/atomic.h>
-
-#include "../../src/timing.h"
-
 #include <util/delay.h>
 
 #include "usart.h"

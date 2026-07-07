@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 
-#include "com232.h" // error logging
 #include "frame.hpp"
 
 namespace {
@@ -30,33 +30,25 @@ void Frame::print(Frame::Print print) const {
 
     *bptr++ = control;
     *bptr++ = length;
-    RS232_sendbytes(buffer, 8);
-    RS232_sendbytes(data, length);
+    fwrite(buffer, 1, 8, stdout);
+    fwrite(data, 1, length, stdout);
 
     bptr = buffer;
     *bptr++ = 0x17; // End of transmission block
     *bptr++ = 0x0D; // \r
     *bptr++ = 0x0A; // \n
-    RS232_sendbytes(buffer, 3);
+    fwrite(buffer, 1, 3, stdout);
   } else {
-    RS232_PrintHex4(static_cast<uint8_t>(is_unicast));
-
-    RS232_Print(" 0x");
-    RS232_PrintHex12(controller_addr);
-    RS232_Print(" 0x");
-    RS232_PrintHex12(peripheral_addr);
-
-    RS232_Print(" 0x");
-    RS232_PrintHex4(control);
-
-    RS232_Print(" 0x");
-    RS232_PrintHex4(length);
+    printf("%X", static_cast<unsigned>(is_unicast));
+    printf(" 0x%03X", static_cast<unsigned>(controller_addr & 0x0FFF));
+    printf(" 0x%03X", static_cast<unsigned>(peripheral_addr & 0x0FFF));
+    printf(" 0x%X", static_cast<unsigned>(control & 0x0F));
+    printf(" 0x%X", static_cast<unsigned>(length & 0x0F));
 
     for (uint8_t i = 0; i < length; i++) {
-      RS232_Print(" 0x");
-      RS232_PrintHex8(data[i]);
+      printf(" 0x%02X", static_cast<unsigned>(data[i]));
     }
-    RS232_Print("\n");
+    putchar('\n');
   }
 }
 
@@ -96,21 +88,18 @@ Error::Parse Frame::parse(const uint8_t *bytes, uint8_t len) {
 
   if (false) { // NOLINT(readability-simplify-boolean-expr)
   handle_err:;
-    RS232_Print("ERR(parse): ");
+    fputs("ERR(parse): ", stdout);
     switch (err.errno) {
-      case TOO_SHORT:
-        RS232_Print("not enough bytes too fill AVCLAN frame");
-        break;
+      case TOO_SHORT: puts("not enough bytes too fill AVCLAN frame"); break;
       case MISMATCH_LENGTH:
-        RS232_Print("frame->length is longer than remaining data");
+        puts("frame->length is longer than remaining data");
         break;
       case LENGTH_TOO_BIG:
-        RS232_Print("frame->length exceeds MAXLENGTH: 0x");
-        RS232_PrintHex8(err.val);
+        printf("frame->length exceeds MAXLENGTH: 0x%02X\n",
+               static_cast<unsigned>(err.val));
         break;
       default: break;
     }
-    RS232_Print("\n");
   }
 
   return err.errno;

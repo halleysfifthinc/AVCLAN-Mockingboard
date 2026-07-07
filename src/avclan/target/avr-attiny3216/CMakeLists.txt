@@ -7,7 +7,9 @@ target_sources(avclan PRIVATE
     phy_avr.c
     media_avr.c
     cd_timer_avr.c
-    board_avr.c)
+    board_avr.c
+    stdio_avr.c
+    )
 
 target_include_directories(avclan PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -63,10 +65,10 @@ set_property(CACHE TCB_CLKSEL PROPERTY STRINGS
     TCB_CLKSEL_CLKTCA_gc
 )
 
-set(USART_RXMODE "USART_RXMODE_CLK2X_gc" CACHE STRING "USART at normal or double speed operation")
+set(USART_RXMODE "NORMAL" CACHE STRING "USART at normal or double speed operation")
 set_property(CACHE USART_RXMODE PROPERTY STRINGS
-    USART_RXMODE_CLK2X_gc
-    USART_RXMODE_NORMAL_gc
+    NORMAL
+    DOUBLE_SPEED
 )
 
 # Measured wall-clock duration (ms) of one nominal 32768-tick RTC period, used
@@ -118,6 +120,20 @@ if(NOT LIBC_VERSION_TEST)
     endif()
 endif()
 
+# --- Vendored serial driver (jnk0le AVR-UART-lib), adapted for avrxmega3 -----
+# usart_config.h set to use the reserved-ISR-register optimization, so r2/r3/r4 
+# must be held off-limits in every TU that shares the MCU.
+set(JNK0LE_UART_DIR ${CMAKE_CURRENT_SOURCE_DIR}/vendor/jnk0le-AVR-UART-lib)
+add_library(jnk0le_uart STATIC ${JNK0LE_UART_DIR}/usart.c)
+target_include_directories(jnk0le_uart SYSTEM PUBLIC ${JNK0LE_UART_DIR})
+target_compile_definitions(jnk0le_uart 
+    PUBLIC $<$<STREQUAL:${USART_RXMODE},DOUBLE_SPEED>:USE_DOUBLE_SPEED>
+    PRIVATE F_CPU=${FREQSEL}
+)
+target_compile_options(jnk0le_uart PUBLIC
+    -ffixed-r2 -ffixed-r3 -ffixed-r4) # reserved ISR scratch (SREG=r4, Z=r2:r3)
+target_link_libraries(avclan PUBLIC jnk0le_uart)
+
 # --- Compile definitions / options -----------------------------------------
 target_compile_definitions(avclan PUBLIC
     FREQSEL=${FREQSEL}
@@ -125,7 +141,6 @@ target_compile_definitions(avclan PUBLIC
     CLK_PRESCALE_DIV=${CLK_PRESCALE_DIV}
     __CLK_PRESCALE_DIV=__${CLK_PRESCALE_DIV}
     TCB_CLKSEL=${TCB_CLKSEL}
-    USART_RXMODE=${USART_RXMODE}
     RTC_STATUS_PERIOD_MS=${RTC_STATUS_PERIOD_MS}
 )
 target_compile_options(avclan PUBLIC

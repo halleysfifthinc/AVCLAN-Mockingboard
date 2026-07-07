@@ -5,12 +5,13 @@
 
 #include <cctype>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 
 #include "cdchanger.hpp"
-#include "com232.h"
 #include "frame.hpp"
 #include "hal/board.h"
+#include "hal/stdio.h"
 #include "peripheral.hpp"
 #include "queue.hpp"
 
@@ -29,16 +30,12 @@ constinit Queue outgoing = cache;
 
 void toggle_flag(bool *flag, const char *msg) {
   *flag = !*flag;
-  RS232_Print(msg);
-  RS232_Print(offon[*flag]);
-  RS232_Print("\n");
+  printf("%s%s\n", msg, offon[*flag]);
 }
 
 void set_flag(bool *flag, bool val, const char *msg) {
   *flag = val;
-  RS232_Print(msg);
-  RS232_Print(offon[val]);
-  RS232_Print("\n");
+  printf("%s%s\n", msg, offon[val]);
 }
 
 void Setup();
@@ -84,7 +81,7 @@ int main() {
         if (err == Error::Read{0x00})
           incoming.push(std::move(msg));
       } else {
-        RS232_Print("!! Dropping an incoming message; cache is empty !!\n");
+        puts("!! Dropping an incoming message; cache is empty !!");
       }
     }
 
@@ -96,7 +93,7 @@ int main() {
         if (out->reaction > 0)
           outgoing.push(std::move(out));
       } else {
-        RS232_Print("!! Unable to respond; cache is empty !!\n");
+        puts("!! Unable to respond; cache is empty !!");
       }
     }
 
@@ -117,9 +114,8 @@ int main() {
         outgoing.push(std::move(out));
     }
 
-    // Key handler
-    if (RS232_hasChar()) {
-      char readkey = RS232_getChar();
+    // stdin must be non-blocking: yielding EOF when idle/empty
+    if (int readkey = getchar(); readkey != EOF) {
       switch (readkey) {
         case '?': print_help(); break;
         case 'v': toggle_flag(&verbose, "Verbose errors: "); break;
@@ -149,7 +145,7 @@ int main() {
             out->reaction = 1;
             outgoing.push(std::move(out));
           } else
-            RS232_Print("!! Cache empty; unable to queue beep request");
+            puts("!! Cache empty; unable to queue beep request");
           break;
         case 'P':
           if (auto out = cache.pop()) {
@@ -173,25 +169,25 @@ int main() {
 #ifndef NDEBUG
         case 'g': peripheral.device<CDChanger>().mic_toggle(); break;
         case 'p':
-          RS232_Print("First play/pause begin ... ");
+          fputs("First play/pause begin ... ", stdout);
           peripheral.device<CDChanger>().media_action(MediaAction::Play_Pause);
           while (peripheral.device<CDChanger>().media_busy()) {}
-          RS232_Print("end\nSecond play/pause begin ... ");
+          fputs("end\nSecond play/pause begin ... ", stdout);
           peripheral.device<CDChanger>().media_action(MediaAction::Play_Pause);
           while (peripheral.device<CDChanger>().media_busy()) {}
-          RS232_Print("end\n");
+          puts("end");
           break;
         case 's':
-          RS232_Print("Skip begin ... ");
+          fputs("Skip begin ... ", stdout);
           peripheral.device<CDChanger>().media_action(MediaAction::Track_Next);
           while (peripheral.device<CDChanger>().media_busy()) {}
-          RS232_Print("end\n");
+          puts("end");
           break;
         case 'b':
-          RS232_Print("Skip back begin ... ");
+          fputs("Skip back begin ... ", stdout);
           peripheral.device<CDChanger>().media_action(MediaAction::Track_Prev);
           while (peripheral.device<CDChanger>().media_busy()) {}
-          RS232_Print("end\n");
+          puts("end");
           break;
         case 'M': peripheral.get_bus().measure(); break;
 #endif
@@ -205,7 +201,7 @@ int main() {
             goto DEFAULT; // reading binary and this is a real data byte
 
         case 'U': // Send command
-          RS232_Print("READ SEQUENCE (U)> \n");
+          puts("READ SEQUENCE (U)> ");
           lastPrintAllFrames = printAllFrames;
           printAllFrames = false;
           readSeq = true;
@@ -214,7 +210,7 @@ int main() {
           seqIsUnicast = true;
           break;
         case 'B': // Send broadcast
-          RS232_Print("READ SEQUENCE (B)> \n");
+          puts("READ SEQUENCE (B)> ");
           lastPrintAllFrames = printAllFrames;
           printAllFrames = false;
           readSeq = true;
@@ -271,17 +267,17 @@ int main() {
                 hexDigit = hexChars[0] = hexChars[1] = 0;
               }
               if (echoCharacters) {
-                RS232_Print("CURRENT SEQUENCE > ");
+                fputs("CURRENT SEQUENCE > ", stdout);
                 for (uint8_t i = 0; i < seqIdx; i++) {
-                  RS232_PrintHex8(data_tmp[i]);
-                  RS232_SendByte(' ');
+                  printf("%02X", static_cast<unsigned>(data_tmp[i]));
+                  putchar(' ');
                 }
-                RS232_Print("\n");
+                putchar('\n');
               }
             }
           }
       } // switch (readkey)
-    } // if (RS232_hasChar())
+    } // if (readkey != EOF)
   }
   return 0;
 }
@@ -289,30 +285,30 @@ int main() {
 namespace {
 void Setup() {
   board_init(); // clock + GPIO bring-up (target-specific)
-  RS232_Init();
+  stdio_init();
   board_enable_interrupts();
 }
 
 void print_help() {
-  RS232_Print("AVCLAN Mockingboard v1\n");
-  RS232_Print("U - begin reading for unicast message\n"
-              "B - begin reading for broadcast message\n"
-              "m - Toggle mute for mockingboard bus activity\n"
-              "v - Toggle verbose error logging\n"
-              "l - Toggle message logging\n"
-              "X/x - Turn binary logging ON or OFF, respectively\n"
-              "k - Toggle character echo\n"
-              "E - Beep\n"
-              "P - Play\n"
+  puts("AVCLAN Mockingboard v1");
+  puts("U - begin reading for unicast message\n"
+       "B - begin reading for broadcast message\n"
+       "m - Toggle mute for mockingboard bus activity\n"
+       "v - Toggle verbose error logging\n"
+       "l - Toggle message logging\n"
+       "X/x - Turn binary logging ON or OFF, respectively\n"
+       "k - Toggle character echo\n"
+       "E - Beep\n"
+       "P - Play\n"
 #ifndef NDEBUG
-              "g - Toggle MIC_CONTROL high/low\n"
-              "p - double MIC play/pause pulse\n" // Confirm pulse function and
-                                                  // refractory timing
-              "s - MIC skip forward\n"
-              "b - MIC skip backward\n"
-              "M - Measure bit-timing (pulse-widths and periods)\n"
+       "g - Toggle MIC_CONTROL high/low\n"
+       "p - double MIC play/pause pulse\n" // Confirm pulse function and
+                                           // refractory timing
+       "s - MIC skip forward\n"
+       "b - MIC skip backward\n"
+       "M - Measure bit-timing (pulse-widths and periods)\n"
 #endif
-              "? - Print this message\n");
+       "? - Print this message");
 }
 
 } // namespace

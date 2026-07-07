@@ -29,9 +29,10 @@
   No acknowledge bits are sent for broadcast frames.
 */
 
-#include "bus.hpp"
+#include <cstdio>
+
 #include "avclan.h"
-#include "com232.h"
+#include "bus.hpp"
 #include "frame.hpp"
 #include "hal/phy.h" // bridge until phy has been ported
 
@@ -264,33 +265,29 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
 
   if (false) { // NOLINT(readability-simplify-boolean-expr)
   handle_err:;
-    RS232_Print("ERR(read): ");
+    fputs("ERR(read): ", stdout);
     switch (err.errno) {
-      case BAD_STARTBIT: RS232_Print("bad start bit (other)"); break;
-      case STARTBIT_TOO_SHORT: RS232_Print("bad start bit (short)"); break;
-      case STARTBIT_TOO_LONG: RS232_Print("bad start bit (long)"); break;
+      case BAD_STARTBIT: fputs("bad start bit (other)", stdout); break;
+      case STARTBIT_TOO_SHORT: fputs("bad start bit (short)", stdout); break;
+      case STARTBIT_TOO_LONG: fputs("bad start bit (long)", stdout); break;
       case BAD_CONTROLLER_PARITY:
-        RS232_Print("reading controller addr.");
+        fputs("reading controller addr.", stdout);
         goto VERBOSE;
       case BAD_PERIPHERAL_PARITY:
-        RS232_Print("reading peripheral addr.");
+        fputs("reading peripheral addr.", stdout);
         goto VERBOSE;
-      case BAD_CONTROL_PARITY: RS232_Print("reading control"); goto VERBOSE;
-      case BAD_LENGTH_PARITY: RS232_Print("reading length"); goto VERBOSE;
-      case BAD_LENGTH_RANGE:
-        RS232_Print("bad length 0x");
-        RS232_PrintHex4(err.val);
-        break;
-      case BAD_DATA_PARITY: RS232_Print("reading data"); goto VERBOSE;
+      case BAD_CONTROL_PARITY: fputs("reading control", stdout); goto VERBOSE;
+      case BAD_LENGTH_PARITY: fputs("reading length", stdout); goto VERBOSE;
+      case BAD_LENGTH_RANGE: printf("bad length 0x%X", err.val & 0x0F); break;
+      case BAD_DATA_PARITY: fputs("reading data", stdout); goto VERBOSE;
       case BAD_PARITY:
         __builtin_unreachable();
       VERBOSE:
         if (print.verbose) {
-          RS232_Print("; read 0x");
-          RS232_PrintHex(err.val);
+          printf("; read 0x%X", err.val);
         }
     }
-    RS232_Print("\n");
+    putchar('\n');
   }
 
   // Only print if some data has been correctly received
@@ -370,32 +367,28 @@ auto Bus::send(const Frame *out, Frame::Print print) -> Error::Send {
   // back to read mode
   if (false) { // NOLINT(readability-simplify-boolean-expr)
   handle_err:;
-    RS232_Print("Error");
+    fputs("Error", stdout);
     switch (err.errno) {
-      case MUTED: RS232_Print(": Device muted"); break;
-      case BUSY: RS232_Print(": Busy bus"); break;
+      case MUTED: fputs(": Device muted", stdout); break;
+      case BUSY: fputs(": Busy bus", stdout); break;
       case NAK_ADDRESS:
       case NAK_CONTROL:
       case NAK_MESSAGE_LENGTH:
       case NAK_DATA:
       case NAK:
-        RS232_Print(" NAK: ");
+        fputs(" NAK: ", stdout);
         switch (err.errno) {
-          case NAK_ADDRESS: RS232_Print("address"); break;
-          case NAK_CONTROL: RS232_Print("Control"); break;
-          case NAK_MESSAGE_LENGTH: RS232_Print("Message length"); break;
-          case NAK_DATA:
-            RS232_Print(" data[");
-            RS232_PrintDec(err.val);
-            RS232_Print("]");
-            break;
+          case NAK_ADDRESS: fputs("address", stdout); break;
+          case NAK_CONTROL: fputs("Control", stdout); break;
+          case NAK_MESSAGE_LENGTH: fputs("Message length", stdout); break;
+          case NAK_DATA: printf(" data[%u]", err.val); break;
           case NAK:
           case MUTED:
           case BUSY: __builtin_unreachable();
         }
         break;
     }
-    RS232_Print("\n");
+    putchar('\n');
   }
 
   if (print.print)

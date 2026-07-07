@@ -26,7 +26,7 @@
                 "AVCLAN_TARGET": "avr-attiny3216",
                 "FREQSEL": "20MHz",
                 "TCB_CLKSEL": "TCB_CLKSEL_CLKDIV1_gc",
-                "USART_RXMODE": "USART_RXMODE_CLK2X_gc"
+                "USART_RXMODE": "DOUBLE_SPEED"
             }
         },
         {
@@ -47,26 +47,6 @@
             "cacheVariables": {
                 "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
-        },
-        {
-            "name": "attiny3216-debug-usb0",
-            "displayName": "ATtiny3216 Debug (ttyUSB0)",
-            "description": "ATtiny3216 Debug build, program over /dev/ttyUSB0",
-            "inherits": [
-                "avr-attiny3216",
-                "debug-base",
-                "usb0"
-            ]
-        },
-        {
-            "name": "attiny3216-debug-usb1",
-            "displayName": "ATtiny3216 Debug (ttyUSB1)",
-            "description": "ATtiny3216 Debug build, program over /dev/ttyUSB1",
-            "inherits": [
-                "avr-attiny3216",
-                "debug-base",
-                "usb1"
-            ]
         },
         {
             "name": "attiny3216-relwithdebinfo-usb0",

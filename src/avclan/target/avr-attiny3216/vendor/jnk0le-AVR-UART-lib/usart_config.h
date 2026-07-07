@@ -21,7 +21,7 @@
 // #define USART_MPCM_MODE
 
 // enables double speed for all available USART interfaces
-#define USE_DOUBLE_SPEED
+// #define USE_DOUBLE_SPEED
 
 // echoes back received characters in getchar() function (for reading in
 // scanf())

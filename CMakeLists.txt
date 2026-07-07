@@ -66,11 +66,10 @@ add_library(avclan STATIC
 )
 
 # avclan exports its public generic headers (src/avclan) to consumers and
-# reaches into src/ for sibling headers (com232.h, board.h) during its own
+# reaches into src/ for sibling headers (stdio.h, board.h) during its own
 # build. The selected target adds its own per-target include path.
 target_include_directories(avclan PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/avclan
-    ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/avclan)
 
 # Pull in the selected hardware target: its port sources, per-target headers,
 # hardware-specific compile options/definitions, device-pack handling, and the
@@ -79,7 +78,6 @@ add_subdirectory(src/avclan/target/${AVCLAN_TARGET})
 
 add_executable(mockingboard
     src/sniffer.cc
-    src/com232.c
 )
 
 target_link_libraries(mockingboard avclan)

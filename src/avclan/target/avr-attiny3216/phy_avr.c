@@ -7,16 +7,34 @@
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <util/atomic.h>
 
 #include "hal/phy.h"
-#include "com232.h"      // RS232_setRxInterrupt (guard); RS232_Print (Measure)
-#include "media_avr.h"   // media_sync_during_mask (guard)
+#include "media_avr.h"    // media_sync_during_mask (guard)
 #include "hal/cd_timer.h" // statustimer_enable/disable (guard)
 
 // F_CPU + TICK_US (timing.h) defined here; F_CPU potentially needed by
 // avr-libc.
 #include "timing_avr.h"
+
+// USART0 TX ring indices owned by the jnk0le lib; the guard consults them to
+// decide whether to resume the TX drain (DRE interrupt) on leave.
+extern volatile uint8_t tx0_Head, tx0_Tail;
+
+// Mask/unmask the USART interrupts during bit-banged AVC-LAN framing. TX is
+// interrupt-driven, so the DRE (data-register-empty) interrupt is gated
+// alongside RX; on re-enable, resume the TX drain only if bytes are still
+// queued (enabling DREIE on an empty ring would transmit garbage).
+static void console_set_irqs(bool enable) {
+  if (enable) {
+    USART0.CTRLA |= USART_RXCIE_bm;
+    if (tx0_Head != tx0_Tail)
+      USART0.CTRLA |= USART_DREIE_bm;
+  } else {
+    USART0.CTRLA &= ~(USART_RXCIE_bm | USART_DREIE_bm);
+  }
+}
 
 // Name difference between avr-libc and Microchip pack
 #if defined(EVSYS_ASYNCCH00_bm)
@@ -405,7 +423,7 @@ bool phy_send_startbit() {
 void phy_guard_enter() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     cdtimer_disable();
-    RS232_setRxInterrupt(false);
+    console_set_irqs(false);
     media_sync_during_guard();
   }
 }
@@ -414,7 +432,7 @@ void phy_guard_enter() {
 void phy_guard_leave() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     cdtimer_restore(); // Reenable status interrupt if currently playing
-    RS232_setRxInterrupt(true);
+    console_set_irqs(true);
   }
 }
 
@@ -431,9 +449,8 @@ void phy_measure() {
 
   uint8_t tmp = 0;
 
-  RS232_Print(
-      "Timing config: F_CPU=" STR(F_CPU) ", TCB_CLKSEL=" STR(TCB_CLKSEL) "\n");
-  RS232_Print("Sampling bit (pulse-width and period) timing...\n");
+  puts("Timing config: F_CPU=" STR(F_CPU) ", TCB_CLKSEL=" STR(TCB_CLKSEL));
+  puts("Sampling bit (pulse-width and period) timing...");
 
   for (uint8_t n = 0; n < 100; n++) {
     while (pulse_count == tmp) {}
@@ -442,20 +459,16 @@ void phy_measure() {
     tmp = pulse_count;
   }
 
-  RS232_Print("Pulses:\n");
+  puts("Pulses:");
   for (uint8_t i = 0; i < 100; i++) {
-    RS232_PrintHex8((uint8_t)(pulses[i] >> 8));
-    RS232_PrintHex8((uint8_t)pulses[i]);
-    RS232_Print("\n");
+    printf("%04X\n", pulses[i]);
   }
 
-  RS232_Print("Periods:\n");
+  puts("Periods:");
   for (uint8_t i = 0; i < 100; i++) {
-    RS232_PrintHex8((uint8_t)(periods[i] >> 8));
-    RS232_PrintHex8((uint8_t)periods[i]);
-    RS232_Print("\n");
+    printf("%04X\n", periods[i]);
   }
-  RS232_Print("\nDone.\n");
+  puts("\nDone.");
 
   phy_guard_leave();
 }

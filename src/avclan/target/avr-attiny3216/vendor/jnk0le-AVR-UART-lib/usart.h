@@ -16,11 +16,14 @@
 #endif
 
 #if __AVR_ARCH__ == 103
-  // macro calculating precise UBRR value
-  #define BAUD_CALC(x)      (uint16_t)(((F_CPU / x) * 4UL) + 0.5)
+  // avrxmega3 (attiny/mega-0) async BAUD = 64*F_CPU/(S*baud), S=16 normal / 8
+  // double. Compute rounded without truncating F_CPU/x first (the naive
+  // (F_CPU/x)*S loses precision for non-integer ratios, e.g. 20MHz/1.2Mbps).
+  #define BAUD_CALC(x)      (uint16_t)((64UL * (F_CPU) + 8UL * (x)) / (16UL * (x)))
   #define BAUD_CALC_FAST(x) BAUD_CALC(x)
-  // macro calculating UBRR value for double speed
-  #define DOUBLE_BAUD_CALC(x) (uint16_t)(((F_CPU / x) * 8UL) + 0.5)
+  // macro calculating BAUD value for double speed
+  #define DOUBLE_BAUD_CALC(x)                                                   \
+    (uint16_t)((64UL * (F_CPU) + 4UL * (x)) / (8UL * (x)))
 #else
   // macro calculating precise UBRR value
   #define BAUD_CALC(x)        ((F_CPU + (x) * 8UL) / (16UL * (x)) - 1UL)
@@ -39,6 +42,16 @@
 #endif
 
 #ifndef __AVR_ARCH__ // compiler fault ?
+  #define USART_NO_ABI_BREAKING_PREMATURES
+#endif
+
+// avrxmega3 (tinyAVR-1/megaAVR-0, __AVR_ARCH__==103) is an AVRxt core where RETI
+// does NOT restore SREG.I outside an ISR. The "ABI-breaking premature" trick
+// re-enables interrupts by ending non-ISR helpers (e.g. uart0_putc) with `reti`
+// after a `cli`; on AVRxt that leaves interrupts disabled forever, so the TX
+// (UDRE) interrupt never fires. Force the safe ATOMIC_BLOCK (cli + SREG-restore)
+// path on this architecture.
+#if __AVR_ARCH__ == 103
   #define USART_NO_ABI_BREAKING_PREMATURES
 #endif
 
@@ -1118,7 +1131,7 @@ register uint16_t USART_Z_SAVE_REG_NAME asm(
     #define UCSR0C_REGISTER USART0_CTRLC
     #define TXCIE0_BIT      USART_TXCIE_bp  // CTRLA
     #define UDRIE0_BIT      USART_DREIE_bp  // CTRLA
-    #define RXCIE0_BIT      USART_RXSIE_bp  // CTRLA
+    #define RXCIE0_BIT      USART_RXCIE_bp  // CTRLA
     #define TXEN0_BIT       USART_TXEN_bp   // CTRLB
     #define RXEN0_BIT       USART_RXEN_bp   // CTRLB
     #define UDRE0_BIT       USART_DREIF_bp  // STATUS
@@ -1148,7 +1161,7 @@ register uint16_t USART_Z_SAVE_REG_NAME asm(
     #define UCSR1C_REGISTER USART1_CTRLC
     #define TXCIE1_BIT      USART_TXCIE_bp                        // CTRLA
     #define UDRIE1_BIT      USART_DREIE_bp                        // CTRLA
-    #define RXCIE1_BIT      USART_RXSIE_bp                        // CTRLA
+    #define RXCIE1_BIT      USART_RXCIE_bp                        // CTRLA
     #define TXEN1_BIT       USART_TXEN_bp                         // CTRLB
     #define RXEN1_BIT       USART_RXEN_bp                         // CTRLB
     #define UDRE1_BIT       USART_DREIF_bp                        // STATUS
