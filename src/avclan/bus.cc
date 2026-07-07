@@ -31,24 +31,149 @@
 
 #include "bus.hpp"
 #include "avclan.h"
-#include "avclan_phy.h" // bridge until phy has been ported
 #include "com232.h"
 #include "frame.hpp"
+#include "hal/phy.h" // bridge until phy has been ported
 
 namespace {
 constexpr int ADDR_WIDTH = 12;
 constexpr int CONTROL_WIDTH = 4;
 constexpr int BYTE_WIDTH = 8;
+
+struct trailer_bits_t {};
+struct no_parity_t : trailer_bits_t {};   // raw bits (the broadcast bit)
+struct with_parity_t : trailer_bits_t {}; // bits + parity (controller address)
+struct with_ack_t : trailer_bits_t {
+}; // bits + parity + ACK slot (all other fields)
+inline constexpr no_parity_t no_parity{};
+inline constexpr with_parity_t with_parity{};
+inline constexpr with_ack_t with_ack{};
 } // namespace
 
 namespace avclan {
 
-Bus::Handle::Handle() { AVCLAN_stopEvent(); }
-Bus::Handle::~Handle() { AVCLAN_startEvent(); }
+class Bus::Handle {
+  Handle() { phy_guard_enter(); };
+  friend Bus;
 
-void Bus::init() { AVCLAN_busInit(); };
-void Bus::mute(bool mute) { AVCLAN_muteDevice(mute); };
-bool Bus::is_muted() const { return AVCLAN_ismuted(); };
+public:
+  ~Handle() { phy_guard_leave(); };
+  Handle(const Handle &) = delete;
+  Handle(Handle &&) = delete;
+  using Error = detail::Error;
+
+  bool sendstartbit() { return phy_send_startbit(); };
+  auto readstartbit() -> Read { return phy_read_startbit(); };
+
+  template <auto N, std::unsigned_integral T,
+            std::derived_from<trailer_bits_t> Trailer>
+    requires(sizeof(T) < 3 && N < 16 && !std::same_as<Trailer, with_ack_t>)
+  Error::Send send(T bits, Trailer /*tag*/) {
+    const auto parity = sendbits<N>(bits);
+
+    if constexpr (std::is_same_v<Trailer, with_parity_t>)
+      sendbits<1>(static_cast<uint8_t>(parity));
+
+    return Send{0};
+  };
+
+  template <auto N, std::unsigned_integral T>
+    requires(sizeof(T) < 3 && N < 16)
+  Error::Send send(T bits, with_ack_t /*tag*/, bool expect_ack) {
+    send<N>(bits, with_parity);
+
+    if (expect_ack && !read_ACK())
+      return Send::NAK;
+
+    return Send{0};
+  };
+
+  template <auto N, std::unsigned_integral T,
+            std::derived_from<trailer_bits_t> Trailer>
+    requires(sizeof(T) < 3 && N < 16 && !std::same_as<Trailer, with_ack_t>)
+  Error::Read read(T *bits, Trailer /*tag*/) {
+    const auto calc_parity = readbits<N>(bits);
+    if constexpr (std::is_same_v<Trailer, with_parity_t>) {
+      uint8_t read_parity;
+      readbits<1>(&read_parity);
+      if (static_cast<uint8_t>(calc_parity) != read_parity)
+        return Read::BAD_PARITY;
+    }
+    return Read{0};
+  };
+
+  template <auto N, std::unsigned_integral T, class F>
+    requires(sizeof(T) < 3 && N < 16)
+  Error::Read read(T *bits, with_ack_t /*tag*/, F &&ack) {
+    if (read<N>(bits, with_parity) == Read::BAD_PARITY)
+      return Read::BAD_PARITY;
+
+    if (ack()) {
+      send_ACK();
+    } else {
+      uint8_t slot;
+      readbits<1>(&slot);
+    }
+
+    return Read{0};
+  };
+  template <auto N, std::unsigned_integral T>
+    requires(sizeof(T) < 3 && N < 16)
+  Error::Read read(T *bits, with_ack_t /*tag*/, bool ack) {
+    return read<N>(bits, with_ack, [=]() { return ack; });
+  }
+
+private:
+  using Read = Error::Read;
+  using Send = Error::Send;
+  using Bit = detail::Bit;
+
+  static void send_ACK() { phy_send_ack(); };
+  static uint8_t read_ACK() { return phy_read_ack(); };
+
+  template <auto N, class T> Bit sendbits(T bits);
+  template <auto N, class T> Bit readbits(T *bits);
+
+  // Temporary specializations bridging to legacy C API
+  // Replace with proper (single?) template when phy has been ported
+  template <auto N>
+    requires(N > 1 && N < 8)
+  Bit sendbits(uint8_t bits) {
+    return phy_send_bits_u8(&bits, N);
+  };
+  template <auto N>
+    requires(N <= 16)
+  Bit sendbits(uint16_t bits) {
+    return phy_send_bits_u16(&bits, N);
+  };
+  template <auto N>
+    requires(N < 8)
+  Bit readbits(uint8_t *bits) {
+    return static_cast<Bit>(phy_read_bits_u8(bits, N));
+  };
+  template <auto N>
+    requires(N <= 16)
+  Bit readbits(uint16_t *bits) {
+    return static_cast<Bit>(phy_read_bits_u16(bits, N));
+  };
+};
+
+template <> inline Bit Bus::Handle::sendbits<8>(uint8_t bits) {
+  return phy_send_byte(&bits);
+};
+template <> inline Bit Bus::Handle::sendbits<1>(uint8_t bits) {
+  const Bit bit{static_cast<Bit>(bits & 1U)};
+  phy_send_bit(bit);
+  return bit;
+};
+template <> inline Bit Bus::Handle::readbits<8>(uint8_t *bits) {
+  return static_cast<Bit>(phy_read_byte(bits));
+};
+
+void Bus::init() { phy_init(); };
+bool Bus::is_active() const { return phy_active(); };
+void Bus::mute(bool mute) { phy_mute(mute); };
+bool Bus::is_muted() const { return phy_is_muted(); };
 
 auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
   struct errtype {
@@ -278,21 +403,8 @@ auto Bus::send(const Frame *out, Frame::Print print) -> Error::Send {
 
 Bus::Handle Bus::get() { return {}; };
 
-bool Bus::Handle::sendstartbit() { return AVCLAN_sendstartbit(); };
-auto Bus::Handle::readstartbit() -> Read { return AVCLAN_readstartbit(); };
-void Bus::Handle::send_ACK() { AVCLAN_sendbit_ACK(); };
-uint8_t Bus::Handle::read_ACK() { return AVCLAN_readbit_ACK(); };
-
-template <> inline Bit Bus::Handle::sendbits<8>(uint8_t bits) {
-  return AVCLAN_sendbyte(&bits);
-};
-template <> inline Bit Bus::Handle::sendbits<1>(uint8_t bits) {
-  const Bit bit{static_cast<Bit>(bits & 1U)};
-  AVCLAN_sendbit(bit);
-  return bit;
-};
-template <> inline Bit Bus::Handle::readbits<8>(uint8_t *bits) {
-  return static_cast<Bit>(AVCLAN_readbyte(bits));
-};
+#ifndef NDEBUG
+void Bus::measure() { phy_measure(); }
+#endif
 
 } // namespace avclan

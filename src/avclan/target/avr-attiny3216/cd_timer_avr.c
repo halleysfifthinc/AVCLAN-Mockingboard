@@ -8,7 +8,7 @@
 #include <stdint.h>
 #include <util/atomic.h>
 
-#include "statustimer.h"
+#include "hal/cd_timer.h"
 
 // Measured wall-clock duration (in ms) of one nominal 32768-tick RTC period,
 // used to calibrate out the internal OSCULP32K's error. The RTC runs from
@@ -29,7 +29,7 @@ static void* changer = nullptr;
 static void (*increment)(void *) = nullptr;
 static bool (*isplaying)(void *) = nullptr;
 
-void statustimer_init(void *ptr, void (inc)(void *), bool (isplay)(void *)) {
+void cdtimer_init(void *ptr, void (inc)(void *), bool (isplay)(void *)) {
   // Setup RTC as a ~1 sec periodic timer via the normal counter's overflow.
   // Use the RTC directly (not PIT) to tune the status report interval closer to
   // 1 sec (internal osc may be slightly off)
@@ -46,7 +46,7 @@ void statustimer_init(void *ptr, void (inc)(void *), bool (isplay)(void *)) {
   isplaying = isplay;
 }
 
-void statustimer_reset() {
+void cdtimer_reset() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     loop_until_bit_is_clear(RTC_STATUS, RTC_CNTBUSY_bp);
     RTC.CNT = 0;
@@ -55,18 +55,18 @@ void statustimer_reset() {
   }
 }
 
-void statustimer_restore() { 
+void cdtimer_restore() { 
   if (isplaying(changer))
     RTC.INTCTRL |= RTC_OVF_bm; 
 }
-void statustimer_disable() { RTC.INTCTRL &= ~RTC_OVF_bm; }
+void cdtimer_disable() { RTC.INTCTRL &= ~RTC_OVF_bm; }
 
-// Set once per overflow; consumed by the app via statustimer_tickPending().
-volatile bool tick_pending = false;
+// Set once per overflow; consumed by the app via cdtimer_pending().
+volatile bool cdtimer_pending_flag = false;
 
 // Periodic interrupt with a ~1 sec period; only enabled while playing.
 ISR(RTC_CNT_vect) {
   increment(changer);
-  tick_pending = true;
+  cdtimer_pending_flag = true;
   RTC.INTFLAGS = RTC_OVF_bm;
 }

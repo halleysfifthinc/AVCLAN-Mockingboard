@@ -69,6 +69,11 @@ public:
   void emit(Frame *out, uint16_t peripheral);
   void incrementTime();
   bool isPlaying() const;
+#ifndef NDEBUG
+  void media_action(MediaAction action);
+  bool media_busy() const;
+  void mic_toggle();
+#endif
 
 private:
   void startPlaying();

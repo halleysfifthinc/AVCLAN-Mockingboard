@@ -7,10 +7,10 @@
 #include <cstdint>
 #include <cstring>
 
-#include "board.h"
 #include "cdchanger.hpp"
 #include "com232.h"
 #include "frame.hpp"
+#include "hal/board.h"
 #include "peripheral.hpp"
 #include "queue.hpp"
 
@@ -76,7 +76,7 @@ int main() {
   print_help();
 
   while (true) {
-    if (AVCLAN_busActive()) {
+    if (peripheral.bus_is_active()) {
       if (auto msg = cache.pop()) {
         auto err = peripheral.read(msg.get(), Print{.print = printAllFrames,
                                                     .binary = printBinary,
@@ -171,29 +171,29 @@ int main() {
           break;
 
 #ifndef NDEBUG
-        case 'g': AVCLAN_micToggle(); break;
+        case 'g': peripheral.device<CDChanger>().mic_toggle(); break;
         case 'p':
           RS232_Print("First play/pause begin ... ");
-          AVCLAN_mediaFunction(MEDIA_PLAY_PAUSE);
-          while (AVCLAN_isMediaFunctioning()) {}
+          peripheral.device<CDChanger>().media_action(MediaAction::Play_Pause);
+          while (peripheral.device<CDChanger>().media_busy()) {}
           RS232_Print("end\nSecond play/pause begin ... ");
-          AVCLAN_mediaFunction(MEDIA_PLAY_PAUSE);
-          while (AVCLAN_isMediaFunctioning()) {}
+          peripheral.device<CDChanger>().media_action(MediaAction::Play_Pause);
+          while (peripheral.device<CDChanger>().media_busy()) {}
           RS232_Print("end\n");
           break;
         case 's':
           RS232_Print("Skip begin ... ");
-          AVCLAN_mediaFunction(MEDIA_SKIP_FORWARD);
-          while (AVCLAN_isMediaFunctioning()) {}
+          peripheral.device<CDChanger>().media_action(MediaAction::Track_Next);
+          while (peripheral.device<CDChanger>().media_busy()) {}
           RS232_Print("end\n");
           break;
         case 'b':
           RS232_Print("Skip back begin ... ");
-          AVCLAN_mediaFunction(MEDIA_SKIP_BACKWARD);
-          while (AVCLAN_isMediaFunctioning()) {}
+          peripheral.device<CDChanger>().media_action(MediaAction::Track_Prev);
+          while (peripheral.device<CDChanger>().media_busy()) {}
           RS232_Print("end\n");
           break;
-        case 'M': AVCLan_Measure(); break;
+        case 'M': peripheral.get_bus().measure(); break;
 #endif
 
         case 0x10: // Signals binary sequence incoming
@@ -290,7 +290,7 @@ namespace {
 void Setup() {
   board_init(); // clock + GPIO bring-up (target-specific)
   RS232_Init();
-  board_interruptsEnable();
+  board_enable_interrupts();
 }
 
 void print_help() {

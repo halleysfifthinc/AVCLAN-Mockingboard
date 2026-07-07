@@ -12,7 +12,7 @@ extern "C" {
 void board_init(void);
 
 // Globally enable interrupts. Call after all peripherals are initialized.
-void board_interruptsEnable(void);
+void board_enable_interrupts(void);
 
 #ifdef __cplusplus
 }

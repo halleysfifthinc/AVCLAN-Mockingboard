@@ -10,7 +10,7 @@
 #include <avr/io.h>
 #include <avr/xmega.h> // _PROTECTED_WRITE
 
-#include "board.h"
+#include "hal/board.h"
 
 void board_init(void) {
   // Main clock prescale (CLK_PRESCALE / CLK_PRESCALE_DIV come from the build).
@@ -46,4 +46,4 @@ void board_init(void) {
   PORTC.PIN1CTRL = PORT_ISC_INPUT_DISABLE_gc; // WOD
 }
 
-void board_interruptsEnable(void) { sei(); }
+void board_enable_interrupts(void) { sei(); }

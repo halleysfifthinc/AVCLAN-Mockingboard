@@ -9,10 +9,10 @@
 #include <stdint.h>
 #include <util/atomic.h>
 
-#include "avclan_phy.h"
+#include "hal/phy.h"
 #include "com232.h"      // RS232_setRxInterrupt (guard); RS232_Print (Measure)
-#include "media_avr.h"   // mediacontrol_syncDuringMask (guard)
-#include "statustimer.h" // statustimer_enable/disable (guard)
+#include "media_avr.h"   // media_sync_during_mask (guard)
+#include "hal/cd_timer.h" // statustimer_enable/disable (guard)
 
 // F_CPU + TICK_US (timing.h) defined here; F_CPU potentially needed by
 // avr-libc.
@@ -58,15 +58,15 @@ static inline void AVCLAN_setBusDriven() {
 
 // Returns true if device TX is muted on the AVCLAN bus (both drive pins are
 // configured as inputs).
-bool AVCLAN_ismuted() {
+bool phy_is_muted() {
   return (((VPORTA_DIR & PIN4_bm) | (VPORTA_DIR & PIN0_bm)) == 0);
 }
 
 // True when the bus is being driven (i.e. not idle/floating).
-bool AVCLAN_busActive() { return !BUS_IS_IDLE; }
+bool phy_active() { return !BUS_IS_IDLE; }
 
 // Mute device TX on AVCLAN bus
-void AVCLAN_muteDevice(bool mute) {
+void phy_mute(bool mute) {
   if (mute) {
     // clang-format off
     __asm__ __volatile__("cbi %[vporta_dir], 4; \n\t" // set as INPUT (output values ignored)
@@ -99,7 +99,7 @@ static void set_AVC_logic_for(uint8_t val, uint16_t period) {
   return;
 }
 
-void AVCLAN_sendbit(Bit bit) {
+void phy_send_bit(Bit bit) {
   uint16_t zero_length, one_length;
   switch (bit) {
     case bit_zero:
@@ -120,7 +120,7 @@ void AVCLAN_sendbit(Bit bit) {
   set_AVC_logic_for(1, one_length);
 }
 
-void AVCLAN_sendbit_ACK() {
+void phy_send_ack() {
   TCB1.CNT = 0;
 
   // Wait for controller to begin ACK bit
@@ -131,7 +131,7 @@ void AVCLAN_sendbit_ACK() {
       return;
   }
 
-  AVCLAN_sendbit(bit_zero);
+  phy_send_bit(bit_zero);
 }
 
 /* Returns true if the peripheral sent an ACK bit.
@@ -139,7 +139,7 @@ void AVCLAN_sendbit_ACK() {
   sync period, and allows the receiver to drive the bus (or not) to finish a "1"
   bit.
 */
-uint8_t AVCLAN_readbit_ACK() {
+uint8_t phy_read_ack() {
   TCB1.CNT = 0;                              // Double reset of TCB1.CNT: here
   set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0); // And here (within)
   AVCLAN_setBusIdle();                       // Stop driving bus
@@ -160,7 +160,7 @@ uint8_t AVCLAN_readbit_ACK() {
 }
 
 // Send `len` bits on the AVCLAN bus; returns the even parity
-Bit AVCLAN_sendbitsi(const uint8_t *bits, int8_t len) {
+Bit phy_send_bits_u8(const uint8_t *bits, int8_t len) {
   uint8_t b = *bits;
   uint8_t parity = 0;
   int8_t len_mod8 = 8;
@@ -175,7 +175,7 @@ Bit AVCLAN_sendbitsi(const uint8_t *bits, int8_t len) {
     for (; len_mod8 > 0; len_mod8--) {
       Bit bit = (b & 0x80) != 0;
       parity += (uint8_t)bit;
-      AVCLAN_sendbit(bit);
+      phy_send_bit(bit);
       b <<= 1;
     }
     len_mod8 = 8;
@@ -185,18 +185,18 @@ Bit AVCLAN_sendbitsi(const uint8_t *bits, int8_t len) {
 }
 
 // Send `len` bits on the AVCLAN bus; returns the even parity
-Bit AVCLAN_sendbitsl(const uint16_t *bits, int8_t len) {
-  return AVCLAN_sendbitsi((const uint8_t *)bits + 1, len);
+Bit phy_send_bits_u16(const uint16_t *bits, int8_t len) {
+  return phy_send_bits_u8((const uint8_t *)bits + 1, len);
 }
 
-Bit AVCLAN_sendbyte(const uint8_t *byte) {
+Bit phy_send_byte(const uint8_t *byte) {
   uint8_t b = *byte;
   uint8_t parity = 0;
 
   for (uint8_t nbits = 8; nbits > 0; nbits--) {
     Bit bit = (b & 0x80) != 0;
     parity += (uint8_t)bit;
-    AVCLAN_sendbit(bit);
+    phy_send_bit(bit);
     b <<= 1;
   }
   return (parity & 1);
@@ -225,7 +225,7 @@ ISR(TCB0_INT_vect) {
 }
 
 // Read `len` bits on the AVCLAN bus; returns the even parity
-uint8_t AVCLAN_readbitsi(uint8_t *bits, uint8_t len) {
+uint8_t phy_read_bits_u8(uint8_t *bits, uint8_t len) {
   cli();
   READING_BYTE = 0;
   READING_PARITY = 0;
@@ -251,20 +251,20 @@ uint8_t AVCLAN_readbitsi(uint8_t *bits, uint8_t len) {
 }
 
 // Read `len` bits on the AVCLAN bus; returns the even parity
-uint8_t AVCLAN_readbitsl(uint16_t *bits, int8_t len) {
+uint8_t phy_read_bits_u16(uint16_t *bits, int8_t len) {
   uint8_t parity = 0;
   if (len > 8) {
     uint8_t over = len - 8;
-    parity = AVCLAN_readbitsi((uint8_t *)bits + 1, over);
+    parity = phy_read_bits_u8((uint8_t *)bits + 1, over);
     len -= over;
   }
-  parity += AVCLAN_readbitsi((uint8_t *)bits + 0, len);
+  parity += phy_read_bits_u8((uint8_t *)bits + 0, len);
 
   return (parity & 1);
 }
 
 // Read a byte on the AVCLAN bus
-uint8_t AVCLAN_readbyte(uint8_t *byte) {
+uint8_t phy_read_byte(uint8_t *byte) {
   cli();
   READING_BYTE = 0;
   READING_PARITY = 0;
@@ -289,7 +289,7 @@ uint8_t AVCLAN_readbyte(uint8_t *byte) {
   return (parity & 1);
 }
 
-void AVCLAN_busInit() {
+void phy_init() {
   // Set pin 6 and 7 as input
   PORTA.DIRCLR = (PIN6_bm | PIN7_bm);
   // Disable input buffer; recommended when using AC
@@ -321,14 +321,14 @@ void AVCLAN_busInit() {
 
   AVCLAN_setBusIdle();
 
-  AVCLAN_muteDevice(false); // unmute AVCLAN bus TX
+  phy_mute(false); // unmute AVCLAN bus TX
 }
 
 // Wait for and validate an incoming start bit. On an over-long "driven" bus
 // (AC2 latched high because the bus is actually floating) this kicks PA7 hard
 // high to unlatch the comparator. The framing layer maps the result to its own
 // error reporting; no printing happens here.
-Read AVCLAN_readstartbit() {
+Read phy_read_startbit() {
   uint16_t startbitlen = TCB1.CNT = 0;
   while (!BUS_IS_IDLE) {
     startbitlen = TCB1.CNT;
@@ -370,7 +370,7 @@ Read AVCLAN_readstartbit() {
 
 // Acquire the bus and emit a start bit. Returns false if another device is
 // already driving the bus (we can't yet do proper CSMA/CD).
-bool AVCLAN_sendstartbit() {
+bool phy_send_startbit() {
   // wait for free line
   TCB1.CNT = 0;
   while (BUS_IS_IDLE) {
@@ -395,25 +395,25 @@ bool AVCLAN_sendstartbit() {
     // set_AVC_logic_for(1, AVCLAN_STARTBIT_LOGIC_1); // wait for end of start
     return false;
   }
-  AVCLAN_sendbit(bit_start);
+  phy_send_bit(bit_start);
   return true;
 }
 
 /* Disable non-read related interrupts (USART RX, RTC status tick, mic timer)
    during AVCLAN bus transactions so framing isn't disturbed. TCB0 must remain
    enabled. */
-void AVCLAN_stopEvent() {
+void phy_guard_enter() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    statustimer_disable();
+    cdtimer_disable();
     RS232_setRxInterrupt(false);
-    mediacontrol_syncDuringMask();
+    media_sync_during_guard();
   }
 }
 
 // Re-enable serial and periodic interrupts after a bus transaction.
-void AVCLAN_startEvent() {
+void phy_guard_leave() {
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    statustimer_restore(); // Reenable status interrupt if currently playing
+    cdtimer_restore(); // Reenable status interrupt if currently playing
     RS232_setRxInterrupt(true);
   }
 }
@@ -426,8 +426,8 @@ void AVCLAN_startEvent() {
 static uint16_t pulses[100];
 static uint16_t periods[100];
 
-void AVCLan_Measure() {
-  AVCLAN_stopEvent();
+void phy_measure() {
+  phy_guard_enter();
 
   uint8_t tmp = 0;
 
@@ -457,6 +457,6 @@ void AVCLan_Measure() {
   }
   RS232_Print("\nDone.\n");
 
-  AVCLAN_startEvent();
+  phy_guard_leave();
 }
 #endif

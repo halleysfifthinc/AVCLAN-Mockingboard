@@ -6,8 +6,8 @@
 #include <stdint.h>
 #include <util/atomic.h>
 
-#include "media_avr.h" // mediacontrol_syncDuringMask (used by the bus guard)
-#include "mediacontrol.h"
+#include "media_avr.h" // media_sync_during_mask (used by the bus guard)
+#include "hal/media.h"
 
 // F_CPU defined in timing_avr.h; the mic tick constants below are derived from
 // it (this hardware generation's TCA0/PB1 button-press implementation).
@@ -31,14 +31,14 @@ static constexpr uint16_t close_thresh =
 
 #ifndef NDEBUG
 // Toggle PB1 and return its new level.
-bool AVCLAN_micToggle() {
+bool media_mic_toggle() {
   // Take manual control of PB1 (CMP1EN gives TCA0 control of WO1/PB1 level)
   TCA0.SINGLE.CTRLB &= ~TCA_SINGLE_CMP1EN_bm;
   VPORTB.OUT ^= PIN1_bm;
   return (VPORTB.OUT & PIN1_bm) != 0;
 }
 
-bool AVCLAN_isMediaFunctioning() { return mic_ntoggles != 0; }
+bool media_busy() { return mic_ntoggles != 0; }
 #endif
 
 // Begin a press waveform of `nphases` × 100 ms level segments.
@@ -99,11 +99,21 @@ ISR(TCA0_OVF_vect) { mic_timer_isr_body(false); }
 
 // Emulate a transport-control button press on the source device. Each action
 // maps to a press-train of a given length on MIC_CONTROL.
-void AVCLAN_mediaFunction(AVCLAN_media_fn_t fn) {
-  switch (fn) {
-    case MEDIA_PLAY_PAUSE: mic_pulse(1); break;    // single press
-    case MEDIA_SKIP_FORWARD: mic_pulse(3); break;  // double-press
-    case MEDIA_SKIP_BACKWARD: mic_pulse(5); break; // triple-press
+void media_action(enum MediaAction action) {
+  switch (action) {
+    case Play:
+    case Pause:
+    case Play_Pause: mic_pulse(1); break;    // single press
+    case Skip_Forward:
+    case Track_Next: mic_pulse(3); break;  // double-press
+    case Skip_Backward:
+    case Track_Prev: mic_pulse(5); break; // triple-press
+    case Repeat:
+    case Repeat_Single:
+    case Shuffle:
+    case Volume_Up:
+    case Volume_Down:
+    default: break;
   }
 }
 
@@ -113,13 +123,13 @@ void AVCLAN_mediaFunction(AVCLAN_media_fn_t fn) {
 //  - peripheral WO1 toggles and mic_ntoggles kept in sync
 //  - maximum frame duration is ~15ms, "early" OVF remains within acceptable
 //    ranges for either high/low pulses
-// Caller (AVCLAN_stopEvent) guarantees interrupts are disabled.
-void mediacontrol_syncDuringMask() {
+// Caller (phy_guard_enter) guarantees interrupts are disabled.
+void media_sync_during_guard() {
   if (mic_ntoggles && TCA0.SINGLE.CNT >= (TCA0.SINGLE.CMP0 - close_thresh))
     mic_timer_isr_body(true);
 }
 
-void mediacontrol_init() {
+void media_init() {
   // PB1 needs to be set as an output for TCA0 to set the level
   PORTB.DIRSET = PIN1_bm;
 

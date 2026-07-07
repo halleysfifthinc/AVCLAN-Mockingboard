@@ -25,8 +25,17 @@ public:
 
   uint16_t address() const { return address_; };
   uint16_t controller() const { return controller_; };
+  template <DeviceInterface Dev> Dev &device() {
+    return std::get<Dev>(devices_);
+  }
+
+  bool bus_is_active() const { return bus.is_active(); };
   void mute(bool mute) { bus.mute(mute); };
   bool is_muted() const { return bus.is_muted(); };
+
+#ifndef NDEBUG
+  Bus &get_bus() { return bus; }
+#endif
 
   Error::Read read(Frame *in, Frame::Print print) {
     return bus.read(address_, in, print);
@@ -44,7 +53,7 @@ public:
     using enum Action;
     out->reaction = 0;
 
-    if (AVCLAN_ismuted() || in->length < 3)
+    if (is_muted() || in->length < 3)
       return;
 
     // 0xFF placeholders are variant bytes filled by writing directly to
@@ -137,6 +146,8 @@ public:
     }
   }
 
+#undef PACK3
+
   void react(Frame *out, Error::Send err) {
     if (((Devs::id == out->owning_device) || ...))
       ((Devs::id == out->owning_device
@@ -146,8 +157,6 @@ public:
     else
       out->reaction = 0;
   }
-
-#undef PACK3
 
   template <class F> void poll_devices(F &&fun) {
     (poller(std::get<Devs>(devices_), fun), ...);

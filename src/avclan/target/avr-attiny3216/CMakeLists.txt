@@ -6,7 +6,7 @@ include(FetchContent)
 target_sources(avclan PRIVATE
     phy_avr.c
     media_avr.c
-    statustick_avr.c
+    cd_timer_avr.c
     board_avr.c)
 
 target_include_directories(avclan PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

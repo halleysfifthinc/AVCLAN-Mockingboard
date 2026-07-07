@@ -99,9 +99,26 @@ enum AVCLAN_ENUM_CLASS Action : uint8_t {
   Track_Name_Resp = 0xfd,
 
   // Reports
-  Playback_Status = 0xf1,         // Typically unprompted, sent to Device::STATUS
-  Loading_Status = 0xf3, // Typically unprompted, sent to Device::STATUS
+  Playback_Status = 0xf1, // Typically unprompted, sent to Device::STATUS
+  Loading_Status = 0xf3,  // Typically unprompted, sent to Device::STATUS
   Report_TOC = 0xf9,
+};
+
+// Media functions a source device can perform (ultimately bounded by the Action
+// set above).
+enum AVCLAN_ENUM_CLASS MediaAction : uint8_t {
+  Play = 0x01,
+  Pause = 0x02,
+  Play_Pause = Play | Pause,
+  Skip_Forward,
+  Skip_Backward,
+  Track_Next,
+  Track_Prev,
+  Repeat,
+  Repeat_Single,
+  Shuffle,
+  Volume_Up,
+  Volume_Down,
 };
 
 #ifdef __cplusplus

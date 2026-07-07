@@ -10,23 +10,22 @@
 #include "cdchanger.hpp"
 #include "device.hpp"
 #include "frame.hpp"
-#include "mediacontrol.h"
-#include "statustimer.h"
+#include "hal/cd_timer.h"
+#include "hal/media.h"
 
 namespace {
 using namespace avclan;
 
-constexpr uint8_t cdloading_resp[] = {
-    to_underlying(Device::CD_CHANGER),
-    to_underlying(Device::STATUS),
-    to_underlying(Action::Loading_Status),
-    0x00,
-    0x01,
-    0x00,
-    0x01,
-    0x00,
-    0x01,
-    0x02};
+constexpr uint8_t cdloading_resp[] = {to_underlying(Device::CD_CHANGER),
+                                      to_underlying(Device::STATUS),
+                                      to_underlying(Action::Loading_Status),
+                                      0x00,
+                                      0x01,
+                                      0x00,
+                                      0x01,
+                                      0x00,
+                                      0x01,
+                                      0x02};
 
 constexpr int WIRE_SIZE = 8;  // cd state report size in bytes
 constexpr int TIME_SKIP = 15; // seconds
@@ -53,8 +52,8 @@ extern "C" bool isPlaying_callback(void *self) {
 namespace avclan {
 
 void CDChanger::init() {
-  mediacontrol_init();
-  statustimer_init(this, &incrementTime_callback, &isPlaying_callback);
+  media_init();
+  cdtimer_init(this, &incrementTime_callback, &isPlaying_callback);
 }
 
 void CDChanger::handle(const Frame *in, Frame *out) {
@@ -119,16 +118,15 @@ void CDChanger::handle(const Frame *in, Frame *out) {
     case Initial_Report_Req: {
       out->is_unicast = true;
       // No knowledge/understanding of field meaning/interpretation
-      const uint8_t cdinitreport_resp[] = {
-          0x00,
-          to_underlying(Device::CD_CHANGER),
-          to_underlying(from),
-          to_underlying(Initial_Report_Resp),
-          0x01,
-          0x31,
-          0x10,
-          0x01,
-          0x01};
+      const uint8_t cdinitreport_resp[] = {0x00,
+                                           to_underlying(Device::CD_CHANGER),
+                                           to_underlying(from),
+                                           to_underlying(Initial_Report_Resp),
+                                           0x01,
+                                           0x31,
+                                           0x10,
+                                           0x01,
+                                           0x01};
       out->length = sizeof(cdinitreport_resp);
       memcpy(out->data, cdinitreport_resp, sizeof(cdinitreport_resp));
       out->reaction = r_SendOnly;
@@ -163,7 +161,7 @@ void CDChanger::handle(const Frame *in, Frame *out) {
       secs = 0x7f;
       flags2 = 0xc0;
       generateStatus(out, true, Device::CMD_SW);
-      AVCLAN_mediaFunction(MEDIA_SKIP_FORWARD);
+      media_action(MediaAction::Track_Next);
       out->reaction = r_TrackChange;
       break;
     case Track_Seek_Down:
@@ -174,12 +172,13 @@ void CDChanger::handle(const Frame *in, Frame *out) {
           --track;
         else
           track = TWODIGIT_MAX;
+
+        media_action(MediaAction::Track_Prev);
       }
       mins = 0xff;
       secs = 0x7f;
       flags2 = 0xc0;
       generateStatus(out, true, Device::CMD_SW);
-      AVCLAN_mediaFunction(MEDIA_SKIP_BACKWARD);
       out->reaction = r_TrackChange;
       break;
     case Track_Fast_Forward: {
@@ -190,9 +189,9 @@ void CDChanger::handle(const Frame *in, Frame *out) {
         ++mins;
       }
       generateStatus(out, true, Device::CMD_SW);
-      AVCLAN_mediaFunction(MEDIA_SKIP_FORWARD);
-      statustimer_reset(); // Skipped to a whole/round sec; ensure next tick
-                           // is ~1 sec from now
+      media_action(MediaAction::Skip_Forward);
+      cdtimer_reset(); // Skipped to a whole/round sec; ensure next tick
+                       // is ~1 sec from now
       out->reaction = r_SendOnly;
       break;
     }
@@ -210,9 +209,9 @@ void CDChanger::handle(const Frame *in, Frame *out) {
       } else
         secs -= TIME_SKIP;
       generateStatus(out, true, Device::CMD_SW);
-      AVCLAN_mediaFunction(MEDIA_SKIP_BACKWARD);
-      statustimer_reset(); // Skipped to a whole/round sec; ensure next tick
-                           // is ~1 sec from now
+      media_action(MediaAction::Skip_Backward);
+      cdtimer_reset(); // Skipped to a whole/round sec; ensure next tick
+                       // is ~1 sec from now
       out->reaction = r_SendOnly;
       break;
     }
@@ -296,8 +295,8 @@ void CDChanger::react(Frame *out, detail::Error::Send err) {
       break;
     case r_TrackChange:
       setTime(0, 0);
-      statustimer_reset(); // Skipped to a whole/round sec; ensure next tick is
-                           // ~1 sec from now
+      cdtimer_reset(); // Skipped to a whole/round sec; ensure next tick is
+                       // ~1 sec from now
       [[fallthrough]];
     case r_NormalizeState:
       normalizeState();
@@ -336,8 +335,8 @@ void CDChanger::enable(Frame *out) {
   }
 }
 
-bool CDChanger::pending() { return statustimer_tickPending(); }
-void CDChanger::resolvepending() { statustimer_clearTick(); }
+bool CDChanger::pending() { return cdtimer_pending(); }
+void CDChanger::resolvepending() { cdtimer_clear(); }
 
 void CDChanger::emit(Frame *out, uint16_t peripheral) {
   out->peripheral_addr = peripheral;
@@ -352,16 +351,16 @@ bool CDChanger::isPlaying() const { return playing; }
 void CDChanger::startPlaying() {
   static bool havePlayed = false;
   if (havePlayed)
-    AVCLAN_mediaFunction(MEDIA_PLAY_PAUSE);
+    media_action(MediaAction::Play);
   havePlayed |= true;
   playing = true;
-  statustimer_reset();
+  cdtimer_reset();
 }
 
 void CDChanger::stopPlaying() {
-  statustimer_disable();
+  cdtimer_disable();
   playing = false;
-  AVCLAN_mediaFunction(MEDIA_PLAY_PAUSE);
+  media_action(MediaAction::Pause);
 }
 
 // Serialize cd_status into the wire format.
@@ -424,5 +423,11 @@ void CDChanger::normalizeState() {
   flags &= (uint8_t)~(DISK_SCAN | SCAN);
   flags2 = 0x80;
 }
+
+#ifndef NDEBUG
+void CDChanger::media_action(MediaAction action) { ::media_action(action); }
+bool CDChanger::media_busy() const { return ::media_busy(); };
+void CDChanger::mic_toggle() { media_mic_toggle(); };
+#endif
 
 } // namespace avclan

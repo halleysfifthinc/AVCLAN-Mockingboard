@@ -13,7 +13,8 @@ add_compile_options(
     $<$<COMPILE_LANGUAGE:CXX>:-fno-threadsafe-statics>
     $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
     $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
-    $<$<CONFIG:Debug>:-fanalyzer>)
+    $<$<CONFIG:Debug>:-fanalyzer>
+    $<$<CONFIG:Debug>:-Wno-analyzer-use-of-uninitialized-value>)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "13")
