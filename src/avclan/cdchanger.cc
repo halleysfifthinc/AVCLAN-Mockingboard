@@ -300,12 +300,12 @@ void CDChanger::react(Frame *out, detail::Error::Send err) {
       [[fallthrough]];
     case r_NormalizeState:
       normalizeState();
-      generateStatus(out, true, Device::STATUS);
+      generateStatus(out, false, Device::STATUS);
       out->reaction = r_SendOnly;
       break;
     case r_StartPlaying:
       normalizeState();
-      generateStatus(out, true, Device::STATUS);
+      generateStatus(out, false, Device::STATUS);
       out->reaction = r_BeganPlaying;
       break;
     case r_BeganPlaying:
@@ -313,7 +313,7 @@ void CDChanger::react(Frame *out, detail::Error::Send err) {
       out->reaction = r_Nothing;
       break;
     case r_StatusReport:
-      generateStatus(out, true, Device::STATUS);
+      generateStatus(out, false, Device::STATUS);
       out->reaction = r_SendOnly;
       break;
     case r_SendOnly: [[fallthrough]];
@@ -330,7 +330,7 @@ void CDChanger::enable(Frame *out) {
       secs = 0;
     state = SEEKING | SEEKING_TRACK;
     flags2 = 0xc0;
-    generateStatus(out, true, Device::STATUS);
+    generateStatus(out, false, Device::STATUS);
     out->reaction = r_StartPlaying;
   }
 }
@@ -340,7 +340,7 @@ void CDChanger::resolvepending() { cdtimer_clear(); }
 
 void CDChanger::emit(Frame *out, uint16_t peripheral) {
   out->peripheral_addr = peripheral;
-  generateStatus(out, true, Device::STATUS);
+  generateStatus(out, false, Device::STATUS);
   out->reaction = r_StateReport;
 }
 

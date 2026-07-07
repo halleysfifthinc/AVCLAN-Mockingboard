@@ -82,8 +82,11 @@ public:
   Error::Send send(T bits, with_ack_t /*tag*/, bool expect_ack) {
     send<N>(bits, with_parity);
 
-    if (expect_ack && !read_ACK())
-      return Send::NAK;
+    if (expect_ack) {
+      if (!read_ACK())
+        return Send::NAK;
+    } else
+      sendbits<1>(1U); // still needs to fill the ack bit slot
 
     return Send{0};
   };
