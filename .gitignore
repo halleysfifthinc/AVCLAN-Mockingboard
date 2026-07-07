@@ -1,4 +1,14 @@
 *.o
 *.elf
 *.hex
+*.zip
+*.db
+*.bak
+out/
 build/
+_autosave*
+fp-info-cache
+__pycache__/
+~*
+\#*
+/CMakeUserPresets.json

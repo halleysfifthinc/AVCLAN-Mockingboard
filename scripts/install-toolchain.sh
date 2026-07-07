@@ -1,1 +1,2 @@
-sudo apk add make cmake avrdude avr-libc gcc-avr
+sudo apk add make cmake avrdude avr-libc gcc-avr tshark
+

@@ -1,0 +1,26 @@
+connectors:
+  X1:
+    type: D-Sub
+    subtype: female
+    pinlabels: [+12V, TX+, GND, R-, R+, MUTE, TX-, L-, L+]
+  Y1:
+    type: CN701
+    subtype: female
+    pins: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12]
+    pinlabels: [R+, L+, SGND, MUTE, +12V, R-, L-, GND, TX-, TX+, ACC]
+
+cables:
+  W1:
+    wirecount: 9
+    length: 1.5 ft
+    gauge: 24 AWG
+    colors: [RD, WH, YE, GN, OG, BU, VT, BN, BK]
+    notes: (colors of DSub cable; colors of CN701 harness may vary)
+
+connections:
+  - - X1: [1-9]
+    - W1: [1-9]
+    - Y1: [5, 10, 8, 6, 1, 4, 9, 7, 2]
+  - - X1: 3
+    - W1: 3
+    - Y1: 3
