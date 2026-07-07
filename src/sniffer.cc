@@ -127,7 +127,7 @@ int main() {
         case 'k': toggle_flag(&echoCharacters, "Echo characters: "); break;
         case 'm':
           toggle_flag(&muteBus, "Mute device: ");
-          AVCLAN_muteDevice(muteBus);
+          peripheral.mute(muteBus);
           break;
 
         // X/x isn't a toggle interface because this is used

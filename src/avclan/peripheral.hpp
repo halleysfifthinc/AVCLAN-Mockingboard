@@ -25,6 +25,8 @@ public:
 
   uint16_t address() const { return address_; };
   uint16_t controller() const { return controller_; };
+  void mute(bool mute) { bus.mute(mute); };
+  bool is_muted() const { return bus.is_muted(); };
 
   Error::Read read(Frame *in, Frame::Print print) {
     return bus.read(address_, in, print);
@@ -87,8 +89,10 @@ public:
           out->data[3] = to_underlying(Lancheck_End_Resp);
           out->reaction = 1;
           break;
-        case PACK3(COMMUNICATION_V1, COMM_CTRL, to_underlying(Advertise_Function)):
-        case PACK3(COMMUNICATION_V2, COMM_CTRL, to_underlying(Advertise_Function)):
+        case PACK3(COMMUNICATION_V1, COMM_CTRL,
+                   to_underlying(Advertise_Function)):
+        case PACK3(COMMUNICATION_V2, COMM_CTRL,
+                   to_underlying(Advertise_Function)):
           ((Devs::id == static_cast<Device>(b3)
             ? std::get<Devs>(devices_).enable(out),
             0 : 0),
@@ -108,8 +112,10 @@ public:
           out->reaction = 1;
           break;
         }
-        case PACK3(COMMUNICATION_V1, COMM_CTRL, to_underlying(List_Functions_Req)):
-        case PACK3(COMMUNICATION_V2, COMM_CTRL, to_underlying(List_Functions_Req)): {
+        case PACK3(COMMUNICATION_V1, COMM_CTRL,
+                   to_underlying(List_Functions_Req)):
+        case PACK3(COMMUNICATION_V2, COMM_CTRL,
+                   to_underlying(List_Functions_Req)): {
           controller_ = in->controller_addr;
           out->peripheral_addr = controller_;
           out->is_unicast = true;
