@@ -22,6 +22,7 @@
             "hidden": true,
             "description": "AVR ATtiny3216 cross-compile toolchain + matching port",
             "toolchainFile": "${sourceDir}/cmake/avr-gcc-toolchain.cmake",
+            "binaryDir": "${sourceDir}/out/build/attiny3216",
             "cacheVariables": {
                 "AVCLAN_TARGET": "avr-attiny3216",
                 "FREQSEL": "20MHz",
