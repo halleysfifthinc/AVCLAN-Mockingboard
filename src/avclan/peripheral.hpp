@@ -23,7 +23,6 @@ public:
     (std::get<Devs>(devices_).init(), ...);
   }
 
-  uint16_t address() const { return address_; };
   uint16_t controller() const { return controller_; };
   template <DeviceInterface Dev> Dev &device() {
     return std::get<Dev>(devices_);
