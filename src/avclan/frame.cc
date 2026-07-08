@@ -35,9 +35,8 @@ void Frame::print(Frame::Print print) const {
 
     bptr = buffer;
     *bptr++ = 0x17; // End of transmission block
-    *bptr++ = 0x0D; // \r
     *bptr++ = 0x0A; // \n
-    fwrite(buffer, 1, 3, stdout);
+    fwrite(buffer, 1, 2, stdout);
   } else {
     printf("%X", static_cast<unsigned>(is_unicast));
     printf(" 0x%03X", static_cast<unsigned>(controller_addr & 0x0FFF));
@@ -60,7 +59,7 @@ Error::Parse Frame::parse(const uint8_t *bytes, uint8_t len) {
 
   const uint8_t *last = bytes + len;
 
-  if (len < sizeof(avclan::Frame)) {
+  if (len < Frame::MIN_SIZE) {
     err.errno = TOO_SHORT;
     goto handle_err;
   }

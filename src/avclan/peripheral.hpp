@@ -39,8 +39,8 @@ public:
   Error::Read read(Frame *in, Frame::Print print) {
     return bus.read(address_, in, print);
   };
-  // To "forge" a controller_addr, instantiate a new/different Peripheral
   Error::Send send(Frame *out, Frame::Print print) {
+    // To "forge" a controller_addr, instantiate a new/different Peripheral
     postmark(out);
     return bus.send(out, print);
   };
@@ -71,9 +71,12 @@ public:
       b3 = *data++;
 
     if (!in->is_unicast) {
+      const auto from = b0;
+      const auto to = b1;
+      const auto action = b2;
       // Broadcast: bytes are (from, to, action, [extra...]).
       // peripheral_addr unchecked — always 0xFFF or 0x1FF in known traffic.
-      switch (PACK3(b0, b1, b2)) {
+      switch (PACK3(from, to, action)) {
         case PACK3(LAN, COMM_CTRL, to_underlying(Lancheck_Scan_Req)):
           out->length = sizeof(lancheck_resp);
           out->is_unicast = true;
@@ -112,12 +115,9 @@ public:
         case PACK3(COMMUNICATION_V1, COMM_CTRL, to_underlying(Ping_Req)):
         case PACK3(COMMUNICATION_V2, COMM_CTRL, to_underlying(Ping_Req)): {
           out->is_unicast = true;
-          const uint8_t ping_resp[] = {0x00,
-                                       to_underlying(COMM_CTRL),
-                                       to_underlying(COMMUNICATION_V1),
-                                       to_underlying(Ping_Resp),
-                                       0xFF,
-                                       b3};
+          const uint8_t ping_resp[] = {0x00, to_underlying(COMM_CTRL),
+                                       from, to_underlying(Ping_Resp),
+                                       0xFF, b3};
           out->length = sizeof(ping_resp);
           memcpy(out->data, ping_resp, sizeof(ping_resp));
           out->reaction = 1;
@@ -131,14 +131,15 @@ public:
           out->peripheral_addr = controller_;
           out->is_unicast = true;
           const uint8_t list_functions_resp[] = {
-              0x00, to_underlying(COMM_CTRL), to_underlying(COMMUNICATION_V1),
-              to_underlying(List_Functions_Resp), to_underlying(CD_CHANGER)};
+              0x00, to_underlying(COMM_CTRL), from,
+              to_underlying(List_Functions_Resp), to_underlying(Devs::id)...};
           out->length = sizeof(list_functions_resp);
           memcpy(out->data, list_functions_resp, sizeof(list_functions_resp));
           out->reaction = 1;
           break;
         }
-          // case Restart_Lan: not handled
+        // case Restart_Lan: not handled
+        default: break;
       }
     } else if (in->peripheral_addr == address_ && b0 == 0x00) {
       ((Devs::id == static_cast<Device>(b2)

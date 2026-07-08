@@ -61,7 +61,7 @@ PCAP_GLOBAL_HEADER = struct.pack(
 
 # Serial framing bytes emitted by AVCLAN_printframe(..., binary=1).
 DLE = 0x10  # start of a binary frame
-ETB = 0x17  # end of a binary frame (followed by \r\n)
+ETB = 0x17  # end of a binary frame (followed by \n; CR tolerated, see below)
 MAX_DATA_LEN = 32  # AVCLAN payload cap; longer "length" => bad framing
 
 BAUD = 1_200_000

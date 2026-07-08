@@ -7,12 +7,11 @@
 #include <avr/io.h>
 #include <avr/sfr_defs.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <util/atomic.h>
 
-#include "hal/phy.h"
-#include "media_avr.h"    // media_sync_during_mask (guard)
 #include "hal/cd_timer.h" // statustimer_enable/disable (guard)
+#include "hal/phy.h"
+#include "media_avr.h" // media_sync_during_mask (guard)
 
 // F_CPU + TICK_US (timing.h) defined here; F_CPU potentially needed by
 // avr-libc.
@@ -152,12 +151,7 @@ void phy_send_ack() {
   phy_send_bit(bit_zero);
 }
 
-/* Returns true if the peripheral sent an ACK bit.
-  An ACK bit is a cooperative bit, where the sender starts (drives the bus) a
-  sync period, and allows the receiver to drive the bus (or not) to finish a "1"
-  bit.
-*/
-uint8_t phy_read_ack() {
+Send phy_read_ack() {
   TCB1.CNT = 0;                              // Double reset of TCB1.CNT: here
   set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0); // And here (within)
   AVCLAN_setBusIdle();                       // Stop driving bus
@@ -166,15 +160,15 @@ uint8_t phy_read_ack() {
     if (!BUS_IS_IDLE && (TCB1.CNT > AVCLAN_READBIT_THRESHOLD))
       break; // ACK
     if (TCB1.CNT > AVCLAN_BIT_LENGTH_MAX)
-      return 0; // NAK
+      return NAK;
   }
 
   // Check/wait in case we get here before peripheral finishes ACK bit
   while (!BUS_IS_IDLE) {
     if (TCB1.CNT > AVCLAN_BIT_LENGTH_MAX)
-      return 0; // NAK
+      return NAK;
   }
-  return 1;
+  return (Send)0;
 }
 
 // Send `len` bits on the AVCLAN bus; returns the even parity
@@ -244,26 +238,27 @@ ISR(TCB0_INT_vect) {
 
 // Read `len` bits on the AVCLAN bus; returns the even parity
 uint8_t phy_read_bits_u8(uint8_t *bits, uint8_t len) {
-  cli();
-  READING_BYTE = 0;
-  READING_PARITY = 0;
-  READING_NBITS = len;
-  sei();
+  uint8_t parity;
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    READING_BYTE = 0;
+    READING_PARITY = 0;
+    READING_NBITS = len;
 
-  TCB1.CNT = 0;
-  while (READING_NBITS) {
-    // 200% the duration of `len` bits
-    if (TCB1.CNT > ((uint16_t)AVCLAN_BIT_LENGTH_MAX * 2 * len)) {
-      READING_BYTE = 0;
-      READING_PARITY = 0;
-      break; // Should have finished by now; something's wrong
+    NONATOMIC_BLOCK(NONATOMIC_RESTORESTATE) {
+      TCB1.CNT = 0;
+      while (READING_NBITS) {
+        // 200% the duration of `len` bits
+        if (TCB1.CNT > ((uint16_t)AVCLAN_BIT_LENGTH_MAX * 2 * len)) {
+          READING_BYTE = 0;
+          READING_PARITY = 0;
+          break; // Should have finished by now; something's wrong
+        }
+      };
     }
-  };
 
-  cli();
-  *bits = READING_BYTE;
-  uint8_t parity = READING_PARITY;
-  sei();
+    *bits = READING_BYTE;
+    parity = READING_PARITY;
+  }
 
   return (parity & 1);
 }
@@ -283,26 +278,27 @@ uint8_t phy_read_bits_u16(uint16_t *bits, int8_t len) {
 
 // Read a byte on the AVCLAN bus
 uint8_t phy_read_byte(uint8_t *byte) {
-  cli();
-  READING_BYTE = 0;
-  READING_PARITY = 0;
-  READING_NBITS = 8;
-  sei();
+  uint8_t parity;
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    READING_BYTE = 0;
+    READING_PARITY = 0;
+    READING_NBITS = 8;
 
-  TCB1.CNT = 0;
-  while (READING_NBITS) {
-    // 200% the length of a byte
-    if (TCB1.CNT > ((uint16_t)AVCLAN_BIT_LENGTH_MAX * 2 * 8)) {
-      READING_BYTE = 0;
-      READING_PARITY = 0;
-      break; // Should have finished by now; something's wrong
+    NONATOMIC_BLOCK(NONATOMIC_RESTORESTATE) {
+      TCB1.CNT = 0;
+      while (READING_NBITS) {
+        // 200% the length of a byte
+        if (TCB1.CNT > ((uint16_t)AVCLAN_BIT_LENGTH_MAX * 2 * 8)) {
+          READING_BYTE = 0;
+          READING_PARITY = 0;
+          break; // Should have finished by now; something's wrong
+        }
+      };
     }
-  };
 
-  cli();
-  *byte = READING_BYTE;
-  uint8_t parity = READING_PARITY;
-  sei();
+    *byte = READING_BYTE;
+    parity = READING_PARITY;
+  }
 
   return (parity & 1);
 }

@@ -57,6 +57,9 @@ void CDChanger::init() {
 }
 
 void CDChanger::handle(const Frame *in, Frame *out) {
+  if (in->length < 4)
+    return; // [Currently known] valid CDChanger frames have at least 4 bytes
+
   const uint8_t *data = &in->data[1];
   const auto from = static_cast<Device>(*data++);
   /* const auto to = */ data++;
@@ -184,7 +187,7 @@ void CDChanger::handle(const Frame *in, Frame *out) {
     case Track_Fast_Forward: {
       state |= SEEKING;
       secs += TIME_SKIP;
-      if (secs > 60) {
+      if (secs > 59) {
         secs -= 60;
         ++mins;
       }

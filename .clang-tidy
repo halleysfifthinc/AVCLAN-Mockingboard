@@ -1,17 +1,21 @@
 ---
 Checks: |
   -*,
+  bugprone-*,
+  cppcoreguidelines-
   clang-diagnostic-*,
   clang-analyzer-*,
-  -clang-analyzer-core.NullDereference,
-  bugprone-*,
   misc-*,
   modernize-*,
   performance-*,
   readability-*,
+  -clang-analyzer-core.NullDereference,
   -modernize-use-nodiscard,
   -modernize-use-trailing-return-type,
   -readability-braces-around-statements,
+  -modernize-avoid-c-arrays,
+  -modernize-use-std-print,
+  -readability-magic-numbers,
 WarningsAsErrors: ""
 ExcludeHeaderFilterRegex: 'out/build'
 HeaderFilterRegex: '^src/.*'
@@ -26,7 +30,7 @@ CheckOptions:
   - key: readability-identifier-length.IgnoredVariableNames
     value: "(in|to|id)"
   - key: readability-identifier-length.IgnoredParameterNames
-    value: "(in|to)"
+    value: "(in|to|x)"
   - key: bugprone-argument-comment.CommentBoolLiterals
     value: "0"
   - key: bugprone-argument-comment.CommentCharacterLiterals

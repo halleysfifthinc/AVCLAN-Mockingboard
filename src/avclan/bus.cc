@@ -34,12 +34,12 @@
 #include "avclan.h"
 #include "bus.hpp"
 #include "frame.hpp"
-#include "hal/phy.h" // bridge until phy has been ported
+#include "hal/phy.h"
 
 namespace {
-constexpr int ADDR_WIDTH = 12;
-constexpr int CONTROL_WIDTH = 4;
-constexpr int BYTE_WIDTH = 8;
+using Read = avclan::detail::Error::Read;
+using Send = avclan::detail::Error::Send;
+using Bit = avclan::detail::Bit;
 
 struct trailer_bits_t {};
 struct no_parity_t : trailer_bits_t {};   // raw bits (the broadcast bit)
@@ -61,15 +61,14 @@ public:
   ~Handle() { phy_guard_leave(); };
   Handle(const Handle &) = delete;
   Handle(Handle &&) = delete;
-  using Error = detail::Error;
 
   bool sendstartbit() { return phy_send_startbit(); };
-  auto readstartbit() -> Read { return phy_read_startbit(); };
+  Read readstartbit() { return phy_read_startbit(); };
 
   template <auto N, std::unsigned_integral T,
             std::derived_from<trailer_bits_t> Trailer>
     requires(sizeof(T) < 3 && N < 16 && !std::same_as<Trailer, with_ack_t>)
-  Error::Send send(T bits, Trailer /*tag*/) {
+  Send send(T bits, Trailer /*tag*/) {
     const auto parity = sendbits<N>(bits);
 
     if constexpr (std::is_same_v<Trailer, with_parity_t>)
@@ -80,22 +79,20 @@ public:
 
   template <auto N, std::unsigned_integral T>
     requires(sizeof(T) < 3 && N < 16)
-  Error::Send send(T bits, with_ack_t /*tag*/, bool expect_ack) {
+  Send send(T bits, with_ack_t /*tag*/, bool expect_ack) {
     send<N>(bits, with_parity);
 
-    if (expect_ack) {
-      if (!read_ACK())
-        return Send::NAK;
-    } else
-      sendbits<1>(1U); // still needs to fill the ack bit slot
+    if (expect_ack)
+      return read_ACK();
 
+    sendbits<1>(1U); // still need to fill the ack bit slot
     return Send{0};
   };
 
   template <auto N, std::unsigned_integral T,
             std::derived_from<trailer_bits_t> Trailer>
     requires(sizeof(T) < 3 && N < 16 && !std::same_as<Trailer, with_ack_t>)
-  Error::Read read(T *bits, Trailer /*tag*/) {
+  Read read(T *bits, Trailer /*tag*/) {
     const auto calc_parity = readbits<N>(bits);
     if constexpr (std::is_same_v<Trailer, with_parity_t>) {
       uint8_t read_parity;
@@ -108,7 +105,7 @@ public:
 
   template <auto N, std::unsigned_integral T, class F>
     requires(sizeof(T) < 3 && N < 16)
-  Error::Read read(T *bits, with_ack_t /*tag*/, F &&ack) {
+  Read read(T *bits, with_ack_t /*tag*/, F &&ack) {
     if (read<N>(bits, with_parity) == Read::BAD_PARITY)
       return Read::BAD_PARITY;
 
@@ -123,23 +120,17 @@ public:
   };
   template <auto N, std::unsigned_integral T>
     requires(sizeof(T) < 3 && N < 16)
-  Error::Read read(T *bits, with_ack_t /*tag*/, bool ack) {
+  Read read(T *bits, with_ack_t /*tag*/, bool ack) {
     return read<N>(bits, with_ack, [=]() { return ack; });
   }
 
 private:
-  using Read = Error::Read;
-  using Send = Error::Send;
-  using Bit = detail::Bit;
-
   static void send_ACK() { phy_send_ack(); };
-  static uint8_t read_ACK() { return phy_read_ack(); };
+  static Send read_ACK() { return phy_read_ack(); };
 
   template <auto N, class T> Bit sendbits(T bits);
   template <auto N, class T> Bit readbits(T *bits);
 
-  // Temporary specializations bridging to legacy C API
-  // Replace with proper (single?) template when phy has been ported
   template <auto N>
     requires(N > 1 && N < 8)
   Bit sendbits(uint8_t bits) {
@@ -179,13 +170,13 @@ bool Bus::is_active() const { return phy_active(); };
 void Bus::mute(bool mute) { phy_mute(mute); };
 bool Bus::is_muted() const { return phy_is_muted(); };
 
-auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
+auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Read {
   struct errtype {
-    Error::Read errno;
+    Read errno;
     uint16_t val;
   } err = {};
 
-  using enum detail::Error::Read;
+  using enum Read;
 
   { // bound handle lifetime
     auto handle = get();
@@ -194,53 +185,52 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
     uint8_t tmp = 0;
 
     err.errno = handle.readstartbit();
-    if (err.errno != Error::Read{0})
+    if (err.errno != Read{0})
       goto handle_err;
 
     handle.read<1>(&tmp, no_parity);
     in->is_unicast = (tmp != 0U);
 
-    if (auto rerr = handle.read<ADDR_WIDTH>(&in->controller_addr, with_parity);
+    if (auto rerr = handle.read<12>(&in->controller_addr, with_parity);
         rerr == BAD_PARITY) {
       err.errno = BAD_CONTROLLER_PARITY;
-      if (print.verbose) {
+      if (print.verbose)
         err.val = in->controller_addr;
-      }
+
       goto handle_err;
     }
 
-    if (auto rerr = handle.read<ADDR_WIDTH>(
-            &in->peripheral_addr, with_ack,
-            // Using lambda for delayed evaluation of peripheral_addr field
-            // deref, which will be written by the time the lambda is evaluated
-            [&]() {
-              shouldACK = !is_muted() && (in->peripheral_addr == address);
-              return shouldACK;
-            });
+    // Using lambda for delayed evaluation of peripheral_addr field
+    // deref, which will be written by the time the lambda is evaluated
+    auto should_ack_lambda = [&]() {
+      shouldACK = !is_muted() && (in->peripheral_addr == address);
+      return shouldACK;
+    };
+    if (auto rerr =
+            handle.read<12>(&in->peripheral_addr, with_ack, should_ack_lambda);
         rerr == BAD_PARITY) {
       err.errno = BAD_PERIPHERAL_PARITY;
-      if (print.verbose) {
+      if (print.verbose)
         err.val = in->peripheral_addr;
-      }
+
       goto handle_err;
     }
 
-    if (auto rerr =
-            handle.read<CONTROL_WIDTH>(&in->control, with_ack, shouldACK);
+    if (auto rerr = handle.read<4>(&in->control, with_ack, shouldACK);
         rerr == BAD_PARITY) {
       err.errno = BAD_CONTROL_PARITY;
-      if (print.verbose) {
+      if (print.verbose)
         err.val = in->control;
-      }
+
       goto handle_err;
     }
 
-    if (auto rerr = handle.read<BYTE_WIDTH>(&in->length, with_ack, shouldACK);
+    if (auto rerr = handle.read<8>(&in->length, with_ack, shouldACK);
         rerr == BAD_PARITY) {
       err.errno = BAD_LENGTH_PARITY;
-      if (print.verbose) {
+      if (print.verbose)
         err.val = in->length;
-      }
+
       goto handle_err;
     }
 
@@ -251,13 +241,12 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
     }
 
     for (uint8_t i = 0; i < in->length; i++) {
-      if (auto rerr =
-              handle.read<BYTE_WIDTH>(&in->data[i], with_ack, shouldACK);
+      if (auto rerr = handle.read<8>(&in->data[i], with_ack, shouldACK);
           rerr == BAD_PARITY) {
         err.errno = BAD_DATA_PARITY;
-        if (print.verbose) {
+        if (print.verbose)
           err.val = in->data[i];
-        }
+
         goto handle_err;
       }
     }
@@ -278,13 +267,13 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
         goto VERBOSE;
       case BAD_CONTROL_PARITY: fputs("reading control", stdout); goto VERBOSE;
       case BAD_LENGTH_PARITY: fputs("reading length", stdout); goto VERBOSE;
-      case BAD_LENGTH_RANGE: printf("bad length 0x%X", err.val & 0x0F); break;
+      case BAD_LENGTH_RANGE: printf("bad length 0x%02X", err.val); break;
       case BAD_DATA_PARITY: fputs("reading data", stdout); goto VERBOSE;
       case BAD_PARITY:
         __builtin_unreachable();
       VERBOSE:
         if (print.verbose) {
-          printf("; read 0x%X", err.val);
+          printf("; read 0x%02X", err.val);
         }
     }
     putchar('\n');
@@ -300,15 +289,15 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Error::Read {
   return err.errno;
 }
 
-auto Bus::send(const Frame *out, Frame::Print print) -> Error::Send {
+auto Bus::send(const Frame *out, Frame::Print print) -> Send {
   struct errtype {
     // Error enum is ordered such that a lower numeric value corresponds to
     // more success
-    Error::Send errno;
+    Send errno;
     uint8_t val;
   } err = {};
 
-  using enum detail::Error::Send;
+  using enum Send;
 
   if (is_muted()) {
     err.errno = MUTED;
@@ -326,24 +315,22 @@ auto Bus::send(const Frame *out, Frame::Print print) -> Error::Send {
 
     handle.send<1>(static_cast<uint8_t>(out->is_unicast), no_parity);
 
-    handle.send<ADDR_WIDTH>(out->controller_addr, with_parity);
+    handle.send<12>(out->controller_addr, with_parity);
 
-    if (auto serr = handle.send<ADDR_WIDTH>(out->peripheral_addr, with_ack,
-                                            out->is_unicast);
+    if (auto serr =
+            handle.send<12>(out->peripheral_addr, with_ack, out->is_unicast);
         serr == NAK) {
       err.errno = NAK_ADDRESS;
       goto handle_err;
     }
 
-    if (auto serr =
-            handle.send<CONTROL_WIDTH>(out->control, with_ack, out->is_unicast);
+    if (auto serr = handle.send<4>(out->control, with_ack, out->is_unicast);
         serr == NAK) {
       err.errno = NAK_CONTROL;
       goto handle_err;
     }
 
-    if (auto serr =
-            handle.send<BYTE_WIDTH>(out->length, with_ack, out->is_unicast);
+    if (auto serr = handle.send<8>(out->length, with_ack, out->is_unicast);
         serr == NAK) {
       err.errno = NAK_MESSAGE_LENGTH;
       goto handle_err;
@@ -354,8 +341,7 @@ auto Bus::send(const Frame *out, Frame::Print print) -> Error::Send {
       // necessary (i.e. This deviates from the previous broadcast specific
       // function that sent an extra `1` bit after each byte/parity)
       // Explanation for why audio-group broadcast state report isn't working?
-      if (auto serr =
-              handle.send<BYTE_WIDTH>(out->data[i], with_ack, out->is_unicast);
+      if (auto serr = handle.send<8>(out->data[i], with_ack, out->is_unicast);
           serr == NAK) {
         err.errno = NAK_DATA;
         err.val = i;

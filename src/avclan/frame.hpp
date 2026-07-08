@@ -20,6 +20,7 @@ struct Frame {
   };
   using Error = detail::Error;
   static constexpr int MAXLENGTH = 32;
+  static constexpr int MIN_SIZE = 7;
 
   Error::Parse parse(const uint8_t *bytes, uint8_t len);
   void print(Print print) const;

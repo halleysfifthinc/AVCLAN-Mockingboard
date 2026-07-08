@@ -11,10 +11,12 @@
 
 #ifdef __cplusplus
 using Read = avclan::detail::Error::Read;
+using Send = avclan::detail::Error::Send;
 using Bit = avclan::detail::Bit;
 extern "C" {
 #else
 typedef enum Read Read;
+typedef enum Send Send;
 typedef enum Bit Bit;
 #endif
 
@@ -49,7 +51,13 @@ bool phy_send_startbit(void);
 // suffixes name the source-operand width; `len` is how many bits (<= width).
 void phy_send_bit(Bit bit);
 void phy_send_ack(void);
-uint8_t phy_read_ack(void);
+
+/* Returns 0 (`(Send)0`) if the peripheral sent an ACK bit, otherwise returns
+  NAK. An ACK bit is a cooperative bit, where the sender starts (drives the bus)
+  for the sync period, and allows the receiver to drive the bus (or not) to
+  finish a "1" bit.
+*/
+Send phy_read_ack(void);
 
 Bit phy_send_bits_u8(const uint8_t *bits, int8_t len);
 Bit phy_send_bits_u16(const uint16_t *bits, int8_t len);

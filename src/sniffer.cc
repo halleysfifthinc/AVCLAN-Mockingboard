@@ -219,9 +219,9 @@ int main() {
           seqIsUnicast = false;
           break;
         case '\n':
-          if (readSeq) {
+          if (readSeq && seqIdx > 0) {
             if (readBinary) {
-              if (data_tmp[seqIdx] == 0x17) {
+              if (data_tmp[seqIdx - 1] == 0x17) {
                 if (auto out = cache.pop()) {
                   if (out->parse(data_tmp, --seqIdx) ==
                       Frame::Error::Parse{0}) {
@@ -233,7 +233,7 @@ int main() {
               } else
                 goto DEFAULT; // reading binary and this is a real data byte;
                               // fall through to default
-            } else {
+            } else if (seqIdx <= Frame::MAXLENGTH) {
               if (auto out = cache.pop()) {
                 out->is_unicast = seqIsUnicast;
                 out->peripheral_addr =
@@ -249,7 +249,7 @@ int main() {
           }
         DEFAULT:
         default:
-          if (readSeq) {
+          if (readSeq && seqIdx < (Frame::MAXLENGTH + sizeof(Frame))) {
             if (readBinary) {
               data_tmp[seqIdx++] = readkey;
             } else {
