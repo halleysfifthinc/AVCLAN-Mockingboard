@@ -237,7 +237,7 @@ ISR(TCB0_INT_vect) {
 }
 
 // Read `len` bits on the AVCLAN bus; returns the even parity
-uint8_t phy_read_bits_u8(uint8_t *bits, uint8_t len) {
+Bit phy_read_bits_u8(uint8_t *bits, uint8_t len) {
   uint8_t parity;
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     READING_BYTE = 0;
@@ -260,11 +260,11 @@ uint8_t phy_read_bits_u8(uint8_t *bits, uint8_t len) {
     parity = READING_PARITY;
   }
 
-  return (parity & 1);
+  return (Bit)(parity & 1);
 }
 
 // Read `len` bits on the AVCLAN bus; returns the even parity
-uint8_t phy_read_bits_u16(uint16_t *bits, int8_t len) {
+Bit phy_read_bits_u16(uint16_t *bits, int8_t len) {
   uint8_t parity = 0;
   if (len > 8) {
     uint8_t over = len - 8;
@@ -273,11 +273,11 @@ uint8_t phy_read_bits_u16(uint16_t *bits, int8_t len) {
   }
   parity += phy_read_bits_u8((uint8_t *)bits + 0, len);
 
-  return (parity & 1);
+  return (Bit)(parity & 1);
 }
 
 // Read a byte on the AVCLAN bus
-uint8_t phy_read_byte(uint8_t *byte) {
+Bit phy_read_byte(uint8_t *byte) {
   uint8_t parity;
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     READING_BYTE = 0;
@@ -300,7 +300,7 @@ uint8_t phy_read_byte(uint8_t *byte) {
     parity = READING_PARITY;
   }
 
-  return (parity & 1);
+  return (Bit)(parity & 1);
 }
 
 void phy_init() {
@@ -384,7 +384,7 @@ Read phy_read_startbit() {
 
 // Acquire the bus and emit a start bit. Returns false if another device is
 // already driving the bus (we can't yet do proper CSMA/CD).
-bool phy_send_startbit() {
+Send phy_send_startbit() {
   // wait for free line
   TCB1.CNT = 0;
   while (BUS_IS_IDLE) {
@@ -407,10 +407,10 @@ bool phy_send_startbit() {
     // if (TCB1.CNT <= (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8))
     //   return false; // Shouldn't be possible
     // set_AVC_logic_for(1, AVCLAN_STARTBIT_LOGIC_1); // wait for end of start
-    return false;
+    return BUSY;
   }
   phy_send_bit(bit_start);
-  return true;
+  return (Send)0;
 }
 
 /* Disable non-read related interrupts (USART RX, RTC status tick, mic timer)

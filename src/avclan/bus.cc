@@ -62,7 +62,7 @@ public:
   Handle(const Handle &) = delete;
   Handle(Handle &&) = delete;
 
-  bool sendstartbit() { return phy_send_startbit(); };
+  Send sendstartbit() { return phy_send_startbit(); };
   Read readstartbit() { return phy_read_startbit(); };
 
   template <auto N, std::unsigned_integral T,
@@ -162,7 +162,7 @@ template <> inline Bit Bus::Handle::sendbits<1>(uint8_t bits) {
   return bit;
 };
 template <> inline Bit Bus::Handle::readbits<8>(uint8_t *bits) {
-  return static_cast<Bit>(phy_read_byte(bits));
+  return phy_read_byte(bits);
 };
 
 void Bus::init() { phy_init(); };
@@ -307,7 +307,7 @@ auto Bus::send(const Frame *out, Frame::Print print) -> Send {
   { // bound handle lifetime
     auto handle = get();
 
-    if (!handle.sendstartbit()) {
+    if (handle.sendstartbit() == BUSY) {
       // Some other device is already driving the bus
       err.errno = BUSY;
       goto handle_err;

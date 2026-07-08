@@ -9,7 +9,6 @@
   #define AVCLAN_ENUM_CLASS class
 
   #include <type_traits>
-  #include <utility>
 
 namespace avclan {
 
@@ -127,7 +126,9 @@ struct Error {
 #endif
 
   // Error enums are ordered such that a lower numeric value corresponds to
-  // more progress/success before an error occured, with 0 being no errors
+  // more progress/success before an error occured, with explicitly
+  // cast/constructed 0 (e.g. `Read{0}` in C++ or `(Read)0` in C) being no
+  // errors
   enum AVCLAN_ENUM_CLASS Read : uint8_t {
     BAD_DATA_PARITY = 0x01,
     BAD_LENGTH_RANGE,
@@ -135,7 +136,7 @@ struct Error {
     BAD_PERIPHERAL_PARITY,
     BAD_CONTROLLER_PARITY,
     BAD_CONTROL_PARITY,
-    BAD_PARITY, // non-specific bad parity
+    BAD_PARITY, // generic bad parity has max severity
     STARTBIT_TOO_SHORT,
     STARTBIT_TOO_LONG,
     BAD_STARTBIT,
@@ -146,7 +147,7 @@ struct Error {
     NAK_MESSAGE_LENGTH,
     NAK_CONTROL,
     NAK_ADDRESS,
-    NAK, // non-specific NAK
+    NAK, // generic NAK has max severity
     BUSY,
     MUTED,
   };
