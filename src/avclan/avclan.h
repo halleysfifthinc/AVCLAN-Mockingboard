@@ -151,6 +151,12 @@ struct Error {
     MUTED,
   };
 
+  enum AVCLAN_ENUM_CLASS Parse : uint8_t {
+    TOO_SHORT = 0x01,
+    MISMATCH_LENGTH,
+    LENGTH_TOO_BIG,
+  };
+
 #ifdef __cplusplus
 };
 #endif

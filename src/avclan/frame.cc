@@ -10,7 +10,7 @@
 #include "frame.hpp"
 
 namespace {
-using Error = avclan::Frame::Error;
+using Error = avclan::detail::Error;
 using enum Error::Parse;
 } // namespace
 

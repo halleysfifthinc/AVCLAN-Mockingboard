@@ -7,6 +7,8 @@
 
 #include <cstdint>
 
+#include "avclan.h"
+
 namespace avclan {
 enum class Device : uint8_t;
 
@@ -16,13 +18,7 @@ struct Frame {
     bool binary : 1 = false;  // if printing, format as binary instead of text
     bool verbose : 1 = false; // include extra context in error reports
   };
-  struct Error {
-    enum class Parse : uint8_t {
-      TOO_SHORT = 0x01,
-      MISMATCH_LENGTH,
-      LENGTH_TOO_BIG,
-    };
-  };
+  using Error = detail::Error;
   static constexpr int MAXLENGTH = 32;
 
   Error::Parse parse(const uint8_t *bytes, uint8_t len);
