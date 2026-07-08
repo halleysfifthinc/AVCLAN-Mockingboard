@@ -47,9 +47,7 @@
 
 #pragma once
 
-#include <concepts>
 #include <cstdint>
-#include <type_traits>
 
 #include "avclan.h"
 #include "frame.hpp"
@@ -60,11 +58,20 @@ class Bus {
 public:
   using Error = detail::Error;
 
+  // There is exactly one physical bus (the HAL `phy_*` layer is a singleton).
+  // `Bus` models that single hardware instance: it is owned once and shared by
+  // reference (e.g. multiple `Peripheral`s hold a `Bus &`), never copied — a
+  // copy would fork `muted_`, which must stay coherent with the one hardware
+  // TX state.
+  Bus() = default;
+  Bus(const Bus &) = delete;
+  Bus &operator=(const Bus &) = delete;
+
   void init();
 
   bool is_active() const;
   void mute(bool mute);
-  bool is_muted() const;
+  bool is_muted() const { return muted_; };
 
 #ifndef NDEBUG
   void measure();
@@ -75,7 +82,11 @@ public:
 
 private:
   class Handle;
-  static Handle get();
+  Handle get();
+
+  // Assume mute after default ctor; only viable after init call
+  bool muted_ = true;
+  bool inited_ = false;
 };
 
 } // namespace avclan

@@ -29,6 +29,7 @@
   No acknowledge bits are sent for broadcast frames.
 */
 
+#include <concepts>
 #include <cstdio>
 
 #include "avclan.h"
@@ -54,7 +55,12 @@ inline constexpr with_ack_t with_ack{};
 namespace avclan {
 
 class Bus::Handle {
-  Handle() { phy_guard_enter(); };
+  // A live handle exclusively borrows the Bus for the duration of a
+  // transaction; holding the reference is what forces `get()` (and thus
+  // `read`/`send`) to require a mutable Bus, even though the bus hardware
+  // itself is reached through free `phy_*` functions.
+  Bus &bus_;
+  explicit Handle(Bus &bus) : bus_{bus} { phy_guard_enter(); };
   friend Bus;
 
 public:
@@ -62,17 +68,19 @@ public:
   Handle(const Handle &) = delete;
   Handle(Handle &&) = delete;
 
+  // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
   Send sendstartbit() { return phy_send_startbit(); };
+  // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
   Read readstartbit() { return phy_read_startbit(); };
 
   template <auto N, std::unsigned_integral T,
             std::derived_from<trailer_bits_t> Trailer>
     requires(sizeof(T) < 3 && N < 16 && !std::same_as<Trailer, with_ack_t>)
   Send send(T bits, Trailer /*tag*/) {
-    const auto parity = sendbits<N>(bits);
+    const Bit parity = sendbits<N>(bits);
 
     if constexpr (std::is_same_v<Trailer, with_parity_t>)
-      sendbits<1>(static_cast<uint8_t>(parity));
+      sendbits<1>(to_underlying(parity));
 
     return Send{0};
   };
@@ -93,11 +101,11 @@ public:
             std::derived_from<trailer_bits_t> Trailer>
     requires(sizeof(T) < 3 && N < 16 && !std::same_as<Trailer, with_ack_t>)
   Read read(T *bits, Trailer /*tag*/) {
-    const auto calc_parity = readbits<N>(bits);
+    const Bit calc_parity = readbits<N>(bits);
     if constexpr (std::is_same_v<Trailer, with_parity_t>) {
       uint8_t read_parity;
       readbits<1>(&read_parity);
-      if (static_cast<uint8_t>(calc_parity) != read_parity)
+      if (to_underlying(calc_parity) != read_parity)
         return Read::BAD_PARITY;
     }
     return Read{0};
@@ -165,10 +173,23 @@ template <> inline Bit Bus::Handle::readbits<8>(uint8_t *bits) {
   return phy_read_byte(bits);
 };
 
-void Bus::init() { phy_init(); };
+void Bus::init() {
+  // Idempotent: the single Bus is shared by reference, so every Peripheral's
+  // ctor calls init() on it — but the hardware must be brought up exactly once
+  // (phy_init is not assumed re-entrant/idempotent).
+  if (inited_)
+    return;
+  phy_init();
+  muted_ = false; // phy_init leaves the bus TX unmuted
+  inited_ = true;
+};
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 bool Bus::is_active() const { return phy_active(); };
-void Bus::mute(bool mute) { phy_mute(mute); };
-bool Bus::is_muted() const { return phy_is_muted(); };
+void Bus::mute(bool mute) {
+  phy_mute(mute);
+  muted_ = mute; // Only update muted_ *AFTER* hardware has finished muting
+};
 
 auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Read {
   struct errtype {
@@ -383,9 +404,12 @@ auto Bus::send(const Frame *out, Frame::Print print) -> Send {
   return err.errno;
 }
 
-Bus::Handle Bus::get() { return {}; };
+Bus::Handle Bus::get() { return Handle{*this}; };
 
 #ifndef NDEBUG
+// Debug bit-timing measurement on the one physical bus; instance-scoped for the
+// same reason as is_active().
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void Bus::measure() { phy_measure(); }
 #endif
 

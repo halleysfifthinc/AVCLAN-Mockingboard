@@ -18,7 +18,7 @@ template <DeviceInterface... Devs> class Peripheral {
 public:
   using Error = detail::Error;
 
-  Peripheral(Bus bus, uint16_t address) : bus{bus}, address_{address} {
+  Peripheral(Bus &bus, uint16_t address) : bus{bus}, address_{address} {
     bus.init();
     (std::get<Devs>(devices_).init(), ...);
   }
@@ -181,7 +181,7 @@ private:
     dev.handle(in, out);
   }
 
-  Bus bus;
+  Bus &bus;
   uint16_t controller_ = 0;
   const uint16_t address_;
   std::tuple<Devs...> devices_;
