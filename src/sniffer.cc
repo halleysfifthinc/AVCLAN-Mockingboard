@@ -28,14 +28,33 @@ constinit Queue cache(frames);
 constinit Queue incoming = cache;
 constinit Queue outgoing = cache;
 
+uint8_t hexChars[2];
+uint8_t hexDigit = 0; // current digit being written to hexChars
+
+bool readSeq = false;
+bool seqIsUnicast = false;
+bool readBinary = false;
+
+bool verbose = true;
+bool printAllFrames = true;
+bool lastPrintAllFrames = true;
+bool printBinary = false;
+bool echoCharacters = true;
+bool muteBus = false;
+
+// Binary-mode REPL includes the full wire preamble (broadcast + 2*addr +
+// control + length), so size for the worst case.
+uint8_t data_tmp[Frame::MAXLENGTH + sizeof(Frame)];
+uint8_t seqIdx = 0; // current index in data_tmp
+
 void toggle_flag(bool *flag, const char *msg) {
   *flag = !*flag;
-  printf("%s%s\n", msg, offon[*flag]);
+  printf("%s %s\n", msg, offon[*flag]);
 }
 
 void set_flag(bool *flag, bool val, const char *msg) {
   *flag = val;
-  printf("%s%s\n", msg, offon[val]);
+  printf("%s %s\n", msg, offon[val]);
 }
 
 void Setup();
@@ -43,25 +62,6 @@ void print_help();
 } // namespace
 
 int main() {
-  uint8_t hexChars[2];
-  uint8_t hexDigit = 0; // current digit being written to hexChars
-
-  bool readSeq = false;
-  bool seqIsUnicast = false;
-  bool readBinary = false;
-
-  bool verbose = true;
-  bool printAllFrames = true;
-  bool lastPrintAllFrames = true;
-  bool printBinary = false;
-  bool echoCharacters = true;
-  bool muteBus = false;
-
-  // Binary-mode REPL includes the full wire preamble (broadcast + 2*addr +
-  // control + length), so size for the worst case.
-  uint8_t data_tmp[Frame::MAXLENGTH + sizeof(Frame)];
-  uint8_t seqIdx = 0; // current index in data_tmp
-
   Bus phy;
   using enum Action;
   using enum Device;
@@ -118,19 +118,19 @@ int main() {
     if (int readkey = getchar(); readkey != EOF) {
       switch (readkey) {
         case '?': print_help(); break;
-        case 'v': toggle_flag(&verbose, "Verbose errors: "); break;
-        case 'l': toggle_flag(&printAllFrames, "Logging: "); break;
-        case 'k': toggle_flag(&echoCharacters, "Echo characters: "); break;
+        case 'v': toggle_flag(&verbose, "Verbose errors:"); break;
+        case 'l': toggle_flag(&printAllFrames, "Logging:"); break;
+        case 'k': toggle_flag(&echoCharacters, "Echo characters:"); break;
         case 'm':
-          toggle_flag(&muteBus, "Mute device: ");
+          toggle_flag(&muteBus, "Mute device:");
           peripheral.mute(muteBus);
           break;
 
         // X/x isn't a toggle interface because this is used
         // programmatically and is simpler than reading back the toggle
         // state
-        case 'X': set_flag(&printBinary, true, "Binary: "); break;
-        case 'x': set_flag(&printBinary, false, "Binary: "); break;
+        case 'X': set_flag(&printBinary, true, "Binary:"); break;
+        case 'x': set_flag(&printBinary, false, "Binary:"); break;
 
         case 'E': // Beep
           if (auto out = cache.pop()) {
