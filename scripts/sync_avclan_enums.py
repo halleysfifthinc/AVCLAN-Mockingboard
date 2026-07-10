@@ -49,6 +49,7 @@ still bypasses it.
 import argparse
 import os
 import re
+import subprocess
 import sys
 
 # ---- locations -------------------------------------------------------------
@@ -227,10 +228,16 @@ def find_address_spec(root):
 
 
 def iter_src_files(root):
-    for dirpath, _dirs, files in os.walk(os.path.join(root, SRC_REL)):
-        for fn in sorted(files):
-            if fn.endswith(SRC_EXTS):
-                yield os.path.join(dirpath, fn)
+    """List source files under src/, via `git ls-files` so paths excluded by
+    .gitignore (e.g. the ESP32 port's CMake build directory, which vendors
+    FetchContent'd third-party code) are never walked into."""
+    out = subprocess.run(
+        ["git", "-C", root, "ls-files", "-z", "--cached", "--others",
+         "--exclude-standard", "--", SRC_REL],
+        capture_output=True, check=True, text=True,
+    ).stdout
+    paths = sorted(p for p in out.split("\0") if p.endswith(SRC_EXTS))
+    return [os.path.join(root, p) for p in paths]
 
 # ---- lint ------------------------------------------------------------------
 
@@ -471,8 +478,6 @@ def main():
     lua_path = os.path.join(root, LUA_REL)
     lua_lines = read_lines(lua_path)
     specs, have_address = build_specs(root)
-    if not have_address:
-        print("note: no Address enum found in src/ -- addresses not synced")
 
     # ---- lint (all modes) ----
     lint_failed = False
@@ -487,6 +492,8 @@ def main():
             print_lint(spec, LUA_REL, problems)
 
     if args.lint:
+        if not have_address:
+            print("note: no Address enum found in src/ -- addresses not synced")
         if lint_failed:
             print("lint: FAILED")
             return 1
@@ -503,6 +510,8 @@ def main():
     has_drift = any(not d.clean() for _s, _e, d in drifts)
 
     if args.fix:
+        if not have_address:
+            print("note: no Address enum found in src/ -- addresses not synced")
         if lint_failed:
             print("fix aborted: resolve the dissector name problems above first")
             return 1
@@ -525,16 +534,17 @@ def main():
         print("fix: applied" if has_drift else "fix: already in sync")
         return 0
 
-    # ---- default: report ----
+    # ---- default: report (silent on success -- this is the pre-commit hook) ----
+    if not (lint_failed or has_drift):
+        return 0
+    if not have_address:
+        print("note: no Address enum found in src/ -- addresses not synced")
     for spec, _entries, drift in drifts:
         if not drift.clean():
             print("%s drift:" % spec["name"])
             print_drift(drift)
-    if lint_failed or has_drift:
-        print("out of sync -- run: scripts/sync_avclan_enums.py --fix")
-        return 1
-    print("enums in sync with the dissector")
-    return 0
+    print("out of sync -- run: scripts/sync_avclan_enums.py --fix")
+    return 1
 
 
 if __name__ == "__main__":
