@@ -46,16 +46,15 @@ enum class Device : uint8_t {
 };
 
 template <class T>
-concept DeviceInterface =
-    requires { std::integral_constant<Device, T::id>{}; } &&
-    requires(T dev, const Frame *in, Frame *out, detail::Error::Send err,
-             uint16_t peripheral) {
-      dev.init();
-      dev.handle(in, out);
-      dev.enable(out);
-      dev.react(out, err);
-      { dev.pending() } -> std::convertible_to<bool>;
-      dev.resolvepending();
-      dev.emit(out, peripheral);
-    };
+concept DeviceInterface = requires {
+  std::integral_constant<Device, T::id>{};
+} && requires(T dev, const Frame *in, Frame *out, detail::Error::Send err) {
+  dev.init();
+  dev.handle(in, out);
+  dev.enable(out);
+  dev.react(out, err);
+  { dev.pending() } -> std::convertible_to<bool>;
+  dev.resolvepending();
+  dev.emit(out);
+};
 } // namespace avclan

@@ -66,7 +66,7 @@ public:
   void disable(Frame *out);
   static bool pending();
   static void resolvepending();
-  void emit(Frame *out, uint16_t peripheral);
+  void emit(Frame *out);
   void incrementTime();
   bool isPlaying() const;
 #ifndef NDEBUG

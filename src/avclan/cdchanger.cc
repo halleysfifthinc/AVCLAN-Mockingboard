@@ -341,9 +341,7 @@ void CDChanger::enable(Frame *out) {
 bool CDChanger::pending() { return cdtimer_pending(); }
 void CDChanger::resolvepending() { cdtimer_clear(); }
 
-void CDChanger::emit(Frame *out, uint16_t peripheral) {
-  out->owning_device = id; // so react() routes r_StateReport back here
-  out->peripheral_addr = peripheral;
+void CDChanger::emit(Frame *out) {
   generateStatus(out, false, Device::STATUS);
   out->reaction = r_StateReport;
 }

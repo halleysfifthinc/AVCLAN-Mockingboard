@@ -97,14 +97,10 @@ int main() {
       }
     }
 
-    peripheral.poll_devices([&](auto &dev) {
-      if (auto status = cache.pop()) {
-        dev.emit(status.get(), peripheral.controller());
-        outgoing.push(std::move(status));
-        return true;
-      }
-      return false;
-    });
+    if (peripheral.pending()) {
+      if (auto out = cache.pop(); out && peripheral.emit(out.get()))
+        outgoing.push(std::move(out));
+    }
 
     if (auto out = outgoing.pop()) {
       auto err = peripheral.send(
