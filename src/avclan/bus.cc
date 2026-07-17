@@ -324,7 +324,7 @@ auto Bus::read(uint16_t address, Frame::Print print)
   return in;
 }
 
-auto Bus::send(const Frame *out, Frame::Print print) -> Send {
+auto Bus::send(const Frame &out, Frame::Print print) -> Send {
   struct errtype {
     // Error enum is ordered such that a lower numeric value corresponds to
     // more success
@@ -348,35 +348,35 @@ auto Bus::send(const Frame *out, Frame::Print print) -> Send {
       goto handle_err;
     }
 
-    handle.send<1>(static_cast<uint8_t>(out->is_unicast), no_parity);
+    handle.send<1>(static_cast<uint8_t>(out.is_unicast), no_parity);
 
-    handle.send<12>(out->controller_addr, with_parity);
+    handle.send<12>(out.controller_addr, with_parity);
 
     if (auto serr =
-            handle.send<12>(out->peripheral_addr, with_ack, out->is_unicast);
+            handle.send<12>(out.peripheral_addr, with_ack, out.is_unicast);
         serr == NAK) {
       err.errno = NAK_ADDRESS;
       goto handle_err;
     }
 
-    if (auto serr = handle.send<4>(out->control, with_ack, out->is_unicast);
+    if (auto serr = handle.send<4>(out.control, with_ack, out.is_unicast);
         serr == NAK) {
       err.errno = NAK_CONTROL;
       goto handle_err;
     }
 
-    if (auto serr = handle.send<8>(out->length, with_ack, out->is_unicast);
+    if (auto serr = handle.send<8>(out.length, with_ack, out.is_unicast);
         serr == NAK) {
       err.errno = NAK_MESSAGE_LENGTH;
       goto handle_err;
     }
 
-    for (uint8_t i = 0; i < out->length; i++) {
+    for (uint8_t i = 0; i < out.length; i++) {
       // Based on the µPD6708 datasheet, ACK bit for broadcast doesn't seem
       // necessary (i.e. This deviates from the previous broadcast specific
       // function that sent an extra `1` bit after each byte/parity)
       // Explanation for why audio-group broadcast state report isn't working?
-      if (auto serr = handle.send<8>(out->data[i], with_ack, out->is_unicast);
+      if (auto serr = handle.send<8>(out.data[i], with_ack, out.is_unicast);
           serr == NAK) {
         err.errno = NAK_DATA;
         err.val = i;
@@ -413,7 +413,7 @@ auto Bus::send(const Frame *out, Frame::Print print) -> Send {
   }
 
   if (print.print)
-    out->print(print);
+    out.print(print);
 
   return err.errno;
 }

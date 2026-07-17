@@ -81,7 +81,7 @@ public:
 
   expected<std::unique_ptr<Frame>, Error::Read> read(uint16_t address,
                                                      Frame::Print print);
-  Error::Send send(const Frame *out, Frame::Print print);
+  Error::Send send(const Frame &out, Frame::Print print);
 
 private:
   class Handle;

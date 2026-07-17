@@ -61,13 +61,13 @@ public:
   static constexpr Device id = Device::CD_CHANGER;
   void init();
 
-  void handle(const Frame *in, Frame *out);
+  void handle(const Frame &in, Frame &out);
   std::unique_ptr<Frame>
   react(expected<std::unique_ptr<Frame>, detail::SendError> exp);
-  void enable(Frame *out);
-  void disable(Frame *out);
+  void enable(Frame &out);
+  void disable(Frame &out);
   static bool pending();
-  void emit(Frame *out);
+  void emit(Frame &out);
   void incrementTime();
   bool isPlaying() const;
 #ifndef NDEBUG
@@ -81,7 +81,7 @@ private:
   void stopPlaying();
   void serialize(uint8_t *dst) const;
   void setTime(uint8_t mins, uint8_t secs);
-  void generateStatus(Frame *status, bool is_unicast, Device to) const;
+  void generateStatus(Frame &status, bool is_unicast, Device to) const;
   void normalizeState();
 
   bool playing = false;

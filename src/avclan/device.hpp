@@ -50,7 +50,7 @@ enum class Device : uint8_t {
 template <class T>
 concept DeviceInterface =
     requires { std::integral_constant<Device, T::id>{}; } &&
-    requires(T dev, const Frame *in, Frame *out,
+    requires(T dev, const Frame &in, Frame &out,
              expected<std::unique_ptr<Frame>, detail::SendError> exp) {
       dev.init();
       dev.handle(in, out);

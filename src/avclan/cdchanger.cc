@@ -57,11 +57,11 @@ void CDChanger::init() {
   cdtimer_init(this, &incrementTime_callback, &isPlaying_callback);
 }
 
-void CDChanger::handle(const Frame *in, Frame *out) {
-  if (in->length < 4)
+void CDChanger::handle(const Frame &in, Frame &out) {
+  if (in.length < 4)
     return; // [Currently known] valid CDChanger frames have at least 4 bytes
 
-  const uint8_t *data = &in->data[1];
+  const uint8_t *data = &in.data[1];
   const auto from = static_cast<Device>(*data++);
   /* const auto to = */ data++;
   const auto action = static_cast<Action>(*data++);
@@ -75,25 +75,25 @@ void CDChanger::handle(const Frame *in, Frame *out) {
   // Unicast to CD changer: bytes are (0x00, from, to, action, [extra...]).
   switch (action) {
     case Enable_Function_Req:
-      out->is_unicast = true;
-      out->length = sizeof(function_change_resp);
-      memcpy(out->data, function_change_resp, sizeof(function_change_resp));
-      out->data[3] = to_underlying(Enable_Function_Resp);
+      out.is_unicast = true;
+      out.length = sizeof(function_change_resp);
+      memcpy(out.data, function_change_resp, sizeof(function_change_resp));
+      out.data[3] = to_underlying(Enable_Function_Resp);
       state = 0;
       flags2 = 0x80;
-      out->reaction = r_StatusReport;
+      out.reaction = r_StatusReport;
       break;
     case Disable_Function_Req:
       // No change/response needed if we're already not playing
       if (isPlaying()) {
         stopPlaying();
-        out->length = sizeof(function_change_resp);
-        memcpy(out->data, function_change_resp, sizeof(function_change_resp));
-        out->data[3] = to_underlying(Disable_Function_Resp);
+        out.length = sizeof(function_change_resp);
+        memcpy(out.data, function_change_resp, sizeof(function_change_resp));
+        out.data[3] = to_underlying(Disable_Function_Resp);
         state = 0;
         flags2 = 0x80;
-        out->is_unicast = true;
-        out->reaction = r_StatusReport;
+        out.is_unicast = true;
+        out.reaction = r_StatusReport;
       }
       break;
     case Eject: {
@@ -107,20 +107,20 @@ void CDChanger::handle(const Frame *in, Frame *out) {
       if (static_cast<bool>(state & SEEKING)) { // FF/RW button released
         state &= ~SEEKING;
       } else {
-        out->is_unicast = true;
+        out.is_unicast = true;
         {
           const uint8_t msg[] = {0x00, to_underlying(Device::CD_CHANGER),
                                  to_underlying(Device::CMD_SW),
                                  to_underlying(Insertion), 0x01};
-          out->length = sizeof(msg);
-          memcpy(out->data, msg, sizeof(msg));
+          out.length = sizeof(msg);
+          memcpy(out.data, msg, sizeof(msg));
         }
-        out->reaction = r_SendOnly;
+        out.reaction = r_SendOnly;
       }
       break;
     }
     case Initial_Report_Req: {
-      out->is_unicast = true;
+      out.is_unicast = true;
       // No knowledge/understanding of field meaning/interpretation
       const uint8_t cdinitreport_resp[] = {0x00,
                                            to_underlying(Device::CD_CHANGER),
@@ -131,29 +131,29 @@ void CDChanger::handle(const Frame *in, Frame *out) {
                                            0x10,
                                            0x01,
                                            0x01};
-      out->length = sizeof(cdinitreport_resp);
-      memcpy(out->data, cdinitreport_resp, sizeof(cdinitreport_resp));
-      out->reaction = r_SendOnly;
+      out.length = sizeof(cdinitreport_resp);
+      memcpy(out.data, cdinitreport_resp, sizeof(cdinitreport_resp));
+      out.reaction = r_SendOnly;
       break;
     }
     case Playback_Req:
-      out->data[0] = 0x00;
-      out->data[1] = to_underlying(Device::CD_CHANGER);
-      out->data[2] = to_underlying(from);
-      out->data[3] = to_underlying(Playback_Resp);
-      out->length = WIRE_SIZE + 4;
-      serialize(&out->data[4]);
-      out->is_unicast = true;
-      out->reaction = r_SendOnly;
+      out.data[0] = 0x00;
+      out.data[1] = to_underlying(Device::CD_CHANGER);
+      out.data[2] = to_underlying(from);
+      out.data[3] = to_underlying(Playback_Resp);
+      out.length = WIRE_SIZE + 4;
+      serialize(&out.data[4]);
+      out.is_unicast = true;
+      out.reaction = r_SendOnly;
       break;
     case Loading_Req:
-      out->data[0] = 0x00;
-      out->length = sizeof(cdloading_resp) + 1;
-      memcpy(&out->data[1], cdloading_resp, sizeof(cdloading_resp));
-      out->data[2] = to_underlying(from);
-      out->data[3] = to_underlying(Loading_Resp);
-      out->is_unicast = true;
-      out->reaction = r_SendOnly;
+      out.data[0] = 0x00;
+      out.length = sizeof(cdloading_resp) + 1;
+      memcpy(&out.data[1], cdloading_resp, sizeof(cdloading_resp));
+      out.data[2] = to_underlying(from);
+      out.data[3] = to_underlying(Loading_Resp);
+      out.is_unicast = true;
+      out.reaction = r_SendOnly;
       break;
     case Track_Seek_Up:
       state = SEEKING_TRACK;
@@ -166,7 +166,7 @@ void CDChanger::handle(const Frame *in, Frame *out) {
       flags2 = 0xc0;
       generateStatus(out, true, Device::CMD_SW);
       media_action(MediaAction::Track_Next);
-      out->reaction = r_TrackChange;
+      out.reaction = r_TrackChange;
       break;
     case Track_Seek_Down:
       state = SEEKING_TRACK;
@@ -183,7 +183,7 @@ void CDChanger::handle(const Frame *in, Frame *out) {
       secs = 0x7f;
       flags2 = 0xc0;
       generateStatus(out, true, Device::CMD_SW);
-      out->reaction = r_TrackChange;
+      out.reaction = r_TrackChange;
       break;
     case Track_Fast_Forward: {
       state |= SEEKING;
@@ -196,7 +196,7 @@ void CDChanger::handle(const Frame *in, Frame *out) {
       media_action(MediaAction::Skip_Forward);
       cdtimer_reset(); // Skipped to a whole/round sec; ensure next tick
                        // is ~1 sec from now
-      out->reaction = r_SendOnly;
+      out.reaction = r_SendOnly;
       break;
     }
     case Track_Rewind: {
@@ -216,48 +216,48 @@ void CDChanger::handle(const Frame *in, Frame *out) {
       media_action(MediaAction::Skip_Backward);
       cdtimer_reset(); // Skipped to a whole/round sec; ensure next tick
                        // is ~1 sec from now
-      out->reaction = r_SendOnly;
+      out.reaction = r_SendOnly;
       break;
     }
     case CD_Enable_Random:
       flags |= RANDOM;
       generateStatus(out, true, Device::CMD_SW);
-      out->reaction = r_StatusReport;
+      out.reaction = r_StatusReport;
       break;
     case CD_Disable_Random:
       flags &= ~RANDOM;
       generateStatus(out, true, Device::CMD_SW);
-      out->reaction = r_StatusReport;
+      out.reaction = r_StatusReport;
       break;
     case CD_Enable_Repeat:
       flags |= REPEAT;
       generateStatus(out, true, Device::CMD_SW);
-      out->reaction = r_StatusReport;
+      out.reaction = r_StatusReport;
       break;
     case CD_Disable_Repeat:
       flags &= ~REPEAT;
       generateStatus(out, true, Device::CMD_SW);
-      out->reaction = r_StatusReport;
+      out.reaction = r_StatusReport;
       break;
     case CD_Enable_Disk_Random:
       flags |= DISK_RANDOM;
       generateStatus(out, true, Device::CMD_SW);
-      out->reaction = r_StatusReport;
+      out.reaction = r_StatusReport;
       break;
     case CD_Disable_Disk_Random:
       flags &= ~DISK_RANDOM;
       generateStatus(out, true, Device::CMD_SW);
-      out->reaction = r_StatusReport;
+      out.reaction = r_StatusReport;
       break;
     case CD_Enable_Disk_Repeat:
       flags |= DISK_REPEAT;
       generateStatus(out, true, Device::CMD_SW);
-      out->reaction = r_StatusReport;
+      out.reaction = r_StatusReport;
       break;
     case CD_Disable_Disk_Repeat:
       flags &= ~DISK_REPEAT;
       generateStatus(out, true, Device::CMD_SW);
-      out->reaction = r_StatusReport;
+      out.reaction = r_StatusReport;
       break;
     default: break;
   }
@@ -308,12 +308,12 @@ std::unique_ptr<Frame> CDChanger::react(
         [[fallthrough]];
       case r_NormalizeState:
         normalizeState();
-        generateStatus(out, false, Device::STATUS);
+        generateStatus(*out, false, Device::STATUS);
         out->reaction = r_SendOnly;
         break;
       case r_StartPlaying:
         normalizeState();
-        generateStatus(out, false, Device::STATUS);
+        generateStatus(*out, false, Device::STATUS);
         out->reaction = r_BeganPlaying;
         break;
       case r_BeganPlaying:
@@ -321,7 +321,7 @@ std::unique_ptr<Frame> CDChanger::react(
         out->reaction = r_Nothing;
         break;
       case r_StatusReport:
-        generateStatus(out, false, Device::STATUS);
+        generateStatus(*out, false, Device::STATUS);
         out->reaction = r_SendOnly;
         break;
       case r_StateReport: [[fallthrough]];
@@ -337,7 +337,7 @@ std::unique_ptr<Frame> CDChanger::react(
   return {};
 }
 
-void CDChanger::enable(Frame *out) {
+void CDChanger::enable(Frame &out) {
   if (!isPlaying()) {
     if (mins > TWODIGIT_MAX)
       mins = 0;
@@ -346,15 +346,15 @@ void CDChanger::enable(Frame *out) {
     state = SEEKING | SEEKING_TRACK;
     flags2 = 0xc0;
     generateStatus(out, false, Device::STATUS);
-    out->reaction = r_StartPlaying;
+    out.reaction = r_StartPlaying;
   }
 }
 
 bool CDChanger::pending() { return cdtimer_pending(); }
 
-void CDChanger::emit(Frame *out) {
+void CDChanger::emit(Frame &out) {
   generateStatus(out, false, Device::STATUS);
-  out->reaction = r_StateReport;
+  out.reaction = r_StateReport;
   cdtimer_clear();
 }
 
@@ -411,15 +411,15 @@ void CDChanger::incrementTime() {
 }
 
 // Used for changed status messages
-void CDChanger::generateStatus(Frame *status, bool is_unicast,
+void CDChanger::generateStatus(Frame &status, bool is_unicast,
                                Device to) const {
-  status->is_unicast = is_unicast;
+  status.is_unicast = is_unicast;
   if (!is_unicast)
-    status->peripheral_addr = 0x1FF;
-  status->control = 0xF;
-  status->length = WIRE_SIZE + ((is_unicast) ? 4 : 3);
+    status.peripheral_addr = 0x1FF;
+  status.control = 0xF;
+  status.length = WIRE_SIZE + ((is_unicast) ? 4 : 3);
 
-  uint8_t *data = status->data;
+  uint8_t *data = status.data;
   if (is_unicast)
     *data++ = 0x00;
   *data++ = to_underlying(Device::CD_CHANGER);

@@ -63,9 +63,9 @@ public:
   expected<std::unique_ptr<Frame>, detail::SendError>
   send(std::unique_ptr<Frame> out, Frame::Print print = Frame::Print{}) {
     // To "forge" a controller_addr, instantiate a new/different Peripheral
-    stamp<Sender>(out.get());
+    stamp<Sender>(*out);
     out->control = 0xF;
-    auto err = bus.send(out.get(), print);
+    auto err = bus.send(*out, print);
     if (err != Error::Send{0})
       return unexpected{
           detail::SendError{out->owning_device, out->reaction, err}};
@@ -76,11 +76,11 @@ public:
 #define PACK3(a, b, c) (((uint32_t)(a) << 16) | ((uint32_t)(b) << 8) | (c))
 
   // expected needed to distinguish don't vs can't respond
-  expected<std::unique_ptr<Frame>, Error::Read> route(const Frame *in) {
+  expected<std::unique_ptr<Frame>, Error::Read> route(const Frame &in) {
     using enum Device;
     using enum Action;
 
-    if (is_muted() || in->length < 3)
+    if (is_muted() || in.length < 3)
       return {};
 
     std::unique_ptr<Frame> out(new (std::nothrow) Frame);
@@ -94,17 +94,17 @@ public:
     static const uint8_t lancheck_resp[] = {0x00, to_underlying(COMM_CTRL),
                                             to_underlying(LAN), 0xFF, 0xFF};
 
-    stamp<Recipient>(out.get());
+    stamp<Recipient>(*out);
 
-    const uint8_t *data = in->data;
+    const uint8_t *data = in.data;
     const uint8_t b0 = *data++;
     const uint8_t b1 = *data++;
     const uint8_t b2 = *data++;
     uint8_t b3 = 0;
-    if (in->length > 3) // the shortest known/valid messages are 3 bytes long
+    if (in.length > 3) // the shortest known/valid messages are 3 bytes long
       b3 = *data++;
 
-    if (!in->is_unicast) {
+    if (!in.is_unicast) {
       const auto from = b0;
       const auto to = b1;
       const auto action = b2;
@@ -140,7 +140,7 @@ public:
                    to_underlying(Advertise_Function)): {
           auto enable_d = [](auto &d, auto &out) { d.enable(out); };
           ((Devs::id == static_cast<Device>(b3)
-                ? originate(std::get<Devs>(devices_), out.get(), enable_d)
+                ? originate(std::get<Devs>(devices_), *out, enable_d)
                 : void()),
            ...);
           break;
@@ -160,8 +160,8 @@ public:
                    to_underlying(List_Functions_Req)):
         case PACK3(COMMUNICATION_V2, COMM_CTRL,
                    to_underlying(List_Functions_Req)): {
-          controller_ = in->controller_addr;
-          stamp<Recipient>(out.get()); // re-stamp now that controller_ is known
+          controller_ = in.controller_addr;
+          stamp<Recipient>(*out); // re-stamp now that controller_ is known
           out->is_unicast = true;
           const uint8_t list_functions_resp[] = {
               0x00, to_underlying(COMM_CTRL), from,
@@ -174,10 +174,10 @@ public:
         // case Restart_Lan: not handled
         default: break;
       }
-    } else if (in->peripheral_addr == address_ && b0 == 0x00) {
+    } else if (in.peripheral_addr == address_ && b0 == 0x00) {
       auto handle_d = [&](auto &d, auto &out) { d.handle(in, out); };
       ((Devs::id == static_cast<Device>(b2)
-            ? originate(std::get<Devs>(devices_), out.get(), handle_d)
+            ? originate(std::get<Devs>(devices_), *out, handle_d)
             : void()),
        ...);
     }
@@ -215,7 +215,7 @@ public:
         return {};
       }
 
-      originate(dev, out.get(), [](auto &d, auto &out) { d.emit(out); });
+      originate(dev, *out, [](auto &d, auto &out) { d.emit(out); });
       return out;
     };
 
@@ -249,15 +249,15 @@ public:
   }
 
 private:
-  template <Party P> void stamp(Frame *out) const {
+  template <Party P> void stamp(Frame &out) const {
     if constexpr (P == Sender)
-      out->controller_addr = address_;
+      out.controller_addr = address_;
     else
-      out->peripheral_addr = controller_;
+      out.peripheral_addr = controller_;
   }
 
-  void originate(DeviceInterface auto &dev, Frame *out, auto &&fill) {
-    out->owning_device = std::remove_reference_t<decltype(dev)>::id;
+  void originate(DeviceInterface auto &dev, Frame &out, auto &&fill) {
+    out.owning_device = std::remove_reference_t<decltype(dev)>::id;
     stamp<Recipient>(out); // default set FIRST; fill() may override
     fill(dev, out);
   }
