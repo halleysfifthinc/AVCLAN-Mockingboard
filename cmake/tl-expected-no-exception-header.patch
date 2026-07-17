@@ -1,0 +1,36 @@
+diff --git a/include/tl/expected.hpp b/include/tl/expected.hpp
+index 59e59aa..75857bd 100644
+--- a/include/tl/expected.hpp
++++ b/include/tl/expected.hpp
+@@ -20,7 +20,7 @@
+ #define TL_EXPECTED_VERSION_MINOR 3
+ #define TL_EXPECTED_VERSION_PATCH 1
+ 
+-#include <exception>
++#include <cstdlib>
+ #include <functional>
+ #include <type_traits>
+ #include <utility>
+@@ -222,7 +222,7 @@ static constexpr unexpect_t unexpect{};
+ #ifdef TL_EXPECTED_EXCEPTIONS_ENABLED
+ #define TL_EXPECTED_THROW_EXCEPTION(e) throw((e));
+ #else
+-#define TL_EXPECTED_THROW_EXCEPTION(e) std::terminate();
++#define TL_EXPECTED_THROW_EXCEPTION(e) std::abort();
+ #endif
+ 
+ namespace detail {
+@@ -1249,11 +1249,11 @@ template <class T, class E> struct expected_default_ctor_base<T, E, false> {
+ };
+ } // namespace detail
+ 
+-template <class E> class bad_expected_access : public std::exception {
++template <class E> class bad_expected_access {
+ public:
+   explicit bad_expected_access(E e) : m_val(std::move(e)) {}
+ 
+-  virtual const char *what() const noexcept override {
++  virtual const char *what() const noexcept {
+     return "Bad expected access";
+   }
+ 

@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <memory>
 
 #include "avclan.h"
 #include "cdchanger.hpp"
@@ -263,66 +264,77 @@ void CDChanger::handle(const Frame *in, Frame *out) {
 #pragma GCC diagnostic pop
 }
 
-void CDChanger::react(Frame *out, detail::Error::Send err) {
-  auto resp = static_cast<reaction_t>(out->reaction);
-  out->reaction = r_Nothing;
-  switch (resp) {
-    case r_StateReport:
-      if (err == detail::Error::Send::NAK_ADDRESS &&
-          ++failedStatusReports > 1) {
-        failedStatusReports = 0;
-        stopPlaying(); // Disable periodic updates if e.g. no-one's
-                       // listening (car was turned off?)
-      }
-      break;
-    case r_Ejection: {
-      const uint8_t play[] = {0x00,
-                              to_underlying(Device::COMM_CTRL),
-                              to_underlying(Device::COMMUNICATION_V1),
-                              to_underlying(Action::Insertion),
-                              to_underlying(Device::CD_CHANGER),
-                              0x01};
-      out->length = sizeof(play);
-      memcpy(out->data, play, sizeof(play));
+std::unique_ptr<Frame> CDChanger::react(
+    expected<std::unique_ptr<Frame>, detail::SendError> exp) {
+
+  if (!exp) {
+    if (exp.error().reaction == to_underlying(r_StateReport) &&
+        exp.error().err == detail::Error::Send::NAK_ADDRESS &&
+        ++failedStatusReports > 1) {
+      failedStatusReports = 0;
+      stopPlaying(); // Disable periodic updates if e.g. no-one's
+                   // listening (car was turned off?)
     }
-      out->reaction = r_Report_Load;
-      break;
-    case r_Report_Load:
-      out->is_unicast = false;
-      out->peripheral_addr = 0x1FF;
-      out->length = sizeof(cdloading_resp) + 1;
-      memcpy(out->data, cdloading_resp, sizeof(cdloading_resp));
-      out->data[1] = to_underlying(Device::STATUS);
-      out->data[2] = to_underlying(Action::Loading_Status);
-      out->reaction = r_SendOnly;
-      break;
-    case r_TrackChange:
-      setTime(0, 0);
-      cdtimer_reset(); // Skipped to a whole/round sec; ensure next tick is
-                       // ~1 sec from now
-      [[fallthrough]];
-    case r_NormalizeState:
-      normalizeState();
-      generateStatus(out, false, Device::STATUS);
-      out->reaction = r_SendOnly;
-      break;
-    case r_StartPlaying:
-      normalizeState();
-      generateStatus(out, false, Device::STATUS);
-      out->reaction = r_BeganPlaying;
-      break;
-    case r_BeganPlaying:
-      startPlaying(); // only start PIT after normalizing state
-      out->reaction = r_Nothing;
-      break;
-    case r_StatusReport:
-      generateStatus(out, false, Device::STATUS);
-      out->reaction = r_SendOnly;
-      break;
-    case r_SendOnly: [[fallthrough]];
-    case r_Nothing: [[fallthrough]];
-    default: out->reaction = r_Nothing;
+  } else {
+    auto out = std::move(exp.value());
+    auto resp = static_cast<reaction_t>(out->reaction);
+    out->reaction = r_Nothing;
+    switch (resp) {
+      case r_Ejection: {
+        const uint8_t play[] = {0x00,
+                                to_underlying(Device::COMM_CTRL),
+                                to_underlying(Device::COMMUNICATION_V1),
+                                to_underlying(Action::Insertion),
+                                to_underlying(Device::CD_CHANGER),
+                                0x01};
+        out->length = sizeof(play);
+        memcpy(out->data, play, sizeof(play));
+      }
+        out->reaction = r_Report_Load;
+        break;
+      case r_Report_Load:
+        out->is_unicast = false;
+        out->peripheral_addr = 0x1FF;
+        out->length = sizeof(cdloading_resp) + 1;
+        memcpy(out->data, cdloading_resp, sizeof(cdloading_resp));
+        out->data[1] = to_underlying(Device::STATUS);
+        out->data[2] = to_underlying(Action::Loading_Status);
+        out->reaction = r_SendOnly;
+        break;
+      case r_TrackChange:
+        setTime(0, 0);
+        cdtimer_reset(); // Skipped to a whole/round sec; ensure next tick is
+                         // ~1 sec from now
+        [[fallthrough]];
+      case r_NormalizeState:
+        normalizeState();
+        generateStatus(out, false, Device::STATUS);
+        out->reaction = r_SendOnly;
+        break;
+      case r_StartPlaying:
+        normalizeState();
+        generateStatus(out, false, Device::STATUS);
+        out->reaction = r_BeganPlaying;
+        break;
+      case r_BeganPlaying:
+        startPlaying(); // only start PIT after normalizing state
+        out->reaction = r_Nothing;
+        break;
+      case r_StatusReport:
+        generateStatus(out, false, Device::STATUS);
+        out->reaction = r_SendOnly;
+        break;
+      case r_StateReport: [[fallthrough]];
+      case r_SendOnly: [[fallthrough]];
+      case r_Nothing: [[fallthrough]];
+      default: break;
+    }
+
+    if (out->reaction > r_Nothing)
+      return out;
   }
+
+  return {};
 }
 
 void CDChanger::enable(Frame *out) {
@@ -339,11 +351,11 @@ void CDChanger::enable(Frame *out) {
 }
 
 bool CDChanger::pending() { return cdtimer_pending(); }
-void CDChanger::resolvepending() { cdtimer_clear(); }
 
 void CDChanger::emit(Frame *out) {
   generateStatus(out, false, Device::STATUS);
   out->reaction = r_StateReport;
+  cdtimer_clear();
 }
 
 bool CDChanger::isPlaying() const { return playing; }

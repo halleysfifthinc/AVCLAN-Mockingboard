@@ -76,6 +76,9 @@ set_property(CACHE USART_RXMODE PROPERTY STRINGS
 # tick. 1000 = no correction; set per-board in CMakeUserPresets.json.
 set(RTC_STATUS_PERIOD_MS 1000 CACHE STRING "Measured ms per nominal RTC status period (1000 = no correction)")
 
+# --- Firmware configuration options ----------------------------------------
+set(AVCLAN_FRAME_POOL_N 32 CACHE STRING "Frame pool depth (pooled targets)")
+
 try_compile(LIBC_VERSION_TEST
     SOURCES "${CMAKE_SOURCE_DIR}/cmake/libc-version-test.cpp"
     COMPILE_DEFINITIONS -mmcu=${AVR_MCU}
@@ -85,11 +88,14 @@ FetchContent_Declare(
     avr_libstdcpp
     GIT_REPOSITORY https://github.com/modm-io/avr-libstdcpp.git
     GIT_TAG 5354296040a2289c911062daa82336762231e897
+    SYSTEM
 )
 FetchContent_MakeAvailable(avr_libstdcpp)
-add_library(libstdcpp INTERFACE)
-target_include_directories(libstdcpp SYSTEM
-    INTERFACE ${avr_libstdcpp_SOURCE_DIR}/include)
+add_library(libstdcpp STATIC ${avr_libstdcpp_SOURCE_DIR}/src/new_handler.cc)
+target_include_directories(libstdcpp
+    PUBLIC ${avr_libstdcpp_SOURCE_DIR}/include)
+# Let --gc-sections drop the unused set/get_new_handler functions.
+target_compile_options(libstdcpp PRIVATE -ffunction-sections -fdata-sections)
 target_link_libraries(avclan PUBLIC libstdcpp)
 
 if(NOT LIBC_VERSION_TEST)
@@ -142,6 +148,7 @@ target_compile_definitions(avclan PUBLIC
     __CLK_PRESCALE_DIV=__${CLK_PRESCALE_DIV}
     TCB_CLKSEL=${TCB_CLKSEL}
     RTC_STATUS_PERIOD_MS=${RTC_STATUS_PERIOD_MS}
+    AVCLAN_FRAME_POOL_N=${AVCLAN_FRAME_POOL_N}
 )
 target_compile_options(avclan PUBLIC
     --param=min-pagesize=0

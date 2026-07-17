@@ -121,6 +121,12 @@ enum AVCLAN_ENUM_CLASS MediaAction : uint8_t {
 };
 
 #ifdef __cplusplus
+enum class Device : uint8_t;
+
+// Sentinel for a frame with no owning device.
+// Compile-time collision check lives in device.hpp
+inline constexpr Device NoDevice = Device{0xFF};
+
 namespace detail {
 struct Error {
 #endif
@@ -140,6 +146,7 @@ struct Error {
     STARTBIT_TOO_SHORT,
     STARTBIT_TOO_LONG,
     BAD_STARTBIT,
+    POOL_EMPTY, // non-bus error
   };
 
   enum AVCLAN_ENUM_CLASS Send : uint8_t {
@@ -159,6 +166,12 @@ struct Error {
   };
 
 #ifdef __cplusplus
+};
+
+struct SendError {
+  Device owning_device;
+  uint8_t reaction;
+  Error::Send err;
 };
 #endif
 

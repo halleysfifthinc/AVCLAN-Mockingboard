@@ -9,6 +9,11 @@
 
 #include "avclan.h"
 
+#if defined(AVCLAN_FRAME_POOL_N)
+  #include <cstddef>
+  #include <new>
+#endif
+
 namespace avclan {
 enum class Device : uint8_t;
 
@@ -25,13 +30,24 @@ struct Frame {
   Error::Parse parse(const uint8_t *bytes, uint8_t len);
   void print(Print print) const;
 
-  uint8_t reaction;
-  Device owning_device;
+#if defined(AVCLAN_FRAME_POOL_N)
+  // O(1) heapless pooled allocation. Only `new (std::nothrow) Frame` is
+  // supported.
+  static void *operator new(std::size_t) = delete;
+  static void *operator new(std::size_t, const std::nothrow_t &) noexcept;
+  // NOLINTNEXTLINE(misc-new-delete-overloads) false-positive
+  static void operator delete(void *) noexcept;
+#endif
+
+  // reaction has a Device-defined interpretation, with the sole invariant that
+  // 0 == inactive/non-sendable frame
+  uint8_t reaction = 0;
+  Device owning_device = NoDevice;
   bool is_unicast;
   uint16_t controller_addr; // formerly "master"
   uint16_t peripheral_addr; // formerly "slave"
   uint8_t control = 0xF;
-  uint8_t length;
+  uint8_t length = 0;
   uint8_t data[MAXLENGTH];
 };
 } // namespace avclan

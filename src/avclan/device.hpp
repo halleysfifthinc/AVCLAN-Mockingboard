@@ -5,9 +5,11 @@
 
 #include <concepts>
 #include <cstdint>
+#include <memory>
 
 #include "avclan.h"
 #include "frame.hpp"
+#include "stdshim.hpp"
 
 namespace avclan {
 
@@ -46,15 +48,19 @@ enum class Device : uint8_t {
 };
 
 template <class T>
-concept DeviceInterface = requires {
-  std::integral_constant<Device, T::id>{};
-} && requires(T dev, const Frame *in, Frame *out, detail::Error::Send err) {
-  dev.init();
-  dev.handle(in, out);
-  dev.enable(out);
-  dev.react(out, err);
-  { dev.pending() } -> std::convertible_to<bool>;
-  dev.resolvepending();
-  dev.emit(out);
-};
+concept DeviceInterface =
+    requires { std::integral_constant<Device, T::id>{}; } &&
+    requires(T dev, const Frame *in, Frame *out,
+             expected<std::unique_ptr<Frame>, detail::SendError> exp) {
+      dev.init();
+      dev.handle(in, out);
+      dev.enable(out);
+      {
+        dev.react(std::move(exp))
+      } -> std::same_as<std::unique_ptr<Frame>>;
+
+      { dev.pending() } -> std::convertible_to<bool>;
+      // Devices must clear `pending()` after `emit()` is called
+      dev.emit(out);
+    };
 } // namespace avclan

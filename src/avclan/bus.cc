@@ -31,11 +31,14 @@
 
 #include <concepts>
 #include <cstdio>
+#include <memory>
+#include <new>
 
 #include "avclan.h"
 #include "bus.hpp"
 #include "frame.hpp"
 #include "hal/phy.h"
+#include "stdshim.hpp"
 
 namespace {
 using Read = avclan::detail::Error::Read;
@@ -191,13 +194,20 @@ void Bus::mute(bool mute) {
   muted_ = mute; // Only update muted_ *AFTER* hardware has finished muting
 };
 
-auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Read {
+auto Bus::read(uint16_t address, Frame::Print print)
+    -> expected<std::unique_ptr<Frame>, Error::Read> {
   struct errtype {
     Read errno;
     uint16_t val;
   } err = {};
 
   using enum Read;
+
+  std::unique_ptr<Frame> in(new (std::nothrow) Frame);
+  if (!in) {
+    err.errno = POOL_EMPTY;
+    goto handle_err;
+  }
 
   { // bound handle lifetime
     auto handle = get();
@@ -277,6 +287,7 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Read {
   handle_err:;
     fputs("ERR(read): ", stdout);
     switch (err.errno) {
+      case POOL_EMPTY: puts("failed Frame alloc"); break;
       case BAD_STARTBIT: fputs("bad start bit (other)", stdout); break;
       case STARTBIT_TOO_SHORT: fputs("bad start bit (short)", stdout); break;
       case STARTBIT_TOO_LONG: fputs("bad start bit (long)", stdout); break;
@@ -297,7 +308,7 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Read {
           printf("; read 0x%02X", err.val);
         }
     }
-    putchar('\n');
+    puts(":");
   }
 
   // Only print if some data has been correctly received
@@ -307,7 +318,10 @@ auto Bus::read(uint16_t address, Frame *in, Frame::Print print) -> Read {
     in->print(print);
   }
 
-  return err.errno;
+  if (err.errno != Read{0})
+    return unexpected(err.errno);
+
+  return in;
 }
 
 auto Bus::send(const Frame *out, Frame::Print print) -> Send {

@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 #include "avclan.h"
 #include "device.hpp"
@@ -61,11 +62,11 @@ public:
   void init();
 
   void handle(const Frame *in, Frame *out);
-  void react(Frame *out, detail::Error::Send err);
+  std::unique_ptr<Frame>
+  react(expected<std::unique_ptr<Frame>, detail::SendError> exp);
   void enable(Frame *out);
   void disable(Frame *out);
   static bool pending();
-  static void resolvepending();
   void emit(Frame *out);
   void incrementTime();
   bool isPlaying() const;

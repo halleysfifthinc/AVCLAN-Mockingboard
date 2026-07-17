@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 
 add_compile_options(
     -Wall -Wswitch-enum -Werror
@@ -75,6 +76,75 @@ target_include_directories(avclan PUBLIC
 # hardware-specific compile options/definitions, device-pack handling, and the
 # flashing target. Added after the targets above so it can extend them.
 add_subdirectory(src/avclan/target/${AVCLAN_TARGET})
+
+# --- Polyfill headers for std facilities the toolchain may lack -------------
+# tl::expected / tl::optional back-fill std::expected / std::optional (with
+# C++23 monadic ops) when the build's stdlib predates them. Runs after the port
+# subdirectory to provide a port-supplied freestanding stdlib via 
+# CMAKE_REQUIRED_INCLUDES, if necessary.
+include(CheckCXXSourceCompiles)
+include(FetchContent)
+find_program(GIT_EXECUTABLE git REQUIRED)
+
+if(TARGET libstdcpp)
+    get_target_property(_stdlib_incs libstdcpp INTERFACE_INCLUDE_DIRECTORIES)
+    set(CMAKE_REQUIRED_INCLUDES ${_stdlib_incs})
+endif()
+
+check_cxx_source_compiles("
+    #include <version>
+    #if !defined(__cpp_lib_expected) || __cpp_lib_expected < 202211L
+      #error no std::expected
+    #endif
+    int main() { return 0; }" HAVE_STD_EXPECTED)
+# check_cxx_source_compiles("
+#     #include <version>
+#     #if !defined(__cpp_lib_optional) || __cpp_lib_optional < 202110L
+#       #error no C++23 std::optional
+#     #endif
+#     int main() { return 0; }" HAVE_STD_OPTIONAL)
+unset(CMAKE_REQUIRED_INCLUDES)
+
+if(NOT HAVE_STD_EXPECTED)
+    FetchContent_Declare(
+        tl_expected
+        GIT_REPOSITORY https://github.com/TartanLlama/expected.git
+        GIT_TAG 1770e3559f2f6ea4a5fb4f577ad22aeb30fbd8e4
+        PATCH_COMMAND ${CMAKE_COMMAND}
+            -DGIT_EXECUTABLE=${GIT_EXECUTABLE}
+            -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/tl-expected-no-exception-header.patch
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apply-patch.cmake
+        SYSTEM
+    )
+    set(EXPECTED_BUILD_TESTS OFF)
+    set(EXPECTED_BUILD_PACKAGE OFF)
+    FetchContent_MakeAvailable(tl_expected)
+    add_library(tl_expected_hdr INTERFACE)
+    target_include_directories(tl_expected_hdr
+        INTERFACE ${tl_expected_SOURCE_DIR}/include)
+    target_link_libraries(avclan PUBLIC tl_expected_hdr)
+endif()
+
+# std/tl::optional not currently used
+# if(NOT HAVE_STD_OPTIONAL)
+#     FetchContent_Declare(
+#         tl_optional
+#         GIT_REPOSITORY https://github.com/TartanLlama/optional.git
+#         GIT_TAG 3a1209de8370bf5fe16362934956144b49591565
+#         PATCH_COMMAND ${CMAKE_COMMAND}
+#             -DGIT_EXECUTABLE=${GIT_EXECUTABLE}
+#             -DPATCH_FILE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/tl-optional-no-exception-header.patch
+#             -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/apply-patch.cmake
+#         SYSTEM
+#     )
+#     set(OPTIONAL_BUILD_TESTS OFF)
+#     set(OPTIONAL_BUILD_PACKAGE OFF)
+#     FetchContent_MakeAvailable(tl_optional)
+#     add_library(tl_optional_hdr INTERFACE)
+#     target_include_directories(tl_optional_hdr
+#         INTERFACE ${tl_optional_SOURCE_DIR}/include)
+#     target_link_libraries(avclan PUBLIC tl_optional_hdr)
+# endif()
 
 add_executable(mockingboard
     src/sniffer.cc

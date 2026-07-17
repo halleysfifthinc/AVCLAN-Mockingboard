@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <new>
+#include <utility>
 
 #include "cdchanger.hpp"
 #include "frame.hpp"
@@ -14,6 +16,7 @@
 #include "hal/stdio.h"
 #include "peripheral.hpp"
 #include "queue.hpp"
+#include "stdshim.hpp"
 
 const char *const offon[] = {"OFF", "ON"};
 
@@ -22,11 +25,8 @@ constexpr uint8_t CACHE_SIZE = 32;
 using namespace avclan;
 
 namespace {
-Frame frames[CACHE_SIZE];
-
-constinit Queue cache(frames);
-constinit Queue incoming = cache;
-constinit Queue outgoing = cache;
+constinit Queue<Frame, CACHE_SIZE> incoming;
+constinit Queue<Frame, CACHE_SIZE> outgoing;
 
 uint8_t hexChars[2];
 uint8_t hexDigit = 0; // current digit being written to hexChars
@@ -66,7 +66,6 @@ int main() {
   using enum Action;
   using enum Device;
   Peripheral<CDChanger> peripheral(phy, 0x360);
-  using Error = decltype(peripheral)::Error;
   using Print = Frame::Print;
 
   Setup();
@@ -74,40 +73,31 @@ int main() {
 
   while (true) {
     if (peripheral.bus_is_active()) {
-      if (auto msg = cache.pop()) {
-        auto err = peripheral.read(msg.get(), Print{.print = printAllFrames,
-                                                    .binary = printBinary,
-                                                    .verbose = verbose});
-        if (err == Error::Read{0x00})
-          incoming.push(std::move(msg));
-      } else {
-        puts("!! Dropping an incoming message; cache is empty !!");
-      }
+      if (auto msg = peripheral.read(Print{.print = printAllFrames,
+                                           .binary = printBinary,
+                                           .verbose = verbose}))
+        incoming.push(std::move(*msg));
     }
 
     if (const auto *in = incoming.peek()) {
-      if (auto out = cache.pop()) {
-        peripheral.route(in, out.get());
+      if (auto resp = peripheral.route(*in)) {
         incoming.pop();
-
-        if (out->reaction > 0)
-          outgoing.push(std::move(out));
-      } else {
-        puts("!! Unable to respond; cache is empty !!");
+        if (*resp) {
+          outgoing.push(std::move(*resp));
+          continue; // route can be long; re-check the bus before poll/send
+        }
       }
     }
 
-    if (peripheral.pending()) {
-      if (auto out = cache.pop(); out && peripheral.emit(out.get()))
-        outgoing.push(std::move(out));
-    }
+    if (auto msg = peripheral.poll())
+      outgoing.push(std::move(msg));
 
     if (auto out = outgoing.pop()) {
-      auto err = peripheral.send(
-          out.get(), Print{.print = printAllFrames, .binary = printBinary});
-      peripheral.react(out.get(), err);
-      if (out->reaction > 0)
-        outgoing.push(std::move(out));
+      auto result =
+          peripheral.send(std::move(out), Print{.print = printAllFrames,
+                                                .binary = printBinary});
+      if (auto next = peripheral.react(std::move(result)))
+        outgoing.push(std::move(next));
     }
 
     // stdin must be non-blocking: yielding EOF when idle/empty
@@ -129,7 +119,7 @@ int main() {
         case 'x': set_flag(&printBinary, false, "Binary:"); break;
 
         case 'E': // Beep
-          if (auto out = cache.pop()) {
+          if (auto out = std::unique_ptr<Frame>(new (std::nothrow) Frame)) {
             out->is_unicast = true;
             out->peripheral_addr = peripheral.controller();
             {
@@ -141,10 +131,10 @@ int main() {
             out->reaction = 1;
             outgoing.push(std::move(out));
           } else
-            puts("!! Cache empty; unable to queue beep request");
+            puts("!! failed Frame alloc for Beep !! ");
           break;
         case 'P':
-          if (auto out = cache.pop()) {
+          if (auto out = std::unique_ptr<Frame>(new (std::nothrow) Frame)) {
             out->is_unicast = true;
             out->peripheral_addr = peripheral.controller();
             {
@@ -159,7 +149,8 @@ int main() {
             }
             out->reaction = CDChanger::reaction_t::r_Ejection;
             outgoing.push(std::move(out));
-          }
+          } else
+            puts("!! failed Frame alloc for Play !! ");
           break;
 
 #ifndef NDEBUG
@@ -218,19 +209,21 @@ int main() {
           if (readSeq && seqIdx > 0) {
             if (readBinary) {
               if (data_tmp[seqIdx - 1] == 0x17) {
-                if (auto out = cache.pop()) {
+                if (auto out =
+                        std::unique_ptr<Frame>(new (std::nothrow) Frame)) {
                   if (out->parse(data_tmp, --seqIdx) ==
                       Frame::Error::Parse{0}) {
                     out->reaction = 1;
                     outgoing.push(std::move(out));
                   }
-                }
+                } else
+                  puts("!! failed Frame alloc for input message !!");
                 readSeq = readBinary = false;
               } else
                 goto DEFAULT; // reading binary and this is a real data byte;
                               // fall through to default
             } else if (seqIdx <= Frame::MAXLENGTH) {
-              if (auto out = cache.pop()) {
+              if (auto out = std::unique_ptr<Frame>(new (std::nothrow) Frame)) {
                 out->is_unicast = seqIsUnicast;
                 out->peripheral_addr =
                     seqIsUnicast ? peripheral.controller() : 0x1FF;
@@ -238,7 +231,8 @@ int main() {
                 memcpy(out->data, data_tmp, seqIdx);
                 out->reaction = 1;
                 outgoing.push(std::move(out));
-              }
+              } else
+                puts("!! failed Frame alloc for input message !!");
               printAllFrames = lastPrintAllFrames;
             }
             break;

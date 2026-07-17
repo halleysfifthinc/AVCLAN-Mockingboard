@@ -9,12 +9,62 @@
 
 #include "frame.hpp"
 
+#if defined(AVCLAN_FRAME_POOL_N)
+  #include <array>
+  #include <cstddef>
+  #include <limits>
+  #include <new>
+
+namespace {
+template <class T, std::uint8_t N>
+  requires(N >= 1 && N <= std::numeric_limits<uint8_t>::max())
+class Pool {
+public:
+  constexpr Pool() {
+    for (uint8_t i = 0; i < N; ++i)
+      ptrs_[i] = &storage_[i];
+  }
+
+  T *acquire() {
+    if (top_ == 0)
+      return nullptr;
+    return ptrs_[--top_];
+  }
+
+  void release(T *ptr) {
+    // Properly would need an origin check/confirmation if this was used more
+    // generally
+    ptrs_[top_++] = ptr;
+  }
+
+private:
+  std::array<T, N> storage_;
+  std::array<T *, N> ptrs_;
+  uint8_t top_ = N;
+};
+
+Pool<avclan::Frame, AVCLAN_FRAME_POOL_N> pool;
+} // namespace
+#endif
+
 namespace {
 using Error = avclan::detail::Error;
 using enum Error::Parse;
 } // namespace
 
 namespace avclan {
+
+#if defined(AVCLAN_FRAME_POOL_N)
+void *Frame::operator new(std::size_t /*count*/,
+                          const std::nothrow_t & /*tag*/) noexcept {
+  return pool.acquire();
+}
+// NOLINTNEXTLINE(misc-new-delete-overloads) false-positive
+void Frame::operator delete(void *ptr) noexcept {
+  pool.release(static_cast<Frame *>(ptr));
+}
+#endif
+
 void Frame::print(Frame::Print print) const {
   if (print.binary) {
     uint8_t buffer[8];

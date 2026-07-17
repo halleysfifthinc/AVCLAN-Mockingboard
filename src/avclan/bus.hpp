@@ -48,9 +48,11 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 #include "avclan.h"
 #include "frame.hpp"
+#include "stdshim.hpp"
 
 namespace avclan {
 
@@ -77,7 +79,8 @@ public:
   void measure();
 #endif
 
-  Error::Read read(uint16_t address, Frame *in, Frame::Print print);
+  expected<std::unique_ptr<Frame>, Error::Read> read(uint16_t address,
+                                                     Frame::Print print);
   Error::Send send(const Frame *out, Frame::Print print);
 
 private:

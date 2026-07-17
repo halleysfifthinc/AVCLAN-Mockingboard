@@ -1,0 +1,21 @@
+diff --git a/include/tl/optional.hpp b/include/tl/optional.hpp
+index e9c59c2..1ff3d4a 100644
+--- a/include/tl/optional.hpp
++++ b/include/tl/optional.hpp
+@@ -21,7 +21,6 @@
+ #define TL_OPTIONAL_VERSION_MINOR 1
+ #define TL_OPTIONAL_VERSION_PATCH 0
+ 
+-#include <exception>
+ #include <functional>
+ #include <new>
+ #include <type_traits>
+@@ -664,7 +663,7 @@ struct nullopt_t {
+ static constexpr nullopt_t nullopt{nullopt_t::do_not_use{},
+                                    nullopt_t::do_not_use{}};
+ 
+-class bad_optional_access : public std::exception {
++class bad_optional_access {
+ public:
+   bad_optional_access() = default;
+   const char *what() const noexcept { return "Optional has no value"; }
