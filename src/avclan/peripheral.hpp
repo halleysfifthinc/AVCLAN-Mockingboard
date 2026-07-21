@@ -20,10 +20,12 @@
 #include "stdshim.hpp"
 
 namespace avclan {
-
+namespace detail {
 enum class Party : uint8_t { Sender, Recipient };
+}
 
 template <DeviceInterface... Devs> class Peripheral {
+  using Party = detail::Party;
   using enum Party;
 
 public:
