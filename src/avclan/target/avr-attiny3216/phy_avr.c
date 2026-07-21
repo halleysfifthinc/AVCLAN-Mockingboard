@@ -344,6 +344,14 @@ void phy_init() {
 // error reporting; no printing happens here.
 Read phy_read_startbit() {
   uint16_t startbitlen = TCB1.CNT = 0;
+
+  // Reset the ~atomic `pulsewidth` variable to detect the post-pulse update
+  // from the TCB0_INT_vect ISR
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    if (!BUS_IS_IDLE) // Only reset if bus is actively driven (i.e. current
+      pulsewidth = 0; // value is stale/already been used)
+  }
+
   while (!BUS_IS_IDLE) {
     startbitlen = TCB1.CNT;
     if (startbitlen > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
@@ -367,18 +375,34 @@ Read phy_read_startbit() {
       return result;
     }
   }
+
+  // `pulsewidth` updates once the TCB0_INT_vect ISR runs for this pulse.
+  TCB1.CNT = 0;
+  do {
+    if (TCB1.CNT > (uint16_t)AVCLAN_BIT0_LOGIC_1) // Wait a max of ~6μs for ISR
+      return BAD_STARTBIT; // ISR/other implementation bug; abort
+
+    // Read ~atomically, to prevent torn reads
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { startbitlen = pulsewidth; }
+  } while (startbitlen == 0);
+
   if (startbitlen < (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8)) {
-    // We missed the beginning of this message; wait for it to finish (bus
-    // continuously idle for >1 bit length) before returning, so we don't have
-    // multiple false-starts while the in-progress message keeps sending more
-    // bits.
+    // Not a start bit; wait for the message to finish (bus continuously idle
+    // for >1 bit length) before returning, so we only report one error (instead
+    // of e.g. repeated "bad (short) start bit" errors)
     TCB1.CNT = 0;
     while (TCB1.CNT < (uint16_t)(AVCLAN_BIT_LENGTH_MAX * 1.2)) {
       if (!BUS_IS_IDLE)
-        TCB1.CNT = 0;
+        TCB1.CNT = 0; // Reset counter after each bit pulse
     }
-    return STARTBIT_TOO_SHORT;
+    // A pulse no wider than a normal bit means we merely tuned in mid-frame and
+    // this was a data bit; a wider-but-still-sub-start pulse means some other
+    // device emitted a wonky pulse.
+    return (startbitlen < (uint16_t)AVCLAN_BIT_LENGTH_MAX) ? STARTBIT_MISSED
+                                                           : STARTBIT_MALFORMED;
   }
+  if (startbitlen > (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 1.2))
+    return STARTBIT_TOO_LONG;
   return (Read)0; // that was a start bit
 }
 

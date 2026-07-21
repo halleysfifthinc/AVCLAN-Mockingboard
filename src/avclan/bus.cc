@@ -289,7 +289,10 @@ auto Bus::read(uint16_t address, Frame::Print print)
     switch (err.errno) {
       case POOL_EMPTY: puts("failed Frame alloc"); break;
       case BAD_STARTBIT: fputs("bad start bit (other)", stdout); break;
-      case STARTBIT_TOO_SHORT: fputs("bad start bit (short)", stdout); break;
+      case STARTBIT_MISSED: fputs("missed start bit", stdout); break;
+      case STARTBIT_MALFORMED:
+        fputs("malformed start bit (external cause)", stdout);
+        break;
       case STARTBIT_TOO_LONG: fputs("bad start bit (long)", stdout); break;
       case BAD_CONTROLLER_PARITY:
         fputs("reading controller addr.", stdout);
@@ -312,7 +315,7 @@ auto Bus::read(uint16_t address, Frame::Print print)
   }
 
   // Only print if some data has been correctly received
-  if (print.print && (err.errno < STARTBIT_TOO_SHORT)) {
+  if (print.print && (err.errno < STARTBIT_MISSED)) {
     if (err.errno > BAD_DATA_PARITY)
       in->length = 0;
     in->print(print);

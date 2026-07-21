@@ -143,7 +143,8 @@ struct Error {
     BAD_CONTROLLER_PARITY,
     BAD_CONTROL_PARITY,
     BAD_PARITY, // generic bad parity has max severity
-    STARTBIT_TOO_SHORT,
+    STARTBIT_MISSED,
+    STARTBIT_MALFORMED,
     STARTBIT_TOO_LONG,
     BAD_STARTBIT,
     POOL_EMPTY, // non-bus error
