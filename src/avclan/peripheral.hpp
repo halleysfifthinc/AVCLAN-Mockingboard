@@ -100,9 +100,9 @@ public:
     const uint8_t b0 = *data++;
     const uint8_t b1 = *data++;
     const uint8_t b2 = *data++;
-    uint8_t b3 = 0;
-    if (in.length > 3) // the shortest known/valid messages are 3 bytes long
-      b3 = *data++;
+
+    // the shortest known/valid messages are 3 bytes long
+    const uint8_t b3 = (in.length > 3) ? *data++ : 0;
 
     if (!in.is_unicast) {
       const auto from = b0;
