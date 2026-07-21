@@ -299,16 +299,16 @@ auto Bus::read(uint16_t address, Frame::Print print)
         goto VERBOSE;
       case BAD_CONTROL_PARITY: fputs("reading control", stdout); goto VERBOSE;
       case BAD_LENGTH_PARITY: fputs("reading length", stdout); goto VERBOSE;
-      case BAD_LENGTH_RANGE: printf("bad length 0x%02X", err.val); break;
+      case BAD_LENGTH_RANGE: printf("bad length 0x%02X:", err.val); break;
       case BAD_DATA_PARITY: fputs("reading data", stdout); goto VERBOSE;
       case BAD_PARITY:
         __builtin_unreachable();
       VERBOSE:
         if (print.verbose) {
-          printf("; read 0x%02X", err.val);
+          printf("; read 0x%02X:", err.val);
         }
     }
-    puts(":");
+    putchar('\n');
   }
 
   // Only print if some data has been correctly received
