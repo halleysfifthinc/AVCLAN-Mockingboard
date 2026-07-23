@@ -215,31 +215,52 @@ int main() {
                       Frame::Error::Parse{0}) {
                     out->reaction = 1;
                     outgoing.push(std::move(out));
+                    readSeq = readBinary = false;
                   }
                 } else
                   puts("!! failed Frame alloc for input message !!");
-                readSeq = readBinary = false;
               } else
                 goto DEFAULT; // reading binary and this is a real data byte;
                               // fall through to default
-            } else if (seqIdx <= Frame::MAXLENGTH) {
+            } else {          // ASCII message
               if (auto out = std::unique_ptr<Frame>(new (std::nothrow) Frame)) {
+                const uint8_t sendLen =
+                    seqIdx <= Frame::MAXLENGTH ? seqIdx : Frame::MAXLENGTH;
                 out->is_unicast = seqIsUnicast;
                 out->peripheral_addr =
                     seqIsUnicast ? peripheral.controller() : 0x1FF;
-                out->length = seqIdx;
-                memcpy(out->data, data_tmp, seqIdx);
+                out->length = sendLen;
+                memcpy(out->data, data_tmp, sendLen);
                 out->reaction = 1;
                 outgoing.push(std::move(out));
+
+                if (seqIdx > Frame::MAXLENGTH)
+                  printf("!! sequence too long (%u > %u), truncated !!\n",
+                         static_cast<unsigned>(seqIdx),
+                         static_cast<unsigned>(Frame::MAXLENGTH));
+
+                // Only leave hex-entry mode and restore logging once the
+                // message actually sent, so a failed alloc can be retried
+                // with '\n' instead of silently dropping the entry.
+                readSeq = false;
+                seqIdx = hexDigit = 0;
+                printAllFrames = lastPrintAllFrames;
               } else
                 puts("!! failed Frame alloc for input message !!");
-              printAllFrames = lastPrintAllFrames;
             }
             break;
           }
         DEFAULT:
         default:
-          if (readSeq && seqIdx < (Frame::MAXLENGTH + sizeof(Frame))) {
+          if (readSeq) {
+            // Binary mode carries the full wire preamble; hex mode is payload
+            // only, so it stops one past MAXLENGTH to let '\n' report overflow.
+            if (seqIdx >= (readBinary ? sizeof(data_tmp)
+                                      : uint8_t{Frame::MAXLENGTH + 1})) {
+              puts("!! sequence buffer full, ignoring further input !!");
+              break;
+            }
+
             if (readBinary) {
               data_tmp[seqIdx++] = readkey;
             } else {
@@ -281,8 +302,8 @@ void Setup() {
 
 void print_help() {
   puts("AVCLAN Mockingboard v1");
-  puts("U - begin reading for unicast message\n"
-       "B - begin reading for broadcast message\n"
+  puts("U - begin reading for unicast message (send with Enter key)\n"
+       "B - begin reading for broadcast message (send with Enter key)\n"
        "m - Toggle mute for mockingboard bus activity\n"
        "v - Toggle verbose error logging\n"
        "l - Toggle message logging\n"
