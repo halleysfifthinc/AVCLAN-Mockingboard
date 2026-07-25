@@ -16,6 +16,8 @@ Checks: |
   -modernize-avoid-c-arrays,
   -modernize-use-std-print,
   -readability-magic-numbers,
+  -readability-function-cognitive-complexity,
+  -misc-non-private-member-variables-in-classes
 WarningsAsErrors: ""
 ExcludeHeaderFilterRegex: 'out/build'
 HeaderFilterRegex: '^src/.*'

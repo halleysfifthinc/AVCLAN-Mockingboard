@@ -12,3 +12,4 @@ __pycache__/
 ~*
 \#*
 /CMakeUserPresets.json
+.cache/
