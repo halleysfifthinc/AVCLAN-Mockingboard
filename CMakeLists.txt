@@ -14,6 +14,10 @@ add_compile_options(
     $<$<COMPILE_LANGUAGE:CXX>:-fno-threadsafe-statics>
     $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
     $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+    # Debug must not be -O0: both the vendored usart.h and avr-libc's
+    # <util/delay.h> #warning when __OPTIMIZE__ is undefined, and -Werror makes
+    # that fatal.
+    $<$<CONFIG:Debug>:-Og>
     $<$<CONFIG:Debug>:-fanalyzer>
     $<$<CONFIG:Debug>:-Wno-analyzer-use-of-uninitialized-value>)
 
@@ -71,6 +75,25 @@ add_library(avclan STATIC
 # build. The selected target adds its own per-target include path.
 target_include_directories(avclan PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/avclan)
+
+add_executable(mockingboard
+    src/sniffer.cc
+)
+target_link_libraries(mockingboard avclan)
+
+# Report firmware section sizes on every build, when the toolchain provides a
+# size tool (CMAKE_SIZE). A standalone custom target (rather than a POST_BUILD
+# command on mockingboard) so it prints even when the link is up to date:
+# custom targets with no output are always considered stale and re-run.
+# add_dependencies orders it after the link.
+if(CMAKE_SIZE)
+    add_custom_target(mockingboard-size ALL
+        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:mockingboard>
+        COMMENT "Section sizes: mockingboard firmware"
+        VERBATIM
+    )
+    add_dependencies(mockingboard-size mockingboard)
+endif()
 
 # Pull in the selected hardware target: its port sources, per-target headers,
 # hardware-specific compile options/definitions, device-pack handling, and the
@@ -145,9 +168,3 @@ endif()
 #         INTERFACE ${tl_optional_SOURCE_DIR}/include)
 #     target_link_libraries(avclan PUBLIC tl_optional_hdr)
 # endif()
-
-add_executable(mockingboard
-    src/sniffer.cc
-)
-
-target_link_libraries(mockingboard avclan)

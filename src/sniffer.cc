@@ -176,7 +176,9 @@ int main() {
           while (peripheral.device<CDChanger>().media_busy()) {}
           puts("end");
           break;
+  #ifdef MEASURE_BUS
         case 'M': peripheral.get_bus().measure(); break;
+  #endif
 #endif
 
         case 0x10: // Signals binary sequence incoming

@@ -423,7 +423,7 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
 
 Bus::Handle Bus::get() { return Handle{*this}; };
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && defined(MEASURE_BUS)
 // Debug bit-timing measurement on the one physical bus; instance-scoped for the
 // same reason as is_active().
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)

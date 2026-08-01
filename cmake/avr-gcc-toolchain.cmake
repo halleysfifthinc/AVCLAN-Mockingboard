@@ -13,6 +13,9 @@
 ##########################################################################
 find_program(AVR_CC avr-gcc REQUIRED)
 find_program(AVR_CXX avr-g++ REQUIRED)
+# Section-size reporter; consumed by an optional POST_BUILD in the top-level
+# CMakeLists (left unset -> no size report) so the top level stays HW-agnostic.
+find_program(CMAKE_SIZE avr-size)
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR avr)

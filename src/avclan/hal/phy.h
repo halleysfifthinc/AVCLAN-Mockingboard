@@ -77,7 +77,7 @@ Bit phy_read_bits_u8(uint8_t *bits, uint8_t len);
 Bit phy_read_bits_u16(uint16_t *bits, int8_t len);
 Bit phy_read_byte(uint8_t *byte);
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && defined(MEASURE_BUS)
 // Sample and dump bus bit timing over the serial link (REPL `M`).
 void phy_measure(void);
 #endif
