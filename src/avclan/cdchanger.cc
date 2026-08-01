@@ -67,7 +67,7 @@ void CDChanger::handle(const Frame &in, Frame &out) {
   const auto action = static_cast<Action>(*data++);
 
   static const uint8_t function_change_resp[] = {
-      0x00, to_underlying(Device::CD_CHANGER), to_underlying(from), 0xFF, 0x01};
+      0x00, to_underlying(Device::CD_CHANGER), 0xFF, 0xFF, 0x01};
 
   using enum Action;
 #pragma GCC diagnostic push
@@ -78,6 +78,7 @@ void CDChanger::handle(const Frame &in, Frame &out) {
       out.is_unicast = true;
       out.length = sizeof(function_change_resp);
       memcpy(out.data, function_change_resp, sizeof(function_change_resp));
+      out.data[2] = to_underlying(from);
       out.data[3] = to_underlying(Enable_Function_Resp);
       state = 0;
       flags2 = 0x80;
