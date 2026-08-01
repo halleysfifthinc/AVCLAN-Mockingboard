@@ -85,17 +85,20 @@ void CDChanger::handle(const Frame &in, Frame &out) {
       out.reaction = r_StatusReport;
       break;
     case Disable_Function_Req:
-      // No change/response needed if we're already not playing
+      // Head unit always expects a response, but the state change can be
+      // conditional
+      out.is_unicast = true;
+      out.length = sizeof(function_change_resp);
+      memcpy(out.data, function_change_resp, sizeof(function_change_resp));
+      out.data[2] = to_underlying(from);
+      out.data[3] = to_underlying(Disable_Function_Resp);
       if (isPlaying()) {
         stopPlaying();
-        out.length = sizeof(function_change_resp);
-        memcpy(out.data, function_change_resp, sizeof(function_change_resp));
-        out.data[3] = to_underlying(Disable_Function_Resp);
         state = 0;
         flags2 = 0x80;
-        out.is_unicast = true;
         out.reaction = r_StatusReport;
-      }
+      } else
+        out.reaction = r_SendOnly;
       break;
     case Eject: {
       // "Eject" label is multiply wrong; proper meaning unclear:
