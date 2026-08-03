@@ -456,7 +456,7 @@ void phy_guard_leave() {
   }
 }
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) && defined(MEASURE_BUS)
   // Only used immediately below
   #define XSTR(x) #x
   #define STR(x)  XSTR(x)
