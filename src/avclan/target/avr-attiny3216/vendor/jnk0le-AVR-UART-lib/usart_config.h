@@ -108,11 +108,11 @@
 
 // Size of the ring buffers, must be power of 2
 // default 32
-#define RX_BUFFER_SIZE 64
+#define RX_BUFFER_SIZE 128
 
 // Size of the ring buffers, must be power of 2
 // default 32
-#define TX_BUFFER_SIZE 128
+#define TX_BUFFER_SIZE 256
 
 /*******************config for multiple USART * mcu's*************************/
 
