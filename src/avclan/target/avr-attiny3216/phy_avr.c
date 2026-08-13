@@ -225,15 +225,18 @@ ISR(TCB0_INT_vect) {
   //   last_tcb1 = cur_tcb1;
   // #endif
 
-  READING_BYTE <<= 1;
   // If the logical `0` pulse was less than the sync + data period threshold,
   // bit was a 1
-  pulsewidth = TCB0.CCMP;
-  if (pulsewidth < (uint16_t)AVCLAN_READBIT_THRESHOLD) {
-    READING_BYTE++;
-    READING_PARITY++;
+  uint16_t tmp = pulsewidth = TCB0.CCMP; // non-volatile tmp saves re-read in
+                                         // read-bit-threshold comparison
+  if (READING_NBITS) {
+    READING_BYTE <<= 1;
+    if (tmp < (uint16_t)AVCLAN_READBIT_THRESHOLD) {
+      READING_BYTE++;
+      READING_PARITY++;
+    }
+    READING_NBITS--;
   }
-  READING_NBITS--;
 }
 
 // Read `len` bits on the AVCLAN bus; returns the even parity
