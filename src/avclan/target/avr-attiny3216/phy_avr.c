@@ -341,23 +341,36 @@ void phy_init() {
   phy_mute(false); // unmute AVCLAN bus TX
 }
 
-// Wait for and validate an incoming start bit. On an over-long "driven" bus
-// (AC2 latched high because the bus is actually floating) this kicks PA7 hard
-// high to unlatch the comparator. The framing layer maps the result to its own
-// error reporting; no printing happens here.
 Read phy_read_startbit() {
-  uint16_t startbitlen = TCB1.CNT = 0;
+  // Following HAL header docs, this function is only called after a driven bus
+  // was ~recently detected.
+  // Two main (designed) entry flows, depending on timing of pulse end w.r.t.
+  // beginning this function:
+  //  - Bus is still driven or ISR is pending
+  //    - Wait for pulse to end if needed
+  //      - On an over-long "driven" bus (AC2 latched high when bus is floating)
+  //      kick PA7 hard high to try unlatching the comparator
+  //    - Grab updated `pulsewidth`
+  //  - Bus is idle
+  //    - `pulsewidth` holds duration of most recent pulse.
 
-  // Reset the ~atomic `pulsewidth` variable to detect the post-pulse update
-  // from the TCB0_INT_vect ISR
+  TCB1.CNT = 0;
+
+  // "stale"ness indicates that the current `pulsewidth` value is out of date
+  bool stale = true;
+
+  uint16_t startbitlen;
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    if (!BUS_IS_IDLE) // Only reset if bus is actively driven (i.e. current
-      pulsewidth = 0; // value is stale/already been used)
+    // pulsewidth won't/can't be updated during atomic block, but pulse may end
+    // and store an IRQ. If bus is idle and no pending ISR, then pulsewidth
+    // currrently holds the duration of the most recent pulse (stale = false).
+    stale = (((!BUS_IS_IDLE) | (TCB0.INTFLAGS & TCB_CAPT_bm)) != 0);
+    // Read ~atomically, to prevent torn reads
+    startbitlen = pulsewidth;
   }
 
   while (!BUS_IS_IDLE) {
-    startbitlen = TCB1.CNT;
-    if (startbitlen > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
+    if (TCB1.CNT > (uint16_t)AVCLAN_STARTBIT_LOGIC_0 * 1.2) {
       Read result = STARTBIT_TOO_LONG;
       while (!BUS_IS_IDLE) {
         // If bus is "driven" too long, assume the AC2 is latched (e.g.
@@ -379,15 +392,23 @@ Read phy_read_startbit() {
     }
   }
 
-  // `pulsewidth` updates once the TCB0_INT_vect ISR runs for this pulse.
   TCB1.CNT = 0;
-  do {
-    if (TCB1.CNT > (uint16_t)AVCLAN_BIT0_LOGIC_1) // Wait a max of ~6μs for ISR
-      return BAD_STARTBIT; // ISR/other implementation bug; abort
-
+  while (stale) { // bus was driven, or a capture was still unconsumed, at entry
+    uint16_t old_pulsewidth = startbitlen;
+    // `pulsewidth` updates once the TCB0_INT_vect ISR runs for this pulse.
     // Read ~atomically, to prevent torn reads
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { startbitlen = pulsewidth; }
-  } while (startbitlen == 0);
+    if (startbitlen != old_pulsewidth)
+      break;
+
+    // Exit for potential false-negative: ISR writes for identical mid-frame
+    // bits (e.g. double 0 or 1 bits) can't be detected, but the ISR should
+    // definitely have run after ~6μs (i.e. startbitlen is actually current).
+    // The delay is ultimately free since mid-frame entry is directed to the
+    // "wait-for-message-completion" stall loop anyways
+    if (TCB1.CNT > (uint16_t)AVCLAN_BIT0_LOGIC_1)
+      break;
+  }
 
   if (startbitlen < (uint16_t)(AVCLAN_STARTBIT_LOGIC_0 * 0.8)) {
     // Not a start bit; wait for the message to finish (bus continuously idle
@@ -396,7 +417,7 @@ Read phy_read_startbit() {
     TCB1.CNT = 0;
     while (TCB1.CNT < (uint16_t)(AVCLAN_BIT_LENGTH_MAX * 1.2)) {
       if (!BUS_IS_IDLE)
-        TCB1.CNT = 0; // Reset counter after each bit pulse
+        TCB1.CNT = 0; // (Re)start count from when bus was last driven
     }
     // A pulse no wider than a normal bit means we merely tuned in mid-frame and
     // this was a data bit; a wider-but-still-sub-start pulse means some other

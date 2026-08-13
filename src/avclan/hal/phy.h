@@ -40,12 +40,12 @@ bool phy_active(void);
 void phy_guard_enter(void);
 void phy_guard_leave(void);
 
-// Start-bit handling, factored out of read/sendframe so the framing layer holds
-// no bus-timing or hardware-recovery logic.
-// - phy_read_startbit waits for and validates an incoming start bit, doing
-//   any target-specific bus recovery; see avclan::detail::Error::Read.
-// - phy_send_startbit acquires the bus and emits a start bit; may return BUSY
+// Validates an incoming start bit; see avclan::detail::Error::Read.
+//  Invariants:
+//    - Must only be called after positive phy_active() call.
 Read phy_read_startbit(void);
+
+// Acquire the bus and emit a start bit; may return BUSY
 Send phy_send_startbit(void);
 
 /* Returns 0 (`(Send)0`) if the peripheral sent an ACK bit, otherwise returns
