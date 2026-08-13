@@ -100,6 +100,8 @@ int main() {
                                                 .binary = printBinary});
       if (auto next = peripheral.react(std::move(result)))
         outgoing.push(std::move(next));
+
+      continue;
     }
 
     // stdin must be non-blocking: yielding EOF when idle/empty
