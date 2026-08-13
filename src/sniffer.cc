@@ -20,7 +20,9 @@
 
 const char *const offon[] = {"OFF", "ON"};
 
-constexpr uint8_t CACHE_SIZE = 32;
+constexpr uint8_t CACHE_SIZE = 16;
+static_assert(CACHE_SIZE >= AVCLAN_FRAME_POOL_N,
+              "CACHE_SIZE must be >= avclan::Frame allocator pool capacity");
 
 using namespace avclan;
 

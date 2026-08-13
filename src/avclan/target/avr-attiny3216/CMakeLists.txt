@@ -77,7 +77,7 @@ set_property(CACHE USART_RXMODE PROPERTY STRINGS
 set(RTC_STATUS_PERIOD_MS 1000 CACHE STRING "Measured ms per nominal RTC status period (1000 = no correction)")
 
 # --- Firmware configuration options ----------------------------------------
-set(AVCLAN_FRAME_POOL_N 24 CACHE STRING "Pool allocator capacity for avclan::Frame (must be <= incoming/outgoing queue size)")
+set(AVCLAN_FRAME_POOL_N 14 CACHE STRING "Pool allocator capacity for avclan::Frame (must be <= incoming/outgoing queue size)")
 
 try_compile(LIBC_VERSION_TEST
     SOURCES "${CMAKE_SOURCE_DIR}/cmake/libc-version-test.cpp"
