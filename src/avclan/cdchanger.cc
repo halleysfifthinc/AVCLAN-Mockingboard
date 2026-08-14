@@ -249,6 +249,26 @@ void CDChanger::handle(const Frame &in, Frame &out) {
       generateStatus(out, true, Device::CMD_SW);
       out.reaction = r_StatusReport;
       break;
+    case CD_Enable_Scan:
+      flags |= SCAN;
+      generateStatus(out, true, Device::CMD_SW);
+      out.reaction = r_StatusReport;
+      break;
+    case CD_Disable_Scan:
+      flags &= ~SCAN;
+      generateStatus(out, true, Device::CMD_SW);
+      out.reaction = r_StatusReport;
+      break;
+    case CD_Enable_Disk_Scan:
+      flags |= DISK_SCAN;
+      generateStatus(out, true, Device::CMD_SW);
+      out.reaction = r_StatusReport;
+      break;
+    case CD_Disable_Disk_Scan:
+      flags &= ~DISK_SCAN;
+      generateStatus(out, true, Device::CMD_SW);
+      out.reaction = r_StatusReport;
+      break;
     default: break;
   }
 #pragma GCC diagnostic pop
