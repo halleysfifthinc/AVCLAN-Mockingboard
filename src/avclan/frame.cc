@@ -6,8 +6,11 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <type_traits>
 
 #include "frame.hpp"
+#include "hal/stdio.h"
+#include "stdshim.hpp"
 
 #if defined(AVCLAN_FRAME_POOL_N)
   #include <array>
@@ -65,40 +68,97 @@ void Frame::operator delete(void *ptr) noexcept {
 }
 #endif
 
+namespace {
+// Emit `value` as at least `width` (lowercase, as to_chars emits) hex digits,
+// zero-padded. `width` must be <= 3 (see the padding below); every call site
+// reserves its field's worst case in the destination buffer, so this can't
+// overflow.
+template <class T>
+  requires std::is_unsigned_v<T>
+char *put_hex(char *dest, T value, uint8_t width) {
+  // to_chars emits the minimum number of digits, so work out up front how many
+  // that will be to know how much zero padding goes in front of them. At most
+  // two iterations for the field widths used here.
+  uint8_t ndigits = 1;
+  for (T rest = value; rest >= 16; rest /= 16)
+    ndigits++;
+
+  // At most two pad digits (width <= 3). Written out rather than as a counted
+  // loop because GCC turns that into a memset() call — call overhead an order
+  // of magnitude above the one or two stores it replaces.
+  if (ndigits < width) {
+    *dest++ = '0';
+    if (ndigits + 1 < width)
+      *dest++ = '0';
+  }
+
+  return to_chars(dest, dest + ndigits, value, 16).ptr;
+}
+
+// " 0xNNN" for each field, plus the leading unicast digit and trailing newline
+constexpr uint8_t LINE_MAX = 1 + (4 * 6) + (Frame::MAXLENGTH * 5) + 1;
+// The same buffer serves the binary branch, which is the shorter of the two
+static_assert(LINE_MAX >= 8 + Frame::MAXLENGTH + 2);
+} // namespace
+
 void Frame::print(Frame::Print print) const {
+  // The AVC-LAN read loop polls for start bits between calls, so emitting per
+  // character (~3 µs each through stdio) would blow past a start bit's ~169 µs
+  // and lose the next frame.
+  char buffer[LINE_MAX];
+  char *bptr = buffer;
+
   if (print.binary) {
-    uint8_t buffer[8];
-    uint8_t *bptr = buffer;
     *bptr++ = 0x10; // Data Link Escape, signaling binary data forthcoming
-    *bptr++ = static_cast<uint8_t>(is_unicast);
+    *bptr++ = static_cast<char>(is_unicast);
 
     // Send addresses in big-endian order
-    *bptr++ = static_cast<uint8_t>(controller_addr >> 8);
-    *bptr++ = static_cast<uint8_t>(controller_addr);
-    *bptr++ = static_cast<uint8_t>(peripheral_addr >> 8);
-    *bptr++ = static_cast<uint8_t>(peripheral_addr);
+    *bptr++ = static_cast<char>(controller_addr >> 8);
+    *bptr++ = static_cast<char>(controller_addr);
+    *bptr++ = static_cast<char>(peripheral_addr >> 8);
+    *bptr++ = static_cast<char>(peripheral_addr);
 
-    *bptr++ = control;
-    *bptr++ = length;
-    fwrite(buffer, 1, 8, stdout);
-    fwrite(data, 1, length, stdout);
+    *bptr++ = static_cast<char>(control);
+    *bptr++ = static_cast<char>(length);
 
-    bptr = buffer;
+    memcpy(bptr, data, length);
+    bptr += length;
+
     *bptr++ = 0x17; // End of transmission block
     *bptr++ = 0x0A; // \n
-    fwrite(buffer, 1, 2, stdout);
-  } else {
-    printf("%X", static_cast<unsigned>(is_unicast));
-    printf(" 0x%03X", static_cast<unsigned>(controller_addr & 0x0FFF));
-    printf(" 0x%03X", static_cast<unsigned>(peripheral_addr & 0x0FFF));
-    printf(" 0x%X", static_cast<unsigned>(control & 0x0F));
-    printf(" 0x%X", static_cast<unsigned>(length & 0x0F));
 
-    for (uint8_t i = 0; i < length; i++) {
-      printf(" 0x%02X", static_cast<unsigned>(data[i]));
-    }
-    putchar('\n');
+    stdio_write_nonblock(buffer, static_cast<size_t>(bptr - buffer));
+    return;
   }
+
+  struct field_t {
+    uint16_t value;
+    uint8_t width; // minimum digits, matching the old %03x / %x formats
+  };
+
+  *bptr++ = is_unicast ? '1' : '0';
+  for (const field_t field :
+       {field_t{.value = static_cast<uint16_t>(controller_addr & 0x0FFF),
+                .width = 3},
+        field_t{.value = static_cast<uint16_t>(peripheral_addr & 0x0FFF),
+                .width = 3},
+        field_t{.value = static_cast<uint16_t>(control & 0x0F), .width = 1},
+        field_t{.value = static_cast<uint16_t>(length & 0x0F), .width = 1}}) {
+    *bptr++ = ' ';
+    *bptr++ = '0';
+    *bptr++ = 'x';
+    bptr = put_hex(bptr, field.value, field.width);
+  }
+
+  for (uint8_t i = 0; i < length; i++) {
+    *bptr++ = ' ';
+    *bptr++ = '0';
+    *bptr++ = 'x';
+    bptr = put_hex(bptr, data[i], 2);
+  }
+  *bptr++ = '\n';
+
+  stdio_write_nonblock(buffer, static_cast<size_t>(bptr - buffer));
 }
 
 Error::Parse Frame::parse(const uint8_t *bytes, uint8_t len) {
