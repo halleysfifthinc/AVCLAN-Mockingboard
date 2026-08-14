@@ -39,6 +39,7 @@ public:
     REPEAT = 1 << 4,
     DISK_SCAN = 1 << 5,
     SCAN = 1 << 6,
+    NEGATIVE = 1 << 6,
   };
 
   /// Message state machine
@@ -68,7 +69,7 @@ public:
   void disable(Frame &out);
   static bool pending();
   void emit(Frame &out);
-  void incrementTime();
+  void incrementTime(int8_t inc_sec = 1);
   bool isPlaying() const;
 #ifndef NDEBUG
   void media_action(MediaAction action);
@@ -93,7 +94,7 @@ private:
   uint8_t mins = 0xFF; // Decimal storage; serialize to BCD
   uint8_t secs = 0x7F; // Decimal storage; serialize to BCD
   uint8_t flags = 0;
-  uint8_t flags2 = 0xC0;
+  uint8_t flags2 = 0x80;
 };
 
 } // namespace avclan

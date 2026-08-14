@@ -167,7 +167,7 @@ void CDChanger::handle(const Frame &in, Frame &out) {
         track = 1;
       mins = 0xff;
       secs = 0x7f;
-      flags2 = 0xc0;
+      flags2 &= ~NEGATIVE;
       generateStatus(out, true, Device::CMD_SW);
       media_action(MediaAction::Track_Next);
       out.reaction = r_TrackChange;
@@ -175,7 +175,7 @@ void CDChanger::handle(const Frame &in, Frame &out) {
     case Track_Seek_Down:
       state = SEEKING_TRACK;
       // Track down returns to track beginning if in ~middle of song
-      if (mins == 0 && secs < 5) {
+      if ((flags2 & NEGATIVE) != 0 || (mins == 0 && secs < 5)) {
         if (track > 1)
           --track;
         else
@@ -185,17 +185,13 @@ void CDChanger::handle(const Frame &in, Frame &out) {
       }
       mins = 0xff;
       secs = 0x7f;
-      flags2 = 0xc0;
+      flags2 &= ~NEGATIVE;
       generateStatus(out, true, Device::CMD_SW);
       out.reaction = r_TrackChange;
       break;
     case Track_Fast_Forward: {
       state |= SEEKING;
-      secs += TIME_SKIP;
-      if (secs > 59) {
-        secs -= 60;
-        ++mins;
-      }
+      incrementTime(TIME_SKIP);
       generateStatus(out, true, Device::CMD_SW);
       media_action(MediaAction::Skip_Forward);
       cdtimer_reset(); // Skipped to a whole/round sec; ensure next tick
@@ -205,17 +201,7 @@ void CDChanger::handle(const Frame &in, Frame &out) {
     }
     case Track_Rewind: {
       state |= SEEKING;
-      if (secs < TIME_SKIP) {
-        if (mins > 0) {
-          const uint8_t dif = TIME_SKIP - secs;
-          secs = 60 - dif;
-          --mins;
-        } else {
-          mins = 0;
-          secs = 0;
-        }
-      } else
-        secs -= TIME_SKIP;
+      incrementTime(-TIME_SKIP);
       generateStatus(out, true, Device::CMD_SW);
       media_action(MediaAction::Skip_Backward);
       cdtimer_reset(); // Skipped to a whole/round sec; ensure next tick
@@ -268,8 +254,8 @@ void CDChanger::handle(const Frame &in, Frame &out) {
 #pragma GCC diagnostic pop
 }
 
-std::unique_ptr<Frame> CDChanger::react(
-    expected<std::unique_ptr<Frame>, detail::SendError> exp) {
+std::unique_ptr<Frame>
+CDChanger::react(expected<std::unique_ptr<Frame>, detail::SendError> exp) {
 
   if (!exp) {
     if (exp.error().reaction == to_underlying(r_StateReport) &&
@@ -277,7 +263,7 @@ std::unique_ptr<Frame> CDChanger::react(
         ++failedStatusReports > 1) {
       failedStatusReports = 0;
       stopPlaying(); // Disable periodic updates if e.g. no-one's
-                   // listening (car was turned off?)
+                     // listening (car was turned off?)
     }
   } else {
     auto out = std::move(exp.value());
@@ -348,7 +334,7 @@ void CDChanger::enable(Frame &out) {
     if (secs > TWODIGIT_MAX)
       secs = 0;
     state = SEEKING | SEEKING_TRACK;
-    flags2 = 0xc0;
+    flags2 = 0x80;
     generateStatus(out, false, Device::STATUS);
     out.reaction = r_StartPlaying;
   }
@@ -399,19 +385,40 @@ void CDChanger::setTime(uint8_t min, uint8_t sec) {
   secs = sec;
 }
 
-void CDChanger::incrementTime() {
+// Increment the time by inc_sec (REQUIRES |inc_sec| <= 59).
+void CDChanger::incrementTime(int8_t inc_sec) {
   // Sentinel values (>TWODIGIT_MAX) mean "no time"; leave them alone until
   // setTime() replaces them with a real count.
-  if (secs > TWODIGIT_MAX)
+  if (mins > TWODIGIT_MAX)
     return;
-  if (secs == 59) {
-    secs = 0;
-    if (mins == TWODIGIT_MAX)
-      mins = 0;
-    else
-      mins++;
-  } else
-    secs++;
+
+  if ((flags2 & NEGATIVE) != 0)
+    inc_sec = -inc_sec; // time forward shrinks a negative magnitude
+  int8_t sum = secs + inc_sec;
+
+  if (sum < 0 && mins == 0) {
+    // Stepped through zero: the display flips sign and counts away from it.
+    secs = (uint8_t)-sum;
+    flags2 ^= NEGATIVE;
+    return;
+  }
+
+  if (sum > 59) {
+    if (mins == TWODIGIT_MAX) { // saturate at 99:59 rather than wrap the hour
+      secs = 59;
+      return;
+    }
+    sum -= 60;
+    ++mins;
+  } else if (sum < 0) {
+    sum += 60;
+    --mins; // mins > 0: the mins == 0 borrow was handled above
+  }
+  secs = (uint8_t)sum;
+
+  // Zero is neither sign, so it must never display as -00:00.
+  if ((mins | secs) == 0)
+    flags2 &= ~NEGATIVE;
 }
 
 // Used for changed status messages
@@ -439,7 +446,6 @@ void CDChanger::normalizeState() {
     secs = 0;
   state = PLAYBACK;
   flags &= (uint8_t)~(DISK_SCAN | SCAN);
-  flags2 = 0x80;
 }
 
 #ifndef NDEBUG
