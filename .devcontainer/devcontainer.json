@@ -5,7 +5,17 @@
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
 	"image": "mcr.microsoft.com/devcontainers/base:alpine-3.22",
 	// Features to add to the dev container. More info: https://containers.dev/features.
-	"features": {},
+	"features": {
+		"ghcr.io/anthropics/devcontainer-features/claude-code:1": {}
+	},
+	"mounts": [
+		"source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached",
+		// ~/.claude/skills/* are symlinks into ~/.agents/skills — mount it too or they dangle
+		"source=${localEnv:HOME}/.agents,target=/home/vscode/.agents,type=bind,consistency=cached"
+	],
+	"containerEnv": {
+		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+	},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	// Use 'postCreateCommand' to run commands after the container is created.
@@ -17,28 +27,22 @@
 			"extensions": [
 				"ms-vscode.cpptools-extension-pack",
 				"rockcat.avr-support",
-				"harikrishnan94.cxx-compiler-explorer"
+				"harikrishnan94.cxx-compiler-explorer",
+				"llvm-vs-code-extensions.vscode-clangd",
+				"Anthropic.claude-code"
 			],
 			"settings": {
-				"editor.formatOnSave": true,
-				"C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
-					"clang-analyzer-core.NullDereference"
-				],
-				"C_Cpp.files.exclude": {
-					"build/**": true
-				},
 				"files.associations": {
 					"*.S": "avr"
 				},
-				"cmake.configureOnOpen": true,
-				"compilerexplorer.compilationDirectory": "${workspaceFolder}/build"
+				"clangd.path": "/usr/bin/clangd"
 			}
 		}
-	}
-	// "runArgs": [
-	// 	"--device=/dev/ttyUSB0",
-	// 	"--device=/dev/ttyUSB1"
-	// ]
+	},
+	"runArgs": [
+		"--device=/dev/ttyUSB0",
+		"--network=host"
+	]
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	// "remoteUser": "root"
 }

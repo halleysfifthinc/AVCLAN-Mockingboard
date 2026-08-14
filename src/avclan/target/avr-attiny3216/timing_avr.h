@@ -63,4 +63,4 @@
 // TCB_TICK is nanoseconds/tick; the generic timing.h wants microseconds/tick.
 #define TICK_US (TCB_TICK / 1000.0)
 
-#include "timing.h"
+#include "timing.h" // IWYU pragma: export

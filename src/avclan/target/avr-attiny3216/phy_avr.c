@@ -15,7 +15,7 @@
 
 // F_CPU + TICK_US (timing.h) defined here; F_CPU potentially needed by
 // avr-libc.
-#include "timing_avr.h"
+#include "timing_avr.h" // IWYU pragma: keep
 
 // USART0 TX ring indices owned by the jnk0le lib; the guard consults them to
 // decide whether to resume the TX drain (DRE interrupt) on leave.
@@ -80,7 +80,7 @@ bool phy_is_muted() {
 }
 
 // True when the bus is being driven (i.e. not idle/floating).
-bool phy_active() { return !BUS_IS_IDLE; }
+bool phy_active() { return (!BUS_IS_IDLE) != 0; }
 
 // Mute device TX on AVCLAN bus
 void phy_mute(bool mute) {
@@ -112,8 +112,6 @@ static void set_AVC_logic_for(uint8_t val, uint16_t period) {
     AVCLAN_setBusDriven();
   }
   while (TCB1.CNT <= period) {};
-
-  return;
 }
 
 void phy_send_bit(Bit bit) {
@@ -481,6 +479,8 @@ void phy_guard_leave() {
 }
 
 #if !defined(NDEBUG) && defined(MEASURE_BUS)
+  #include <stdio.h> // phy_measure() reporting (debug builds only)
+
   // Only used immediately below
   #define XSTR(x) #x
   #define STR(x)  XSTR(x)

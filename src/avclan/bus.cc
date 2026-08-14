@@ -375,10 +375,6 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
     }
 
     for (uint8_t i = 0; i < out.length; i++) {
-      // Based on the µPD6708 datasheet, ACK bit for broadcast doesn't seem
-      // necessary (i.e. This deviates from the previous broadcast specific
-      // function that sent an extra `1` bit after each byte/parity)
-      // Explanation for why audio-group broadcast state report isn't working?
       if (auto serr = handle.send<8>(out.data[i], with_ack, out.is_unicast);
           serr == NAK) {
         err.errno = NAK_DATA;
