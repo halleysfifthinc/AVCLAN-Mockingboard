@@ -203,14 +203,16 @@ local function bcd2dec(b)
 end
 
 -- Format a BCD-encoded mm:ss pair, falling back to raw hex when a byte isn't
--- valid BCD (e.g. a 0xff sentinel for "time unknown").
-local function bcd_time(min_b, sec_b)
+-- valid BCD (e.g. a 0xff sentinel for "time unknown"). `negative` (the CD
+-- NEGATIVE flag) only controls the sign, so it applies to the raw fallback too.
+local function bcd_time(min_b, sec_b, negative)
+    local sign = negative and "-" or ""
     local m = bcd2dec(min_b)
     local s = bcd2dec(sec_b)
     if m == nil or s == nil then
-        return string.format("%02x:%02x (raw)", min_b, sec_b)
+        return string.format("%s%02x:%02x (raw)", sign, min_b, sec_b)
     end
-    return string.format("%02d:%02d", m, s)
+    return string.format("%s%02d:%02d", sign, m, s)
 end
 
 local known_devices = {
@@ -478,6 +480,15 @@ local f_cd_flag_repeat = ProtoField.bool("avclan.cd.flags.repeat", "REPEAT", 8, 
 local f_cd_flag_disk_scan = ProtoField.bool("avclan.cd.flags.disk_scan", "DISK_SCAN", 8, nil, 0x20)
 local f_cd_flag_scan = ProtoField.bool("avclan.cd.flags.scan", "SCAN", 8, nil, 0x40)
 
+-- Second CD flags byte (last byte of the playback status frame). Resting value
+-- is 0x80; 0x40 (NEGATIVE) makes the reported play time count below zero, as
+-- seen when rewinding past the start of a track: ..., 00:01, 00:00, then the
+-- byte flips to 0xc0 and the time climbs again as -00:01, -00:02, ...
+-- [msgdumps/rewind-negative.txt].
+local f_cd_flags2 = ProtoField.uint8("avclan.cd.flags2", "CD player flags (byte 2)")
+local f_cd_flag_negative = ProtoField.bool("avclan.cd.flags2.negative", "NEGATIVE", 8, nil, 0x40)
+local f_cd_flag2_unknown7 = ProtoField.bool("avclan.cd.flags2.unknown7", "UNKNOWN7", 8, nil, 0x80)
+
 local f_tape_present = ProtoField.uint8("avclan.tape.present", "Tape deck slot", base.HEX, {[0x01] = "FILLED", [0x00] = "EMPTY"})
 local f_tape_state = ProtoField.uint8("avclan.tape.state", "Tape deck state")
 local f_tape_seeking_rev = ProtoField.bool("avclan.tape.state.seeking_rev", "SEEKING_REVERSE", 8, nil, 0x01)
@@ -553,6 +564,9 @@ avclanproto.fields = {
     f_cd_flag_repeat,
     f_cd_flag_disk_scan,
     f_cd_flag_scan,
+    f_cd_flags2,
+    f_cd_flag_negative,
+    f_cd_flag2_unknown7,
     f_tape_present,
     f_tape_state,
     f_tape_seeking_rev,
@@ -809,7 +823,7 @@ end
 local function decode_cd(subtree, buffer, offset, action)
     if action == known_actions_names["PLAYBACK_STATUS"] or
         action == known_actions_names["PLAYBACK_RESP"] then
-        local cdtree = subtree:add(avclanproto, buffer(offset,9), "Device: CD player")
+        local cdtree = subtree:add(avclanproto, buffer(offset,-1), "Device: CD player")
         local cd_slots = cdtree:add(f_cd_slots, buffer(offset+3,1))
         cd_slots:add(f_cd_slot1, buffer(offset+3,1))
         cd_slots:add(f_cd_slot2, buffer(offset+3,1))
@@ -825,6 +839,12 @@ local function decode_cd(subtree, buffer, offset, action)
         cd_state:add(f_cd_playback, buffer(offset+4,1))
         cd_state:add(f_cd_seeking_track, buffer(offset+4,1))
         cd_state:add(f_cd_loading, buffer(offset+4,1))
+        -- The sign of the play time lives in the trailing flags byte, so read it
+        -- before formatting the time (older/shorter reports may omit it).
+        local negative = false
+        if buffer:len() > offset+10 then
+            negative = bit.band(buffer(offset+10,1):uint(), 0x40) ~= 0
+        end
         local cd_status = cdtree:add(avclanproto, buffer(offset+5,-1), "")
         cd_status:add(f_cd_disc, buffer(offset+5,1))
         cd_status:add(f_cd_track, buffer(offset+6,1))
@@ -832,7 +852,7 @@ local function decode_cd(subtree, buffer, offset, action)
         cd_status:add(f_cd_sec, buffer(offset+8,1))
         cd_status:append_text("Disc " .. field_cd_disc().value .. ", ")
         cd_status:append_text("track " .. tostring(buffer(offset+6,1)):gsub("(.)(.)", "%1%2") .. ", ")
-        cd_status:append_text("time " .. bcd_time(buffer(offset+7,1):uint(), buffer(offset+8,1):uint()))
+        cd_status:append_text("time " .. bcd_time(buffer(offset+7,1):uint(), buffer(offset+8,1):uint(), negative))
         local cd_flags = cdtree:add(f_cd_flags, buffer(offset+9,1))
         cd_flags:add(f_cd_flag_disk_random, buffer(offset+9,1))
         cd_flags:add(f_cd_flag_random, buffer(offset+9,1))
@@ -840,6 +860,14 @@ local function decode_cd(subtree, buffer, offset, action)
         cd_flags:add(f_cd_flag_repeat, buffer(offset+9,1))
         cd_flags:add(f_cd_flag_disk_scan, buffer(offset+9,1))
         cd_flags:add(f_cd_flag_scan, buffer(offset+9,1))
+        if buffer:len() > offset+10 then
+            local cd_flags2 = cdtree:add(f_cd_flags2, buffer(offset+10,1))
+            cd_flags2:add(f_cd_flag_negative, buffer(offset+10,1))
+            cd_flags2:add(f_cd_flag2_unknown7, buffer(offset+10,1))
+            if negative then
+                cd_flags2:append_text(" (play time is negative)")
+            end
+        end
     elseif action == known_actions_names["LOADING_STATUS"] or
         action == known_actions_names["LOADING_RESP"] then
         local cdtree = subtree:add(avclanproto, buffer(offset,9), "Device: CD player")
