@@ -30,7 +30,7 @@ void stdio_init(void);
 // holds only '!'. In the overwrite case the buffer in front of that line is
 // truncated, so a reader MUST tolerate one malformed buffer there. The return
 // value is useful only for diagnostics.
-bool stdio_write_nonblock(const void *buf, size_t len);
+bool stdio_write_nonblock(const void *buf, uint8_t len);
 
 #ifdef __cplusplus
 }

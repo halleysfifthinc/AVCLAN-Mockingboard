@@ -33,7 +33,7 @@ static int stdio_putchar(char data, FILE *stream) {
   return 0;
 }
 
-bool stdio_write_nonblock(const void *buf, size_t len) {
+bool stdio_write_nonblock(const void *buf, uint8_t len) {
   if (len == 0)
     return true;
 
@@ -51,27 +51,32 @@ bool stdio_write_nonblock(const void *buf, size_t len) {
     // available space or because the ring is full. For the former case, the
     // full indicator can be appended without truncating previously queued
     // bytes.
+    // Goal is for the bang-indicator to be on its own line
+    uint8_t tmp = head;
     if (space >= 3) {
-      tx0_buffer[(head + 1) & TX0_BUFFER_MASK] = '\n';
-      tx0_buffer[(head + 2) & TX0_BUFFER_MASK] = '!';
-      tx0_buffer[(head + 3) & TX0_BUFFER_MASK] = '\n';
-      tx0_Head = (uint8_t)((head + 3) & TX0_BUFFER_MASK);
+      // Room for 3 normally implies the current head ends with a newline
+      // (avoids an unneeded double newline in most cases)
+      tmp = (tmp + 1) & TX0_BUFFER_MASK;
+      tx0_buffer[tmp] = '!';
+      tmp = (tmp + 1) & TX0_BUFFER_MASK;
+      tx0_buffer[tmp] = '\n';
+      tx0_Head = tmp;
       ATOMIC_BLOCK(ATOMIC_RESTORESTATE) { USART0.CTRLA |= USART_DREIE_bm; }
     } else {
       // No room for even the indicator, so it goes over the last three queued
-      // bytes. `space` and the queued byte count always sum to
-      // TX0_BUFFER_MASK, so space < 3 means at least 253 bytes are queued and
-      // all three writes land inside them. The ISR already drains the ring, so
-      // DREIE needs no change.
-      tx0_buffer[(head - 2) & TX0_BUFFER_MASK] = '\n';
-      tx0_buffer[(head - 1) & TX0_BUFFER_MASK] = '!';
-      tx0_buffer[head] = '\n';
+      // bytes. The ISR already drains the ring, so DREIE needs no change.
+      // Write in reverse order to more efficiently decrement
+      tx0_buffer[tmp] = '\n';
+      tmp = (tmp - 1) & TX0_BUFFER_MASK;
+      tx0_buffer[tmp] = '!';
+      tmp = (tmp - 1) & TX0_BUFFER_MASK;
+      tx0_buffer[tmp] = '\n';
     }
     return false;
   }
 
   const uint8_t start = (uint8_t)((head + 1) & TX0_BUFFER_MASK);
-  const size_t contiguous = TX0_BUFFER_SIZE - start;
+  const uint8_t contiguous = TX0_BUFFER_SIZE - start;
 
   if (len <= contiguous) {
     memcpy(&tx0_buffer[start], buf, len);
