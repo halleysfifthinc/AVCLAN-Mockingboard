@@ -35,7 +35,10 @@
 				"files.associations": {
 					"*.S": "avr"
 				},
-				"clangd.path": "/usr/bin/clangd"
+				"clangd.path": "/usr/bin/clangd",
+				"clangd.arguments": [
+					"--compile-commands-dir=${workspaceFolder}/out/build"
+				]
 			}
 		}
 	},

@@ -5,3 +5,6 @@ CompileFlags:
     - -fstrict-volatile-bitfields
     - -fno-tree-switch-conversion
     - -fanalyzer
+    - -ffixed-r2
+    - -ffixed-r3
+    - -ffixed-r4
