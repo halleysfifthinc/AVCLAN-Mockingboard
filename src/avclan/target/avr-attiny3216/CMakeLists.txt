@@ -150,7 +150,6 @@ target_compile_definitions(avclan PUBLIC
     __CLK_PRESCALE_DIV=__${CLK_PRESCALE_DIV}
     TCB_CLKSEL=${TCB_CLKSEL}
     RTC_STATUS_PERIOD_MS=${RTC_STATUS_PERIOD_MS}
-    AVCLAN_FRAME_POOL_N=${AVCLAN_FRAME_POOL_N}
 )
 target_compile_options(avclan PUBLIC
     --param=min-pagesize=0

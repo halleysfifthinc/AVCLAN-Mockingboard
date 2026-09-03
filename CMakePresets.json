@@ -61,7 +61,7 @@
             },
             "environment": {
                 "PICO_PLATFORM": "rp2350-arm-s",
-                "PICO_BOARD": "pico2"
+                "PICO_BOARD": "pimoroni_pico_plus2w_rp2350"
             }
         },
         {
@@ -71,9 +71,7 @@
             "description": "",
             "generator": "Ninja",
             "environment": {
-                "PICO_COMPILER": "pico_arm_gcc",
-                "CC": "/usr/bin/gcc-15",
-                "CXX": "/usr/bin/g++-15"
+                "PICO_COMPILER": "pico_arm_gcc"
             }
         },
         {

@@ -19,12 +19,14 @@ Checks: |
   -readability-function-cognitive-complexity,
   -misc-non-private-member-variables-in-classes
 WarningsAsErrors: ""
-ExcludeHeaderFilterRegex: 'out/build'
-HeaderFilterRegex: '^src/.*'
+ExcludeHeaderFilterRegex: "out/build"
+HeaderFilterRegex: "^src/.*"
 SystemHeaders: false
 # AnalyzeTemporaryDtors: false
 FormatStyle: none
 CheckOptions:
+  - key: modernize-deprecated-headers.CheckHeaderFile
+    value: "false"
   - key: readability-magic-numbers.IgnorePowersOf2IntegerValues
     value: "true"
   - key: readability-magic-numbers.IgnoredIntegerValues

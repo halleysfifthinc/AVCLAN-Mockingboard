@@ -28,16 +28,6 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_compile_options(
-    -Wall -Wswitch-enum -Werror
-
-    # Debug must not be -O0: both the vendored usart.h and avr-libc's
-    # <util/delay.h> #warning when __OPTIMIZE__ is undefined, and -Werror makes
-    # that fatal.
-    $<$<CONFIG:Debug>:-Og>
-    $<$<CONFIG:Debug>:-fanalyzer>
-    $<$<CONFIG:Debug>:-Wno-analyzer-use-of-uninitialized-value>)
-
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "13")
     message(FATAL_ERROR "This project requires at least GCC v13")
@@ -77,6 +67,21 @@ add_library(avclan STATIC
     src/avclan/cdchanger.cc
     src/avclan/bus.cc
 )
+
+target_compile_definitions(avclan PUBLIC
+    AVCLAN_FRAME_POOL_N=${AVCLAN_FRAME_POOL_N}
+    AVCLAN_MSG_QUEUE_SIZE=${AVCLAN_MSG_QUEUE_SIZE}
+)
+
+target_compile_options(avclan PUBLIC
+    -Wall -Wswitch-enum -Werror
+
+    # Debug must not be -O0: both the vendored usart.h and avr-libc's
+    # <util/delay.h> #warning when __OPTIMIZE__ is undefined, and -Werror makes
+    # that fatal.
+    $<$<CONFIG:Debug>:-Og>
+    $<$<CONFIG:Debug>:-fanalyzer>
+    $<$<CONFIG:Debug>:-Wno-analyzer-use-of-uninitialized-value>)
 
 # avclan exports its public generic headers (src/avclan) to consumers and
 # reaches into src/ for sibling headers (stdio.h, board.h) during its own
