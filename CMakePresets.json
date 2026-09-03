@@ -1,6 +1,24 @@
 {
-    "version": 3,
+    "version": 9,
     "configurePresets": [
+        {
+            "name": "debug-base",
+            "hidden": true,
+            "description": "Debug build settings",
+            "generator": "Ninja",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            }
+        },
+        {
+            "name": "relwithdebinfo-base",
+            "hidden": true,
+            "description": "RelWithDebInfo build settings",
+            "inherits": "debug-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            }
+        },
         {
             "name": "usb0",
             "hidden": true,
@@ -31,20 +49,40 @@
             }
         },
         {
-            "name": "debug-base",
+            "name": "pico2",
             "hidden": true,
-            "description": "Debug build settings",
+            "binaryDir": "${sourceDir}/out/build/pico2",
+            "inherits": "debug-base",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug"
+                "AVCLAN_TARGET": "pico2",
+                "AVCLAN_FRAME_POOL_N": "14",
+                "AVCLAN_TARGET_SDK_FILE": "${sourceDir}/cmake/pico_sdk_import.cmake",
+                "PICO_SDK_FETCH_FROM_GIT": true
+            },
+            "environment": {
+                "PICO_PLATFORM": "rp2350-arm-s",
+                "PICO_BOARD": "pico2"
             }
         },
         {
-            "name": "relwithdebinfo-base",
-            "hidden": true,
-            "description": "RelWithDebInfo build settings",
-            "inherits": "debug-base",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+            "name": "pico2-gcc",
+            "displayName": "Pico 2W (GCC)",
+            "inherits": "pico2",
+            "description": "",
+            "generator": "Ninja",
+            "environment": {
+                "PICO_COMPILER": "pico_arm_gcc",
+                "CC": "/usr/bin/gcc-15",
+                "CXX": "/usr/bin/g++-15"
+            }
+        },
+        {
+            "name": "pico2-clang",
+            "displayName": "Pico 2W (Clang)",
+            "inherits": "pico2",
+            "description": "",
+            "environment": {
+                "PICO_COMPILER": "pico_arm_clang"
             }
         },
         {

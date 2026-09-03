@@ -12,6 +12,11 @@ target_sources(avclan PRIVATE
     )
 
 target_include_directories(avclan PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_options(avclan PUBLIC
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-threadsafe-statics>
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
+    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+)
 
 find_program(AVRDUDE avrdude)
 set(AVR_PROGRAMMER serialupdi CACHE STRING "avrdude programmer hardware")
@@ -75,9 +80,6 @@ set_property(CACHE USART_RXMODE PROPERTY STRINGS
 # to calibrate out the internal OSCULP32K's tolerance for the status-update
 # tick. 1000 = no correction; set per-board in CMakeUserPresets.json.
 set(RTC_STATUS_PERIOD_MS 1000 CACHE STRING "Measured ms per nominal RTC status period (1000 = no correction)")
-
-# --- Firmware configuration options ----------------------------------------
-set(AVCLAN_FRAME_POOL_N 14 CACHE STRING "Pool allocator capacity for avclan::Frame (must be <= incoming/outgoing queue size)")
 
 try_compile(LIBC_VERSION_TEST
     SOURCES "${CMAKE_SOURCE_DIR}/cmake/libc-version-test.cpp"

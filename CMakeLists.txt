@@ -1,19 +1,36 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.30)
 
-project(avclan-mockingboard VERSION 1.1 LANGUAGES C CXX)
+if(AVCLAN_TARGET_SDK_FILE)
+include(${AVCLAN_TARGET_SDK_FILE})
+endif()
+
+project(avclan-mockingboard VERSION 1.2 LANGUAGES C CXX ASM)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
+
+# Hardware target (port) selection. The chosen target/<name>/ directory supplies
+# the port implementation sources, the per-target include path, and all
+# hardware-specific build configuration (compile defs/options, device-pack
+# handling, flashing) via its own CMakeLists, pulled in with add_subdirectory
+# below. The matching cross-compiler is selected separately by a toolchain file
+# (e.g. cmake/avr-gcc-toolchain.cmake) named in a CMake preset. Adding a new
+# board = a sibling target/ directory + a toolchain file + a preset wiring them.
+set(AVCLAN_TARGET avr-attiny3216 CACHE STRING "Hardware target (port) to build")
+set_property(CACHE AVCLAN_TARGET PROPERTY STRINGS "avr-attiny3216" "pico2" "esp32")
+
+# --- Firmware configuration options ----------------------------------------
+set(AVCLAN_MSG_QUEUE_SIZE 16 CACHE STRING "Size of incoming/outgoing queues")
+set(AVCLAN_FRAME_POOL_N 14 CACHE STRING "Pool allocator capacity for avclan::Frame (must be <= incoming/outgoing queue size)")
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(BUILD_TESTING OFF CACHE BOOL "" FORCE)
 
 add_compile_options(
     -Wall -Wswitch-enum -Werror
-    $<$<COMPILE_LANGUAGE:CXX>:-fno-threadsafe-statics>
-    $<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions>
-    $<$<COMPILE_LANGUAGE:CXX>:-fno-rtti>
+
     # Debug must not be -O0: both the vendored usart.h and avr-libc's
     # <util/delay.h> #warning when __OPTIMIZE__ is undefined, and -Werror makes
     # that fatal.
@@ -51,15 +68,6 @@ if(INSTALL_GIT_HOOKS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/.git")
     endif()
   endif()
 endif()
-
-# Hardware target (port) selection. The chosen target/<name>/ directory supplies
-# the port implementation sources, the per-target include path, and all
-# hardware-specific build configuration (compile defs/options, device-pack
-# handling, flashing) via its own CMakeLists, pulled in with add_subdirectory
-# below. The matching cross-compiler is selected separately by a toolchain file
-# (e.g. cmake/avr-gcc-toolchain.cmake) named in a CMake preset. Adding a new
-# board = a sibling target/ directory + a toolchain file + a preset wiring them.
-set(AVCLAN_TARGET avr-attiny3216 CACHE STRING "Hardware target (port) to build")
 
 # The AVC-LAN stack as a static library: the target-agnostic generic core (no
 # <avr/...>, no register access). The selected target's port sources and flags
@@ -103,7 +111,7 @@ add_subdirectory(src/avclan/target/${AVCLAN_TARGET})
 # --- Polyfill headers for std facilities the toolchain may lack -------------
 # tl::expected / tl::optional back-fill std::expected / std::optional (with
 # C++23 monadic ops) when the build's stdlib predates them. Runs after the port
-# subdirectory to provide a port-supplied freestanding stdlib via 
+# subdirectory to provide a port-supplied freestanding stdlib via
 # CMAKE_REQUIRED_INCLUDES, if necessary.
 include(CheckCXXSourceCompiles)
 include(FetchContent)

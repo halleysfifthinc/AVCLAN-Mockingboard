@@ -8,3 +8,7 @@ CompileFlags:
     - -ffixed-r2
     - -ffixed-r3
     - -ffixed-r4
+    - -fzero-init-padding-bits
+    - -fno-malloc-dce
+  Add:
+    - -Wno-missing-field-initializers
