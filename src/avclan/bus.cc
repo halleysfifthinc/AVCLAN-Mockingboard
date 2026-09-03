@@ -30,6 +30,7 @@
 */
 
 #include <concepts>
+#include <cstdint>
 #include <cstdio>
 #include <memory>
 #include <new>
@@ -96,7 +97,7 @@ public:
     if (expect_ack)
       return read_ACK();
 
-    sendbits<1>(1U); // still need to fill the ack bit slot
+    sendbits<1>((uint8_t)1U); // still need to fill the ack bit slot
     return Send{0};
   };
 
@@ -197,7 +198,7 @@ void Bus::mute(bool mute) {
 auto Bus::read(uint16_t address, Frame::Print print)
     -> expected<std::unique_ptr<Frame>, Error::Read> {
   struct errtype {
-    Read errno;
+    Read type;
     uint16_t val;
   } err = {};
 
@@ -205,7 +206,7 @@ auto Bus::read(uint16_t address, Frame::Print print)
 
   std::unique_ptr<Frame> in(new (std::nothrow) Frame);
   if (!in) {
-    err.errno = POOL_EMPTY;
+    err.type = POOL_EMPTY;
     goto handle_err;
   }
 
@@ -215,8 +216,8 @@ auto Bus::read(uint16_t address, Frame::Print print)
     bool shouldACK = false;
     uint8_t tmp = 0;
 
-    err.errno = handle.readstartbit();
-    if (err.errno != Read{0})
+    err.type = handle.readstartbit();
+    if (err.type != Read{0})
       goto handle_err;
 
     handle.read<1>(&tmp, no_parity);
@@ -224,7 +225,7 @@ auto Bus::read(uint16_t address, Frame::Print print)
 
     if (auto rerr = handle.read<12>(&in->controller_addr, with_parity);
         rerr == BAD_PARITY) {
-      err.errno = BAD_CONTROLLER_PARITY;
+      err.type = BAD_CONTROLLER_PARITY;
       if (print.verbose)
         err.val = in->controller_addr;
 
@@ -240,7 +241,7 @@ auto Bus::read(uint16_t address, Frame::Print print)
     if (auto rerr =
             handle.read<12>(&in->peripheral_addr, with_ack, should_ack_lambda);
         rerr == BAD_PARITY) {
-      err.errno = BAD_PERIPHERAL_PARITY;
+      err.type = BAD_PERIPHERAL_PARITY;
       if (print.verbose)
         err.val = in->peripheral_addr;
 
@@ -249,7 +250,7 @@ auto Bus::read(uint16_t address, Frame::Print print)
 
     if (auto rerr = handle.read<4>(&in->control, with_ack, shouldACK);
         rerr == BAD_PARITY) {
-      err.errno = BAD_CONTROL_PARITY;
+      err.type = BAD_CONTROL_PARITY;
       if (print.verbose)
         err.val = in->control;
 
@@ -258,7 +259,7 @@ auto Bus::read(uint16_t address, Frame::Print print)
 
     if (auto rerr = handle.read<8>(&in->length, with_ack, shouldACK);
         rerr == BAD_PARITY) {
-      err.errno = BAD_LENGTH_PARITY;
+      err.type = BAD_LENGTH_PARITY;
       if (print.verbose)
         err.val = in->length;
 
@@ -266,7 +267,7 @@ auto Bus::read(uint16_t address, Frame::Print print)
     }
 
     if (in->length == 0 || in->length > Frame::MAXLENGTH) {
-      err.errno = BAD_LENGTH_RANGE;
+      err.type = BAD_LENGTH_RANGE;
       err.val = in->length;
       goto handle_err;
     }
@@ -274,7 +275,7 @@ auto Bus::read(uint16_t address, Frame::Print print)
     for (uint8_t i = 0; i < in->length; i++) {
       if (auto rerr = handle.read<8>(&in->data[i], with_ack, shouldACK);
           rerr == BAD_PARITY) {
-        err.errno = BAD_DATA_PARITY;
+        err.type = BAD_DATA_PARITY;
         if (print.verbose)
           err.val = in->data[i];
 
@@ -286,7 +287,7 @@ auto Bus::read(uint16_t address, Frame::Print print)
   if (false) { // NOLINT(readability-simplify-boolean-expr)
   handle_err:;
     fputs("ERR(read): ", stdout);
-    switch (err.errno) {
+    switch (err.type) {
       case POOL_EMPTY: puts("failed Frame alloc"); break;
       case BAD_STARTBIT: fputs("bad start bit (other)", stdout); break;
       case STARTBIT_MISSED: fputs("missed start bit", stdout); break;
@@ -315,14 +316,14 @@ auto Bus::read(uint16_t address, Frame::Print print)
   }
 
   // Only print if some data has been correctly received
-  if (print.print && (err.errno < STARTBIT_MISSED)) {
-    if (err.errno > BAD_DATA_PARITY)
+  if (print.print && (err.type < STARTBIT_MISSED)) {
+    if (err.type > BAD_DATA_PARITY)
       in->length = 0;
     in->print(print);
   }
 
-  if (err.errno != Read{0})
-    return unexpected(err.errno);
+  if (err.type != Read{0})
+    return unexpected(err.type);
 
   return in;
 }
@@ -331,14 +332,14 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
   struct errtype {
     // Error enum is ordered such that a lower numeric value corresponds to
     // more success
-    Send errno;
+    Send type;
     uint8_t val;
   } err = {};
 
   using enum Send;
 
   if (is_muted()) {
-    err.errno = MUTED;
+    err.type = MUTED;
     goto handle_err;
   }
 
@@ -347,7 +348,7 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
 
     if (handle.sendstartbit() == BUSY) {
       // Some other device is already driving the bus
-      err.errno = BUSY;
+      err.type = BUSY;
       goto handle_err;
     }
 
@@ -358,26 +359,26 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
     if (auto serr =
             handle.send<12>(out.peripheral_addr, with_ack, out.is_unicast);
         serr == NAK) {
-      err.errno = NAK_ADDRESS;
+      err.type = NAK_ADDRESS;
       goto handle_err;
     }
 
     if (auto serr = handle.send<4>(out.control, with_ack, out.is_unicast);
         serr == NAK) {
-      err.errno = NAK_CONTROL;
+      err.type = NAK_CONTROL;
       goto handle_err;
     }
 
     if (auto serr = handle.send<8>(out.length, with_ack, out.is_unicast);
         serr == NAK) {
-      err.errno = NAK_MESSAGE_LENGTH;
+      err.type = NAK_MESSAGE_LENGTH;
       goto handle_err;
     }
 
     for (uint8_t i = 0; i < out.length; i++) {
       if (auto serr = handle.send<8>(out.data[i], with_ack, out.is_unicast);
           serr == NAK) {
-        err.errno = NAK_DATA;
+        err.type = NAK_DATA;
         err.val = i;
         goto handle_err;
       }
@@ -388,7 +389,7 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
   if (false) { // NOLINT(readability-simplify-boolean-expr)
   handle_err:;
     fputs("Error", stdout);
-    switch (err.errno) {
+    switch (err.type) {
       case MUTED: fputs(": Device muted", stdout); break;
       case BUSY: fputs(": Busy bus", stdout); break;
       case NAK_ADDRESS:
@@ -397,7 +398,7 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
       case NAK_DATA:
       case NAK:
         fputs(" NAK: ", stdout);
-        switch (err.errno) {
+        switch (err.type) {
           case NAK_ADDRESS: fputs("address", stdout); break;
           case NAK_CONTROL: fputs("Control", stdout); break;
           case NAK_MESSAGE_LENGTH: fputs("Message length", stdout); break;
@@ -414,7 +415,7 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
   if (print.print)
     out.print(print);
 
-  return err.errno;
+  return err.type;
 }
 
 Bus::Handle Bus::get() { return Handle{*this}; };

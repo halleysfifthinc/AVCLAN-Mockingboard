@@ -163,14 +163,14 @@ void Frame::print(Frame::Print print) const {
 
 Error::Parse Frame::parse(const uint8_t *bytes, uint8_t len) {
   struct errtype {
-    Error::Parse errno;
+    Error::Parse type;
     uint8_t val;
   } err = {};
 
   const uint8_t *last = bytes + len;
 
   if (len < Frame::MIN_SIZE) {
-    err.errno = TOO_SHORT;
+    err.type = TOO_SHORT;
     goto handle_err;
   }
 
@@ -183,7 +183,7 @@ Error::Parse Frame::parse(const uint8_t *bytes, uint8_t len) {
   length = *bytes++;
 
   if (length > MAXLENGTH) {
-    err.errno = LENGTH_TOO_BIG;
+    err.type = LENGTH_TOO_BIG;
     err.val = length;
     goto handle_err;
   }
@@ -191,14 +191,14 @@ Error::Parse Frame::parse(const uint8_t *bytes, uint8_t len) {
   if ((bytes + length) <= last) {
     memcpy(data, bytes, length);
   } else {
-    err.errno = MISMATCH_LENGTH;
+    err.type = MISMATCH_LENGTH;
     goto handle_err;
   }
 
   if (false) { // NOLINT(readability-simplify-boolean-expr)
   handle_err:;
     fputs("ERR(parse): ", stdout);
-    switch (err.errno) {
+    switch (err.type) {
       case TOO_SHORT: puts("not enough bytes too fill AVCLAN frame"); break;
       case MISMATCH_LENGTH:
         puts("frame->length is longer than remaining data");
@@ -211,6 +211,6 @@ Error::Parse Frame::parse(const uint8_t *bytes, uint8_t len) {
     }
   }
 
-  return err.errno;
+  return err.type;
 }
 } // namespace avclan
