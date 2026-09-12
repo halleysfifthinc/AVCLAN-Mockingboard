@@ -1,4 +1,3 @@
-list(APPEND PICO_CONFIG_HEADER_FILES ${CMAKE_CURRENT_LIST_DIR}/pimoroni_pico_plus2w_rp2350.h)
 pico_sdk_init()
 
 target_sources(avclan PRIVATE
@@ -8,11 +7,15 @@ target_sources(avclan PRIVATE
     board.cc
     stdio.cc
     )
+pico_generate_pio_header(avclan ${CMAKE_CURRENT_LIST_DIR}/iebus.pio)
 
 target_link_libraries(avclan PUBLIC
-    pico_stdlib pico_stdio_usb
+    pico_stdlib pico_stdio_usb hardware_pio hardware_dma pico_multicore
 )
+pico_enable_stdio_usb(avclan 1)
 
+# Needs separate/new executable target because `pico_add_extra_outputs` only
+# works on locally (to this file/directory) defined targets
 add_executable(mockingboard_pico
     ${avclan-mockingboard_SOURCE_DIR}/src/sniffer.cc
 )
@@ -30,3 +33,11 @@ unset(_tinyusb_sources)
 pico_add_extra_outputs(mockingboard_pico)
 pico_set_float_implementation(mockingboard_pico none)
 pico_set_double_implementation(mockingboard_pico none)
+
+pico_set_program_name(mockingboard_pico mockingboard)
+pico_set_program_description(mockingboard_pico
+    "Emulate an external CD Changer on an AVCLAN bus to add Bluetooth and aux-input audio to older Toyota's"
+)
+pico_set_program_version(mockingboard_pico 
+    "${avclan-mockingboard_VERSION}")
+pico_set_program_url(mockingboard_pico "https://github.com/halleysfifthinc/AVCLAN-Mockingboard")

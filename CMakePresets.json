@@ -61,7 +61,7 @@
             },
             "environment": {
                 "PICO_PLATFORM": "rp2350-arm-s",
-                "PICO_BOARD": "pimoroni_pico_plus2w_rp2350"
+                "PICO_BOARD": "pimoroni_pico_plus2_w_rp2350"
             }
         },
         {
