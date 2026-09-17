@@ -158,6 +158,8 @@ struct Error {
     NAK_ADDRESS,
     NAK_TOO_LONG,
     NAK, // generic NAK has max severity
+    CONTENDED_BUS,
+    LOST_ARBITRATION,
     BUSY,
     MUTED,
   };
@@ -177,12 +179,6 @@ struct SendError {
   Error::Send err;
 };
 #endif
-
-enum AVCLAN_ENUM_CLASS Bit : uint8_t {
-  bit_zero = 0x00,
-  bit_one = 0x01,
-  bit_start = 0x10
-};
 
 #ifdef __cplusplus
 } // namespace detail

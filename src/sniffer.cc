@@ -103,7 +103,7 @@ int main() {
     }
 
     // stdin must be non-blocking: yielding EOF when idle/empty
-    if (int readkey = getchar(); readkey != EOF) {
+    if (int readkey = fgetc(stdin); readkey != EOF) {
       switch (readkey) {
         case '?': print_help(); break;
         case 'v': toggle_flag(&verbose, "Verbose errors:"); break;
@@ -219,7 +219,19 @@ int main() {
           hexChars[0] = hexChars[1] = 0;
           seqIsUnicast = false;
           break;
+        case '\r': // Eat carriage return too
+          if (readBinary)
+            goto DEFAULT;
+          [[fallthrough]];
         case '\n':
+          if (readSeq && !readBinary && seqIdx == 0) {
+            // Nothing to send, so leave the mode instead: an escape for an
+            // entry started by accident.
+            readSeq = false;
+            hexDigit = hexChars[0] = hexChars[1] = 0;
+            printAllFrames = lastPrintAllFrames;
+            break;
+          }
           if (readSeq && seqIdx > 0) {
             if (readBinary) {
               if (data_tmp[seqIdx - 1] == 0x17) {
@@ -278,6 +290,10 @@ int main() {
             if (readBinary) {
               data_tmp[seqIdx++] = readkey;
             } else {
+              // Only take valid hex digits
+              if (isxdigit(readkey) == 0)
+                break;
+
               hexChars[hexDigit++] = readkey;
 
               if (hexDigit == 2) {
@@ -302,6 +318,8 @@ int main() {
             }
           }
       } // switch (readkey)
+    } else {
+      clearerr(stdin);
     } // if (readkey != EOF)
   }
   return 0;

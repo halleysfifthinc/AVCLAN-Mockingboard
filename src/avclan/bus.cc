@@ -305,6 +305,10 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
     switch (err.type) {
       case MUTED: fputs(": Device muted", stdout); break;
       case BUSY: fputs(": Busy bus", stdout); break;
+      case CONTENDED_BUS:
+        fputs(": bus contended after arbitration", stdout);
+        break;
+      case LOST_ARBITRATION: fputs(": lost arbitration", stdout); break;
       case NAK_ADDRESS:
       case NAK_CONTROL:
       case NAK_MESSAGE_LENGTH:
@@ -320,6 +324,8 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
           case NAK_TOO_LONG: fputs("too long", stdout); break;
           case NAK:
           case MUTED:
+          case CONTENDED_BUS:
+          case LOST_ARBITRATION:
           case BUSY: __builtin_unreachable();
         }
         break;

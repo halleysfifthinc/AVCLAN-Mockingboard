@@ -12,8 +12,8 @@ extern "C" {
 
 // Generic stdio interface initialization. All user I/O goes through <stdio.h>
 // functions. Assumptions/invariants:
-//  - stdin MUST be non-blocking (ie. getchar() returns EOF immediately when
-//    empty). Necessary to avoid stalling the REPL poll loop.
+//  - stdin MUST be non-blocking (ie. a libc read yields EOF immediately when no
+//    input is buffered). Necessary to avoid stalling the REPL poll loop.
 //  - stdout is *raw*. There is no '\n' -> "\r\n" translation. The port does not
 //    change a bare LF or a binary frame payload. Writes through
 //    <stdio.h> and writes through stdio_write_nonblock() must reach the same

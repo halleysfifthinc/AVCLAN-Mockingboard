@@ -1,5 +1,5 @@
-.define public parity_irq       7   ; (polled)      Signal BAD_PARITY
-.define public should_ack_irq   6   ; (system)
+.define public ack_latch        4   ; (PIO0, internal) frame is addressed to us
+.define public ack_irq          5   ; (PIO1) rx -> iebus_ack: hold this slot low
 
 ; This is used to set the clkdiv.
 ; The delay cycle counts in read_bit (AVCLAN_READBIT_THRESHOLD) and iebus_ack
@@ -10,15 +10,15 @@
 
 .program iebus_rx
 
-; Initial TX Encoding
-; | 19:4  |     3:0     |
-; | Instr | # bit/instr |
+; TX encoding: one read per word
+; |   31    | 30:16 | 15:0  |
+; | has ACK | zeros | Instr |
 ;
-; Proper behavior for reads is dependent on encoding and executing a `in null, (15 - x)`
-; instruction to initialize the bit count correctly.
-; An even number of instructions must be executed to maintain the correct shift-count/autopull
-; when returning to normal reads after exec'ing. Pad instructions with `nop` as needed.
-; 
+; Instr must be `out x, (14 - N)` for a read of N bits + parity, or `jmp rx_startbit`.
+; The `out` zeroes x (the parity accumulator) and leaves exactly N + 1 bits before
+; the OSR reaches its threshold, which ends the read loop. "has ACK" marks a field
+; followed by an acknowledge slot.
+;
 ; RX encoding: one read per word (RX FIFO can hold max 4 reads)
 ; | 31:16 | 15:0 |
 ; | zeros | slot |
@@ -26,75 +26,129 @@
 ; where each slot is encoded as
 ; | MSB .................... LSB |
 ; | 15-N zeros | N bits | parity |
+;
+; Parity is validated by this SM, but is still reported in the LSB. `y` is reserved
+; for the address match below.
 
 .in 1 left
-.out 0 right auto 20
-.mov_status irq set should_ack_irq
+; OSR threshold set to 31 so that the OSRE is reached when all the data+parity bits
+; have been read
+.out 0 right 31
+.mov_status irq set ack_latch
 
-bad_parity:
-    irq set parity_irq      ; Flag *before* the push: the app samples the flag right
-                            ; after taking the word, so setting it after would race
-    push                    ; Push the failing slot; blocks, so the app must keep
-                            ; draining while it waits for the stall below
-public parity_stall:
-    wait 0 irq parity_irq   ; Stall until the app clears it. Public so the app can
-                            ; poll for the SM parking here before draining the FIFO
-                            ; -- the push above lands ~2 cycles after the flag.
+;;; Start-bit read (auto-resets until a proper start bit is observed)
+; A start bit is dominant for AVCLAN_STARTBIT_LOGIC_0 (~169us) and recessive for
+; AVCLAN_STARTBIT_LOGIC_0 (~20us) more.
+; The bus state is polled as fast as target bounds (80% and 120%) can be evenly
+; divided (must be faster than shortest recessive period  AVCLAN_BIT0_LOGIC_1 to
+; detect/distinguish normal bits mid-frame).
+public rx_startbit:
+    wait 1 pin 0
+leading_edge:
+    wait 0 pin 0
+    set x 29
+dominant:
+    jmp pin leading_edge [10]  ; Pin HIGH == released before 0.8x: not a start bit
+                            ; Polled every 11 cycles, starting 2 cycles after leading edge
+                            ; Last poll at 332 cycles (~80% * AVCLAN_STARTBIT_LOGIC_0)
+    jmp x-- dominant        ; Cycle 333 on fall-through
+    set x 18                ; 334
+recessive:
+    jmp pin valid_startbit  ; Pin HIGH == released within bounds
+    jmp x-- recessive [8]   ; + 19 * 9 = 506 total (~120% * AVCLAN_STARTBIT_LOGIC_0)
+                            ; Delay on decrement jmp to keep the release jmp quick
+    jmp rx_startbit         ; Still dominant: too long to be proper start bit
+valid_startbit:
+    irq clear ack_latch     ; Once per frame, before any address can set it
 
-wait_read:
 .wrap_target
-    set y 0                     ; Reset the parity accumulator
-    out x, 4                    ; Load bit count; the loop will have x + 1 iterations
-    out exec, 16                ; Pad or jmp to do_exec
+wait_read:
+    pull
+    out exec, 16            ; Set up the read (zero x and set up output shift 
+                            ; count as bit count), or jmp to rx_startbit
 
 read_bit:
-;;; Resynchronize at each recessive => dominant edge
+;;; Resynchronize at each leading (recessive => dominant) edge
     wait 1 pin 0
     ; Worst-case (slowest) path to return here is for non-ACK flow.
-    wait 0 pin 0 [31]   ; Delay for mid-data period (~AVCLAN_READBIT_THRESHOLD) after
-    nop          [31]   ; bus goes dominant
-    in pins, 1          ; Read bus state
-    jmp pin count_one   ; count only if bus is recessive (logical 1)
-                        ; EXECCTRL_JMP_PIN == RX pin
-    jmp count_bit
-count_one:
-    mov y, ~y           ; Toggle on each 1 bit: zero is even, all-ones is odd.
-count_bit:
-    jmp x-- read_bit    ; Last use of x as bit count
+    wait 0 pin 0 [31]
+    out null, 1  [31]       ; Count this bit
+    ; Read bus state ~AVCLAN_READBIT_THRESHOLD after bus goes dominant
+    in pins, 1
+    jmp pin counted         ; Fall through for recessive (i.e. a one bit)
+    mov x, ~x               ; Accumulate parity over the zero bits
+counted:
+    jmp !osre read_bit
 
-;;; check parity
-    jmp y-- bad_parity  ; Even parity over data+parity means an even count of 1
-                        ; bits, so a nonzero y is an error. (clobbers y)
-    push                ; Parity good
+;;; Check parity
+; Every parity-checked field is an odd number of bits, so even parity (an even
+; number of ones) is an odd number of zeros: x == ~0. The broadcast bit has no
+; parity; its verdict can only clear a latch that was never set.
+    jmp x-- parity_ok
+    irq clear ack_latch     ; NAK this field and the rest of the frame
 
-;;; check if we should ack
-    mov x, status               ; Load should_ack_irq into x (clobbers x)
-    jmp !x wait_read            ; Fall through if should_ack_irq is set
+;;; Check if we're the frame recipient
+; Our peripheral address can only appear in individual 12-bit reads as the
+; controller or peripheral address. We should only ack if we're the frame recipient.
+; y is preset in phy_init to our peripheral address + parity, and temporarily
+; inverted when we are sending (so we don't self-ACK)
+parity_ok:
+    mov x, isr          ; Save read value before clobbering the ISR with push
+    jmp x!=y push_slot  ; Fall-through to set ACK latch only if the read matches 
+                        ; our address + parity
+    irq set ack_latch   ; Set before the push, so the driver's veto can't be overwritten
 
-;;; ack
-    set x 3
+push_slot:
+    push
+
+;;; Consume the ack slot if has ACK, driving it if ACK latch is set
+    out x, 1                ; Load "has ACK"
+    jmp !x wait_read
     wait 1 pin 0
-    wait 0 pin 0                ; Synchronize with sender
-    set pins, 0     [13]        ; Drive bus (dominant) for ~AVCLAN_BIT0_LOGIC_0
-loop:                           ; Total loop length (1+15)*3 cycles
-    jmp x-- loop    [15]
-    set pins, 1                 ; Release bus
+    wait 0 pin 0 [31]       ; Sender begins the ACK bit, and will hold it dominant
+                            ; for ~48 cycles (~AVCLAN_BIT1_LOGIC_0) before releasing 
+                            ; for peripheral to take over
+                            ; Delay reloading ack_latch to give the driver as much
+                            ; time as possible to veto an ACK (i.e. clear it for
+                            ; e.g. a bad length)
+    mov x, status           ; Load ack_latch state into x
+    irq next set ack_irq    ; iebus_ack released 33 cycles after sender began bit
+                            ; (~65% of AVCLAN_BIT1_LOGIC_0), well 
+                            ; iebus_ack, on the other (TX) PIO, holds it
+                            ; dominant.
 .wrap
 
-; Executes one streamed instruction every 3 cycles
-public do_exec:
-    out exec, 16        ; Cycle 1: Load the streamed instruction
-                        ; Cycle 2: Execute the streamed instruction
-    jmp x-- do_exec     ; Cycle 3: Restart loop (if x != 0)
-    jmp wait_read
+; Can execute one streamed instruction every 3 cycles
+; An even number of instructions must be executed to maintain the correct shift-count/autopull
+; when returning to normal reads after exec'ing. Pad instructions with `nop` as needed.
+; public do_exec:
+;     out exec, 16        ; Cycle 1: Load the streamed instruction
+;                         ; Cycle 2: Execute the streamed instruction
+;     jmp x-- do_exec     ; Cycle 3: Restart loop (if x != 0)
+;     jmp wait_read
+
+; Send an ack for iebus_rx. Must be loaded on the same PIO as iebus_tx to properly
+; share the IEBUS_TX pin
+; Drives bus dominant for *less than* a complete AVCLAN_BIT0_LOGIC_0 duration. 
+; Delays are coordinated with the iebus_rx release to ensure this SM releases the
+; bus to recessive at the correct time
+.program iebus_ack
+.side_set 1
+
+    ; Released by iebus_rx after bus goes dominant
+    wait 1 irq ack_irq  side 1      ; Idle recessive; the wait clears the flag
+    set x, 1            side 0 [15] ; Dominant, taking the slot over from the sender
+hold:
+    jmp x-- hold        side 0 [15] ; 16 + 2*16 = 48 cycles, releasing at 
+                                    ; ~AVCLAN_BIT0_LOGIC_0 after the slot's leading edge
 
 .program iebus_tx
 .fifo tx
 
 ; TX Encoding (8 deep TX FIFO):
-; | MSB ............................................ LSB |
-; |   4 bits   | N bits |  1 bit   | 1 bit | 26 - N bits |
-; | Length (N) | Data+P | ACK slot |  NAK  |   padding   |
+; | MSB ............................................. LSB |
+; |   4 bits   | N bits |  1 bit   | 1 bit  | 26 - N bits |
+; | Length (N) | Data+P | has ACK  | NAK ok |   padding   |
 ;
 ; Parity is generated by the driver and appended as the last (least significant)
 ; bit of the data field
@@ -105,9 +159,25 @@ public do_exec:
 .define public nak_irq      7
 .define public lost_arb_irq 6
 
+;;; Emit or synchronize to a start bit
+; Reached by a CPU initiated force exec jmp
+public tx_startbit:
+    jmp pin originate       ; Recessive == bus idle => we originate
+    jmp joined
+
+originate:
+    set x 24
+    set pins, 0     [15]    ; 16 cycles, then
+hold:
+    jmp x-- hold    [15]    ; 25 * 16 = 416 total (~AVCLAN_STARTBIT_LOGIC_0)
+    set pins, 1             ; Release
+joined:
+    wait 1 pin 0    [31]    ; The start bit's trailing edge, whoever drove it
+    jmp reset       [16]    ; 51 cycles from that edge to reset's first
+                            ; `set pins, 0` (~AVCLAN_STARTBIT_LOGIC_1)
+
 handle_nak:
-    out x, 1
-    jmp x-- reset             ; Reset if NAK was expected
+    jmp x-- reset           ; Reset if NAK was expected
     irq wait nak_irq
 
 reset:
@@ -116,58 +186,49 @@ reset:
     out x, 4
 
 send_bit:
-    set pins, 0     [31]
-    out y, 1        [15]    ; OUT pin remains low/dominant for 48 cycles (~AVCLAN_BIT1_LOGIC_0)
-    mov pins, y     [15]
-    jmp pin bit_one         ; Sampled at ~AVCLAN_READBIT_THRESHOLD (64 cycles from bit start)
-                            ; JMP_PIN must be the IEBUS_RX pin (TX activity will 
-                            ; mirror back to the RX pin)
+    set pins, 0     [31]    ; OUT pin remains low/dominant for 32+16 cycles (~AVCLAN_BIT1_LOGIC_0)
+    out y, 1        [15]    ; Save output bit to y
+    mov pins, y     [15]    ; Output the bit
+    ; Read bus state ~AVCLAN_READBIT_THRESHOLD after bus goes dominant
+    jmp pin bit_end [13]    ; JMP_PIN must be the IEBUS_RX pin (TX activity will mirror
+                            ; back to the RX pin). The delay burns the common duration 
+                            ; between the one and zero bits.
 
 bit_zero:
-    jmp !y bit_end  [15]    ; Delay 16 more cycles before releasing bus at ~AVCLAN_BIT0_LOGIC_0
-    ; Fall through means we lost arbitration
+    ; This branch catches a difference between what we intended to send and what is actually
+    ; present on the bus (a difference is only expected/allowed during send arbitration, 
+    ; where lower addresses have higher priority: since one bits are recessive, another 
+    ; device sending a zero will "override" the value of that bit)
+    jmp !y bit_end  [2]     ; Delay 3 more cycles before releasing bus at ~AVCLAN_BIT0_LOGIC_0
+    ; Fall through means we lost arbitration (we read a zero, when we expected a one)
     irq wait lost_arb_irq
-    jmp reset
-bit_one:
-    ; Bus already released by `mov pins, y`, which caused/allowed the jmp
-    nop             [12]
-
-bit_end: ; 15 cycles (~AVCLAN_BIT0_LOGIC_1) of recessive before the next leading
-         ; edge, on all three exits: the loop (via next_bit), reset, and the ack
-         ; slot below. Each spends a different number of instructions getting
-         ; there, so the delay is split between here and the padding they carry.
-    set pins, 1     [11]
-    jmp x-- send_bit      ; Fall through once x (the bit count) is exhausted
-    out x, 1
-    jmp !x reset            ; Jump to reset if x (fill ack slot) is zero
-
-;;; read ack
-    nop             [1]     ; Match the 2 cycles the reset path spends in
-                            ; pull/out before its first `set pins, 0`, so the last
-                            ; bit gets a full period on both exits
-    set pins, 0     [31]
-    nop             [15]
-    set pins, 1     [15]
-    jmp pin handle_nak [29] ; Sampled at 64 cycles (~AVCLAN_READBIT_THRESHOLD),
-                            ; then held out to a full 96-cycle logic-0 period: an
-                            ; ACKing peripheral drives dominant until cycle 81
-                            ; (~AVCLAN_BIT0_LOGIC_0), so starting the next bit any
-                            ; sooner swallows its leading edge
 .wrap
 
-; Copy one input pin to one output pin, forever, at the SM clock. Used to drive
-; the activity LEDs from the bus pins without hanging any DC load on them: the
-; LED current comes out of the mirror pin's pad, and the bus pin only ever sees
-; a (already-enabled) input.
-;
+bit_end:
+    set pins, 1         [9]     ; Delay must be common to all following control flow paths
+    jmp x-- slow_jmp            ; Fall through once x (the bit count) is exhausted
+    out x, 1
+    jmp !x reset                ; Fall through to read ACK if "has ACK" is set
+
+;;; read ack
+    set pins, 0         [31]    ; Start ACK bit with a AVCLAN_BIT1_LOGIC_0 length pulse
+    out x, 1            [15]    ; Preload NAK ok
+    set pins, 1         [15]    ; Release bus
+    jmp pin handle_nak  [28]    ; Sampled at 64 cycles (~AVCLAN_READBIT_THRESHOLD),
+                                ; then delayed for the full 96-cycle logic-0 period
+                                ; (Both flow paths add one more instr)
+    jmp reset
+
+slow_jmp:
+;;; The recessive ("prep") period in the send_bit loop is 2 instr's shorter than 
+; the non-"has ACK" branch and 
+    jmp send_bit        [3]
+
 ; `mov pins, pins` reads the IN mapping (bit 0 == in base) and writes the OUT
 ; mapping (out base, 1 pin), so one program instance serves any src->dst pair;
 ; give each pair its own SM with its own pin mapping.
 .program pin_mirror
-
-.wrap_target
     mov pins, ~pins
-.wrap
 
 ; === IDIOMS ===
 
@@ -181,6 +242,11 @@ bit_end: ; 15 cycles (~AVCLAN_BIT0_LOGIC_1) of recessive before the next leading
 ;   jmp x-- label       ; "Increment"
 ;   set x ~x            ; Re-inversing gives the actual count
 
-; SHIFTCTRL_IN_COUNT = 0x01 (mask for number of pins/LSBs to read/set by `mov x, pins`)
+;;; Multiplying delays/counts (e.g. 2*20)
+;   set y 1
+; loop1:
+;   set x 19
+; loop2:
+;   jmp x-- loop2
 
 

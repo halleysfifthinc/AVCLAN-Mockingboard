@@ -14,6 +14,11 @@ target_link_libraries(avclan PUBLIC
 )
 pico_enable_stdio_usb(avclan 1)
 
+# stdio_write_nonblock() is all-or-nothing and the largest buffer is a ~186 byte
+# frame log line; the SDK default of 64 would drop every one. PUBLIC so the
+# TinyUSB sources compiled into `mockingboard_pico` agree on the FIFO size.
+target_compile_definitions(avclan PUBLIC CFG_TUD_CDC_TX_BUFSIZE=256)
+
 # Needs separate/new executable target because `pico_add_extra_outputs` only
 # works on locally (to this file/directory) defined targets
 add_executable(mockingboard_pico
