@@ -26,7 +26,8 @@
        | 1 │ *Acknowledge*
        *repeat `n` times*
 
-  No acknowledge bits are sent for broadcast frames.
+  For broadcast frames the acknowledge (one) bit is sent, but an ACK response
+  (zero) is not expected.
 */
 
 #include <concepts>
@@ -44,16 +45,12 @@
 namespace {
 using Read = avclan::detail::Error::Read;
 using Send = avclan::detail::Error::Send;
-using Bit = avclan::detail::Bit;
 
-struct trailer_bits_t {};
-struct no_parity_t : trailer_bits_t {};   // raw bits (the broadcast bit)
-struct with_parity_t : trailer_bits_t {}; // bits + parity (controller address)
-struct with_ack_t : trailer_bits_t {
-}; // bits + parity + ACK slot (all other fields)
-inline constexpr no_parity_t no_parity{};
-inline constexpr with_parity_t with_parity{};
-inline constexpr with_ack_t with_ack{};
+// The bus spec has a unit that loses arbitration retry rather than fail: "if
+// the unit loses in arbitration, the frame is automatically reset up twice
+// (three times in total)". Only an attempt that is outbid every time is an
+// error worth reporting.
+constexpr uint8_t SEND_ATTEMPTS = 3;
 } // namespace
 
 namespace avclan {
@@ -72,130 +69,60 @@ public:
   Handle(const Handle &) = delete;
   Handle(Handle &&) = delete;
 
-  // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-  Send sendstartbit() { return phy_send_startbit(); };
-  // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-  Read readstartbit() { return phy_read_startbit(); };
-
-  template <auto N, std::unsigned_integral T,
-            std::derived_from<trailer_bits_t> Trailer>
-    requires(sizeof(T) < 3 && N < 16 && !std::same_as<Trailer, with_ack_t>)
-  Send send(T bits, Trailer /*tag*/) {
-    const Bit parity = sendbits<N>(bits);
-
-    if constexpr (std::is_same_v<Trailer, with_parity_t>)
-      sendbits<1>(to_underlying(parity));
-
-    return Send{0};
+  // Forward to phy API (organized so that hal/phy.h isn't public/visible at the
+  // C++/library level)
+  // NOLINTBEGIN(readability-convert-member-functions-to-static)
+  Read read_header(bool *is_unicast) { return phy_read_header(is_unicast); };
+  Read read_controller_addr(uint16_t *addr) {
+    return phy_read_controller_addr(addr);
   };
-
-  template <auto N, std::unsigned_integral T>
-    requires(sizeof(T) < 3 && N < 16)
-  Send send(T bits, with_ack_t /*tag*/, bool expect_ack) {
-    send<N>(bits, with_parity);
-
-    if (expect_ack)
-      return read_ACK();
-
-    sendbits<1>((uint8_t)1U); // still need to fill the ack bit slot
-    return Send{0};
+  Read read_peripheral_addr(uint16_t *addr) {
+    return phy_read_peripheral_addr(addr);
   };
+  Read read_control(uint8_t *control) { return phy_read_control(control); };
+  Read read_length(uint8_t *length) { return phy_read_length(length); };
+  Read read_data(uint8_t *data) { return phy_read_data(data); };
 
-  template <auto N, std::unsigned_integral T,
-            std::derived_from<trailer_bits_t> Trailer>
-    requires(sizeof(T) < 3 && N < 16 && !std::same_as<Trailer, with_ack_t>)
-  Read read(T *bits, Trailer /*tag*/) {
-    const Bit calc_parity = readbits<N>(bits);
-    if constexpr (std::is_same_v<Trailer, with_parity_t>) {
-      uint8_t read_parity;
-      readbits<1>(&read_parity);
-      if (to_underlying(calc_parity) != read_parity)
-        return Read::BAD_PARITY;
-    }
-    return Read{0};
+  Send send_header(bool is_unicast) { return phy_send_header(is_unicast); };
+  Send send_controller_addr(uint16_t addr) {
+    return phy_send_controller_addr(addr);
   };
-
-  template <auto N, std::unsigned_integral T, class F>
-    requires(sizeof(T) < 3 && N < 16)
-  Read read(T *bits, with_ack_t /*tag*/, F &&ack) {
-    if (read<N>(bits, with_parity) == Read::BAD_PARITY)
-      return Read::BAD_PARITY;
-
-    if (ack()) {
-      send_ACK();
-    } else {
-      uint8_t slot;
-      readbits<1>(&slot);
-    }
-
-    return Read{0};
+  Send send_peripheral_addr(uint16_t addr, bool expect_ack) {
+    return phy_send_peripheral_addr(addr, expect_ack);
   };
-  template <auto N, std::unsigned_integral T>
-    requires(sizeof(T) < 3 && N < 16)
-  Read read(T *bits, with_ack_t /*tag*/, bool ack) {
-    return read<N>(bits, with_ack, [=]() { return ack; });
-  }
-
-private:
-  static void send_ACK() { phy_send_ack(); };
-  static Send read_ACK() { return phy_read_ack(); };
-
-  template <auto N, class T> Bit sendbits(T bits);
-  template <auto N, class T> Bit readbits(T *bits);
-
-  template <auto N>
-    requires(N > 1 && N < 8)
-  Bit sendbits(uint8_t bits) {
-    return phy_send_bits_u8(&bits, N);
+  Send send_control(uint8_t control, bool expect_ack) {
+    return phy_send_control(control, expect_ack);
   };
-  template <auto N>
-    requires(N <= 16)
-  Bit sendbits(uint16_t bits) {
-    return phy_send_bits_u16(&bits, N);
+  Send send_length(uint8_t length, bool expect_ack) {
+    return phy_send_length(length, expect_ack);
   };
-  template <auto N>
-    requires(N < 8)
-  Bit readbits(uint8_t *bits) {
-    return static_cast<Bit>(phy_read_bits_u8(bits, N));
+  Send send_data(uint8_t data, bool expect_ack) {
+    return phy_send_data(data, expect_ack);
   };
-  template <auto N>
-    requires(N <= 16)
-  Bit readbits(uint16_t *bits) {
-    return static_cast<Bit>(phy_read_bits_u16(bits, N));
-  };
+  // NOLINTEND(readability-convert-member-functions-to-static)
 };
 
-template <> inline Bit Bus::Handle::sendbits<8>(uint8_t bits) {
-  return phy_send_byte(&bits);
-};
-template <> inline Bit Bus::Handle::sendbits<1>(uint8_t bits) {
-  const Bit bit{static_cast<Bit>(bits & 1U)};
-  phy_send_bit(bit);
-  return bit;
-};
-template <> inline Bit Bus::Handle::readbits<8>(uint8_t *bits) {
-  return phy_read_byte(bits);
-};
-
-void Bus::init() {
+void Bus::init(uint16_t address) {
   // Idempotent: the single Bus is shared by reference, so every Peripheral's
   // ctor calls init() on it — but the hardware must be brought up exactly once
   // (phy_init is not assumed re-entrant/idempotent).
   if (inited_)
     return;
-  phy_init();
-  muted_ = false; // phy_init leaves the bus TX unmuted
+  phy_init(address);
+  muted_ = false;    // phy_init leaves the bus TX unmuted
+  deafened_ = false; // Default to listening
   inited_ = true;
 };
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-bool Bus::is_active() const { return phy_active(); };
+bool Bus::is_active() const { return !deafened_ && phy_frame_pending(); };
 void Bus::mute(bool mute) {
   phy_mute(mute);
   muted_ = mute; // Only update muted_ *AFTER* hardware has finished muting
 };
+void Bus::deafen(bool deaf) { deafened_ = deaf; }
 
-auto Bus::read(uint16_t address, Frame::Print print)
+auto Bus::read(Frame::Print print)
     -> expected<std::unique_ptr<Frame>, Error::Read> {
   struct errtype {
     Read type;
@@ -213,69 +140,49 @@ auto Bus::read(uint16_t address, Frame::Print print)
   { // bound handle lifetime
     auto handle = get();
 
-    bool shouldACK = false;
-    uint8_t tmp = 0;
-
-    err.type = handle.readstartbit();
+    err.type = handle.read_header(&in->is_unicast);
     if (err.type != Read{0})
       goto handle_err;
 
-    handle.read<1>(&tmp, no_parity);
-    in->is_unicast = (tmp != 0U);
-
-    if (auto rerr = handle.read<12>(&in->controller_addr, with_parity);
-        rerr == BAD_PARITY) {
-      err.type = BAD_CONTROLLER_PARITY;
+    err.type = handle.read_controller_addr(&in->controller_addr);
+    if (err.type != Read{0}) {
       if (print.verbose)
         err.val = in->controller_addr;
 
       goto handle_err;
     }
 
-    // Using lambda for delayed evaluation of peripheral_addr field
-    // deref, which will be written by the time the lambda is evaluated
-    auto should_ack_lambda = [&]() {
-      shouldACK = !is_muted() && (in->peripheral_addr == address);
-      return shouldACK;
-    };
-    if (auto rerr =
-            handle.read<12>(&in->peripheral_addr, with_ack, should_ack_lambda);
-        rerr == BAD_PARITY) {
-      err.type = BAD_PERIPHERAL_PARITY;
+    err.type = handle.read_peripheral_addr(&in->peripheral_addr);
+    if (err.type != Read{0}) {
       if (print.verbose)
         err.val = in->peripheral_addr;
 
       goto handle_err;
     }
 
-    if (auto rerr = handle.read<4>(&in->control, with_ack, shouldACK);
-        rerr == BAD_PARITY) {
-      err.type = BAD_CONTROL_PARITY;
+    err.type = handle.read_control(&in->control);
+    if (err.type != Read{0}) {
       if (print.verbose)
         err.val = in->control;
 
       goto handle_err;
     }
 
-    if (auto rerr = handle.read<8>(&in->length, with_ack, shouldACK);
-        rerr == BAD_PARITY) {
-      err.type = BAD_LENGTH_PARITY;
+    err.type = handle.read_length(&in->length);
+    if (err.type != Read{0}) {
       if (print.verbose)
         err.val = in->length;
 
       goto handle_err;
-    }
-
-    if (in->length == 0 || in->length > Frame::MAXLENGTH) {
+    } else if (in->length == 0 || in->length > Frame::MAXLENGTH) {
       err.type = BAD_LENGTH_RANGE;
       err.val = in->length;
       goto handle_err;
     }
 
     for (uint8_t i = 0; i < in->length; i++) {
-      if (auto rerr = handle.read<8>(&in->data[i], with_ack, shouldACK);
-          rerr == BAD_PARITY) {
-        err.type = BAD_DATA_PARITY;
+      err.type = handle.read_data(&in->data[i]);
+      if (err.type != Read{0}) {
         if (print.verbose)
           err.val = in->data[i];
 
@@ -305,6 +212,7 @@ auto Bus::read(uint16_t address, Frame::Print print)
       case BAD_LENGTH_PARITY: fputs("reading length", stdout); goto VERBOSE;
       case BAD_LENGTH_RANGE: printf("bad length 0x%02X:", err.val); break;
       case BAD_DATA_PARITY: fputs("reading data", stdout); goto VERBOSE;
+      case NO_FRAME:
       case BAD_PARITY:
         __builtin_unreachable();
       VERBOSE:
@@ -343,47 +251,52 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
     goto handle_err;
   }
 
-  { // bound handle lifetime
-    auto handle = get();
+  for (uint8_t attempt = 0; attempt < SEND_ATTEMPTS; attempt++) {
+    auto handle = get(); // bound handle lifetime
 
-    if (handle.sendstartbit() == BUSY) {
-      // Some other device is already driving the bus
-      err.type = BUSY;
+    err.type = Send{0};
+
+    err.type = handle.send_header(out.is_unicast);
+    if (err.type != Send{0}) // BUSY or LOST_ARBITRATION (broadcast)
+      continue;
+
+    err.type = handle.send_controller_addr(out.controller_addr);
+    if (err.type != Send{0}) // LOST_ARBITRATION: other device has lower address
+      continue;
+
+    err.type = handle.send_peripheral_addr(out.peripheral_addr, out.is_unicast);
+    if (err.type != Send{0})
       goto handle_err;
-    }
 
-    handle.send<1>(static_cast<uint8_t>(out.is_unicast), no_parity);
-
-    handle.send<12>(out.controller_addr, with_parity);
-
-    if (auto serr =
-            handle.send<12>(out.peripheral_addr, with_ack, out.is_unicast);
-        serr == NAK) {
-      err.type = NAK_ADDRESS;
+    err.type = handle.send_control(out.control, out.is_unicast);
+    if (err.type != Send{0})
       goto handle_err;
-    }
 
-    if (auto serr = handle.send<4>(out.control, with_ack, out.is_unicast);
-        serr == NAK) {
-      err.type = NAK_CONTROL;
+    err.type = handle.send_length(out.length, out.is_unicast);
+    if (err.type != Send{0})
       goto handle_err;
-    }
-
-    if (auto serr = handle.send<8>(out.length, with_ack, out.is_unicast);
-        serr == NAK) {
-      err.type = NAK_MESSAGE_LENGTH;
-      goto handle_err;
-    }
 
     for (uint8_t i = 0; i < out.length; i++) {
-      if (auto serr = handle.send<8>(out.data[i], with_ack, out.is_unicast);
-          serr == NAK) {
-        err.type = NAK_DATA;
+      err.type = handle.send_data(out.data[i], out.is_unicast);
+      if (err.type != Send{0}) {
         err.val = i;
         goto handle_err;
       }
     }
-  } // destroy handle
+
+    // A phy that only queued the fields above settles them here
+    uint8_t data_i = 0;
+    err.type = phy_send_done(&data_i);
+    if (err.type != Send{0}) {
+      err.val = data_i;
+      goto handle_err;
+    }
+
+    break; // Sent
+  }
+
+  if (err.type != Send{0})
+    goto handle_err; // Outbid (or busy) on every attempt
 
   // back to read mode
   if (false) { // NOLINT(readability-simplify-boolean-expr)
@@ -396,6 +309,7 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
       case NAK_CONTROL:
       case NAK_MESSAGE_LENGTH:
       case NAK_DATA:
+      case NAK_TOO_LONG:
       case NAK:
         fputs(" NAK: ", stdout);
         switch (err.type) {
@@ -403,6 +317,7 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
           case NAK_CONTROL: fputs("Control", stdout); break;
           case NAK_MESSAGE_LENGTH: fputs("Message length", stdout); break;
           case NAK_DATA: printf(" data[%u]", err.val); break;
+          case NAK_TOO_LONG: fputs("too long", stdout); break;
           case NAK:
           case MUTED:
           case BUSY: __builtin_unreachable();
@@ -420,11 +335,17 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
 
 Bus::Handle Bus::get() { return Handle{*this}; };
 
-#if !defined(NDEBUG) && defined(MEASURE_BUS)
-// Debug bit-timing measurement on the one physical bus; instance-scoped for the
-// same reason as is_active().
+#if !defined(NDEBUG)
+
+void Bus::set_dominant() { phy_set_dominant(); }
+void Bus::set_recessive() { phy_set_recessive(); }
+
+  #ifdef MEASURE_BUS
+// Debug bit-timing measurement on the one physical bus; instance-scoped for
+// the same reason as is_active().
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void Bus::measure() { phy_measure(); }
+  #endif
 #endif
 
 } // namespace avclan

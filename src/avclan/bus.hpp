@@ -69,18 +69,29 @@ public:
   Bus(const Bus &) = delete;
   Bus &operator=(const Bus &) = delete;
 
-  void init();
+  // `address` is our own peripheral address; the phy keeps it and acknowledges
+  // frames addressed to it without further instruction. One address per bus.
+  void init(uint16_t address);
 
+  // True when there is a frame to read and we aren't deafened. Depending on the
+  // target that means the bus has gone dominant or a frame is already buffered.
   bool is_active() const;
+
+  // Prevent the device from being active on the bus
   void mute(bool mute);
   bool is_muted() const { return muted_; };
 
+  // Set the device to be deaf to (ie ignore) bus activity
+  void deafen(bool deaf);
+
 #ifndef NDEBUG
   void measure();
+  detail::Error::Send sendbyte(uint8_t byte, bool ack = false);
+  void set_dominant();
+  void set_recessive();
 #endif
 
-  expected<std::unique_ptr<Frame>, Error::Read> read(uint16_t address,
-                                                     Frame::Print print);
+  expected<std::unique_ptr<Frame>, Error::Read> read(Frame::Print print);
   Error::Send send(const Frame &out, Frame::Print print);
 
 private:
@@ -89,6 +100,7 @@ private:
 
   // Assume mute after default ctor; only viable after init call
   bool muted_ = true;
+  bool deafened_ = false;
   bool inited_ = false;
 };
 

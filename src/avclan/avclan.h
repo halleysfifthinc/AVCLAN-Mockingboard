@@ -147,6 +147,7 @@ struct Error {
     STARTBIT_MALFORMED,
     STARTBIT_TOO_LONG,
     BAD_STARTBIT,
+    NO_FRAME,
     POOL_EMPTY, // non-bus error
   };
 
@@ -155,6 +156,7 @@ struct Error {
     NAK_MESSAGE_LENGTH,
     NAK_CONTROL,
     NAK_ADDRESS,
+    NAK_TOO_LONG,
     NAK, // generic NAK has max severity
     BUSY,
     MUTED,

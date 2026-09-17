@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <util/atomic.h>
 
+#include "avclan.h"
 #include "hal/cd_timer.h" // statustimer_enable/disable (guard)
 #include "hal/phy.h"
 #include "media_avr.h" // media_sync_during_mask (guard)
@@ -16,6 +17,9 @@
 // F_CPU + TICK_US (timing.h) defined here; F_CPU potentially needed by
 // avr-libc.
 #include "timing_avr.h" // IWYU pragma: keep
+
+enum bit_t : uint8_t { bit_zero = 0x00, bit_one = 0x01, bit_start = 0x10 };
+typedef enum bit_t Bit;
 
 // USART0 TX ring indices owned by the jnk0le lib; the guard consults them to
 // decide whether to resume the TX drain (DRE interrupt) on leave.
@@ -80,7 +84,7 @@ bool phy_is_muted() {
 }
 
 // True when the bus is being driven (i.e. not idle/floating).
-bool phy_active() { return (!BUS_IS_IDLE) != 0; }
+bool phy_frame_pending() { return (!BUS_IS_IDLE) != 0; }
 
 // Mute device TX on AVCLAN bus
 void phy_mute(bool mute) {
@@ -114,7 +118,7 @@ static void set_AVC_logic_for(uint8_t val, uint16_t period) {
   while (TCB1.CNT <= period) {};
 }
 
-void phy_send_bit(Bit bit) {
+static void phy_send_bit(Bit bit) {
   uint16_t zero_length, one_length;
   switch (bit) {
     case bit_zero:
@@ -135,7 +139,7 @@ void phy_send_bit(Bit bit) {
   set_AVC_logic_for(1, one_length);
 }
 
-void phy_send_ack() {
+static void phy_send_ack() {
   TCB1.CNT = 0;
 
   // Wait for controller to begin ACK bit
@@ -149,7 +153,7 @@ void phy_send_ack() {
   phy_send_bit(bit_zero);
 }
 
-Send phy_read_ack() {
+static Send phy_read_ack() {
   TCB1.CNT = 0;                              // Double reset of TCB1.CNT: here
   set_AVC_logic_for(0, AVCLAN_BIT1_LOGIC_0); // And here (within)
   AVCLAN_setBusIdle();                       // Stop driving bus
@@ -164,13 +168,13 @@ Send phy_read_ack() {
   // Check/wait in case we get here before peripheral finishes ACK bit
   while (!BUS_IS_IDLE) {
     if (TCB1.CNT > AVCLAN_BIT_LENGTH_MAX)
-      return NAK;
+      return NAK_TOO_LONG;
   }
   return (Send)0;
 }
 
 // Send `len` bits on the AVCLAN bus; returns the even parity
-Bit phy_send_bits_u8(const uint8_t *bits, int8_t len) {
+static Bit phy_send_bits_u8(const uint8_t *bits, int8_t len) {
   uint8_t b = *bits;
   uint8_t parity = 0;
   int8_t len_mod8 = 8;
@@ -189,17 +193,19 @@ Bit phy_send_bits_u8(const uint8_t *bits, int8_t len) {
       b <<= 1;
     }
     len_mod8 = 8;
-    b = *--bits;
+    // Avoid under-read for last byte
+    if (len > 0)
+      b = *--bits;
   }
   return (parity & 1);
 }
 
 // Send `len` bits on the AVCLAN bus; returns the even parity
-Bit phy_send_bits_u16(const uint16_t *bits, int8_t len) {
+static Bit phy_send_bits_u16(const uint16_t *bits, int8_t len) {
   return phy_send_bits_u8((const uint8_t *)bits + 1, len);
 }
 
-Bit phy_send_byte(const uint8_t *byte) {
+static Bit phy_send_byte(const uint8_t *byte) {
   uint8_t b = *byte;
   uint8_t parity = 0;
 
@@ -238,7 +244,7 @@ ISR(TCB0_INT_vect) {
 }
 
 // Read `len` bits on the AVCLAN bus; returns the even parity
-Bit phy_read_bits_u8(uint8_t *bits, uint8_t len) {
+static Bit phy_read_bits_u8(uint8_t *bits, uint8_t len) {
   uint8_t parity;
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     READING_BYTE = 0;
@@ -265,7 +271,7 @@ Bit phy_read_bits_u8(uint8_t *bits, uint8_t len) {
 }
 
 // Read `len` bits on the AVCLAN bus; returns the even parity
-Bit phy_read_bits_u16(uint16_t *bits, int8_t len) {
+static Bit phy_read_bits_u16(uint16_t *bits, int8_t len) {
   uint8_t parity = 0;
   if (len > 8) {
     uint8_t over = len - 8;
@@ -278,7 +284,7 @@ Bit phy_read_bits_u16(uint16_t *bits, int8_t len) {
 }
 
 // Read a byte on the AVCLAN bus
-Bit phy_read_byte(uint8_t *byte) {
+static Bit phy_read_byte(uint8_t *byte) {
   uint8_t parity;
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     READING_BYTE = 0;
@@ -304,7 +310,16 @@ Bit phy_read_byte(uint8_t *byte) {
   return (Bit)(parity & 1);
 }
 
-void phy_init() {
+// Our own peripheral address, and whether the frame being read is addressed to
+// it. hal/phy.h puts the ACK decision in the phy, so the latch that used to
+// live in Bus::read lives here now: set when the peripheral address comes in,
+// and reused by every field after it.
+static uint16_t own_address_;
+static bool acking_;
+
+void phy_init(uint16_t address) {
+  own_address_ = address;
+
   // Set pin 6 and 7 as input
   PORTA.DIRCLR = (PIN6_bm | PIN7_bm);
   // Disable input buffer; recommended when using AC
@@ -339,7 +354,7 @@ void phy_init() {
   phy_mute(false); // unmute AVCLAN bus TX
 }
 
-Read phy_read_startbit() {
+static Read phy_read_startbit() {
   // Following HAL header docs, this function is only called after a driven bus
   // was ~recently detected.
   // Two main (designed) entry flows, depending on timing of pulse end w.r.t.
@@ -430,7 +445,7 @@ Read phy_read_startbit() {
 
 // Acquire the bus and emit a start bit. Returns false if another device is
 // already driving the bus (we can't yet do proper CSMA/CD).
-Send phy_send_startbit() {
+static Send phy_send_startbit() {
   // wait for free line
   TCB1.CNT = 0;
   while (BUS_IS_IDLE) {
@@ -459,6 +474,132 @@ Send phy_send_startbit() {
   return (Send)0;
 }
 
+// Field bits, then the wire's parity bit, checked against what we counted.
+static Read read_parity(Bit calc, Read bad) {
+  uint8_t wire = 0;
+  phy_read_bits_u8(&wire, 1);
+  return ((uint8_t)calc != wire) ? bad : (Read)0;
+}
+
+// An acknowledge slot follows the field whether or not we drive it, so a frame
+// that isn't ours still has to have the slot read away.
+static void ack_slot(void) {
+  if (acking_) {
+    phy_send_ack();
+  } else {
+    uint8_t slot = 0;
+    phy_read_bits_u8(&slot, 1);
+  }
+}
+
+Read phy_read_header(bool *is_unicast) {
+  acking_ = false; // New frame; nothing is addressed to us yet
+
+  const Read err = phy_read_startbit();
+  if (err != (Read)0)
+    return err;
+
+  uint8_t bit = 0;
+  phy_read_bits_u8(&bit, 1); // Broadcast bit: one bare bit, no parity
+  *is_unicast = (bit != 0);
+  return (Read)0;
+}
+
+Read phy_read_controller_addr(uint16_t *addr) {
+  // No acknowledge slot: this field is the arbitration window.
+  return read_parity(phy_read_bits_u16(addr, 12), BAD_CONTROLLER_PARITY);
+}
+
+Read phy_read_peripheral_addr(uint16_t *addr) {
+  const Read err =
+      read_parity(phy_read_bits_u16(addr, 12), BAD_PERIPHERAL_PARITY);
+  if (err != (Read)0)
+    return err;
+
+  // The one field that decides the ack; every field after it reuses the answer.
+  acking_ = !phy_is_muted() && (*addr == own_address_);
+  ack_slot();
+  return (Read)0;
+}
+
+Read phy_read_control(uint8_t *control) {
+  const Read err =
+      read_parity(phy_read_bits_u8(control, 4), BAD_CONTROL_PARITY);
+  if (err != (Read)0)
+    return err;
+  ack_slot();
+  return (Read)0;
+}
+
+Read phy_read_length(uint8_t *length) {
+  const Read err = read_parity(phy_read_byte(length), BAD_LENGTH_PARITY);
+  if (err != (Read)0)
+    return err;
+  ack_slot();
+  return (Read)0;
+}
+
+Read phy_read_data(uint8_t *data) {
+  const Read err = read_parity(phy_read_byte(data), BAD_DATA_PARITY);
+  if (err != (Read)0)
+    return err;
+  ack_slot();
+  return (Read)0;
+}
+
+// `expect_ack` is "a NAK here is worth reporting", not "emit the slot": the
+// slot goes out either way, and a broadcast frame simply has nobody to fill it.
+static Send send_ack_slot(bool expect_ack, Send nak) {
+  if (expect_ack) {
+    const Send err = phy_read_ack();
+    return err == NAK ? nak : err;
+  }
+
+  const uint8_t fill = 1U;
+  phy_send_bits_u8(&fill, 1);
+  return (Send)0;
+}
+
+Send phy_send_header(bool is_unicast) {
+  const Send err = phy_send_startbit();
+  if (err != (Send)0)
+    return err;
+
+  const uint8_t bit = (is_unicast) ? 1U : 0U;
+  phy_send_bits_u8(&bit, 1); // Broadcast bit: one bare bit, no parity
+  return (Send)0;
+}
+
+Send phy_send_controller_addr(uint16_t addr) {
+  // No acknowledge slot: this field is the arbitration window.
+  phy_send_bit(phy_send_bits_u16(&addr, 12));
+  return (Send)0;
+}
+
+Send phy_send_peripheral_addr(uint16_t addr, bool expect_ack) {
+  phy_send_bit(phy_send_bits_u16(&addr, 12));
+  return send_ack_slot(expect_ack, NAK_ADDRESS);
+}
+
+Send phy_send_control(uint8_t control, bool expect_ack) {
+  phy_send_bit(phy_send_bits_u8(&control, 4));
+  return send_ack_slot(expect_ack, NAK_CONTROL);
+}
+
+Send phy_send_length(uint8_t length, bool expect_ack) {
+  phy_send_bit(phy_send_byte(&length));
+  return send_ack_slot(expect_ack, NAK_MESSAGE_LENGTH);
+}
+
+Send phy_send_data(uint8_t data, bool expect_ack) {
+  phy_send_bit(phy_send_byte(&data));
+  return send_ack_slot(expect_ack, NAK_DATA);
+}
+
+// Every field above is on the wire, and has reported its own outcome, by the
+// time it returns: nothing is left to wait out or attribute.
+Send phy_send_done([[maybe_unused]] uint8_t *data_index) { return (Send)0; }
+
 /* Disable non-read related interrupts (USART RX, RTC status tick, mic timer)
    during AVCLAN bus transactions so framing isn't disturbed. TCB0 must remain
    enabled. */
@@ -478,12 +619,17 @@ void phy_guard_leave() {
   }
 }
 
-#if !defined(NDEBUG) && defined(MEASURE_BUS)
-  #include <stdio.h> // phy_measure() reporting (debug builds only)
+#ifndef NDEBUG
 
-  // Only used immediately below
-  #define XSTR(x) #x
-  #define STR(x)  XSTR(x)
+void phy_set_dominant(void) { AVCLAN_setBusDriven(); }
+void phy_set_recessive(void) { AVCLAN_setBusIdle(); }
+
+  #ifdef MEASURE_BUS
+    #include <stdio.h> // phy_measure() reporting (debug builds only)
+
+    // Only used immediately below
+    #define XSTR(x) #x
+    #define STR(x)  XSTR(x)
 
 static uint16_t pulses[100];
 static uint16_t periods[100];
@@ -516,4 +662,6 @@ void phy_measure() {
 
   phy_guard_leave();
 }
+
+  #endif
 #endif

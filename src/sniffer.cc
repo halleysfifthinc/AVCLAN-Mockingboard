@@ -74,12 +74,10 @@ int main() {
   print_help();
 
   while (true) {
-    if (peripheral.bus_is_active()) {
-      if (auto msg = peripheral.read(Print{.print = printAllFrames,
-                                           .binary = printBinary,
-                                           .verbose = verbose}))
-        incoming.push(std::move(*msg));
-    }
+    if (auto msg = peripheral.read(Print{.print = printAllFrames,
+                                         .binary = printBinary,
+                                         .verbose = verbose}))
+      incoming.push(std::move(*msg));
 
     if (const auto *in = incoming.peek()) {
       if (auto resp = peripheral.route(*in)) {
@@ -179,6 +177,16 @@ int main() {
           peripheral.device<CDChanger>().media_action(MediaAction::Track_Prev);
           while (peripheral.device<CDChanger>().media_busy()) {}
           puts("end");
+          break;
+        case '+':
+          peripheral.get_bus().deafen(true);
+          peripheral.get_bus().set_dominant();
+          puts("Set bus dominant...");
+          break;
+        case '-':
+          peripheral.get_bus().set_recessive();
+          peripheral.get_bus().deafen(false);
+          puts("Set bus recessive...");
           break;
   #ifdef MEASURE_BUS
         case 'M': peripheral.get_bus().measure(); break;
@@ -324,6 +332,8 @@ void print_help() {
        "s - MIC skip forward\n"
        "b - MIC skip backward\n"
        "M - Measure bit-timing (pulse-widths and periods)\n"
+       "+ - Set bus driven/dominant\n"
+       "- - Set bus idle/recessive\n"
 #endif
        "? - Print this message");
 }

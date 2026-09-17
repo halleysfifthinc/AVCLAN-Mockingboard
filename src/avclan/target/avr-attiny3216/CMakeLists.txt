@@ -139,6 +139,7 @@ target_compile_definitions(jnk0le_uart
     PRIVATE F_CPU=${FREQSEL}
 )
 target_compile_options(jnk0le_uart PUBLIC
+    $<$<CONFIG:Debug>:-Og>
     -ffixed-r2 -ffixed-r3 -ffixed-r4) # reserved ISR scratch (SREG=r4, Z=r2:r3)
 target_link_libraries(avclan PUBLIC jnk0le_uart)
 

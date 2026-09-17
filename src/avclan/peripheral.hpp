@@ -40,7 +40,7 @@ public:
                 "update the sentinel value in avclan.h");
 
   Peripheral(Bus &bus, uint16_t address) : bus{bus}, address_{address} {
-    bus.init();
+    bus.init(address);
     (std::get<Devs>(devices_).init(), ...);
   }
 
@@ -59,7 +59,10 @@ public:
 
   expected<std::unique_ptr<Frame>, Error::Read>
   read(Frame::Print print = Frame::Print{}) {
-    return bus.read(address_, print);
+    if (!bus.is_active())
+      return unexpected{detail::Error::Read::NO_FRAME};
+
+    return bus.read(print);
   };
 
   expected<std::unique_ptr<Frame>, detail::SendError>
