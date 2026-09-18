@@ -120,7 +120,10 @@ void Bus::mute(bool mute) {
   phy_mute(mute);
   muted_ = mute; // Only update muted_ *AFTER* hardware has finished muting
 };
-void Bus::deafen(bool deaf) { deafened_ = deaf; }
+void Bus::deafen(bool deaf) {
+  phy_deafen(deaf);
+  deafened_ = deaf; // Only update deafened_ *AFTER* the phy has stopped acking
+}
 
 auto Bus::read(Frame::Print print)
     -> expected<std::unique_ptr<Frame>, Error::Read> {

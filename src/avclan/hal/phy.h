@@ -30,6 +30,11 @@ void phy_mute(bool mute);
 // Non-mutating (e.g. theoretically const qualified/-able)
 bool phy_is_muted(void);
 
+// Withhold acknowledgement. Unlike mute this leaves TX alone: a deaf device
+// can still manipulate the bus/send frames, it just never responds (e.g. ACK,
+// etc). An empty implementation is sufficient for synchronous ports.
+void phy_deafen(bool deaf);
+
 // True when there is a frame to read. This may reflect current bus state (e.g.
 // a frame can be synchronously read from the bus) or indicate that a buffered
 // frame is available to "read".
@@ -93,6 +98,7 @@ Send phy_send_done(uint8_t *data_index);
 
 #ifndef NDEBUG
 
+// Hold the bus at a level until the matching call.
 void phy_set_dominant(void);
 void phy_set_recessive(void);
 

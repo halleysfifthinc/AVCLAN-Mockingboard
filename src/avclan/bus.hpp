@@ -81,7 +81,8 @@ public:
   void mute(bool mute);
   bool is_muted() const { return muted_; };
 
-  // Set the device to be deaf to (ie ignore) bus activity
+  // Set the device to be deaf to (ie don't react to) bus activity. It is
+  // orthogonal to mute — a deaf device can still send frames.
   void deafen(bool deaf);
 
 #ifndef NDEBUG

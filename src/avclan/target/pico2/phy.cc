@@ -154,6 +154,11 @@ public:
     sync_ack_arming();
   }
 
+  void deafen(bool deaf) {
+    deafened_ = deaf;
+    sync_ack_arming();
+  }
+
   // Disarm RX ACK'ing behavior; called prior to frame TX to prevent
   // self-ACK'ing. Safe to rearm any time after sending controller addr.
   void disarm_ack() {
@@ -310,7 +315,7 @@ private:
   // Disarming inverts the Y register (self address + parity), which leaves the
   // upper 19 bits set and so prevents any read from matching.
   void sync_ack_arming() {
-    const bool arm = !muted_ && !transmitting_;
+    const bool arm = !muted_ && !deafened_ && !transmitting_;
     if (arm == ack_armed_)
       return;
     pio_sm_exec_wait_blocking(pio_, sm_, pio_encode_mov_not(pio_y, pio_y));
@@ -378,6 +383,7 @@ private:
 
   bool ack_armed_ = false; // hardware: y holds self_addrp_, or its complement
   bool muted_ = false;     // we don't answer on the bus
+  bool deafened_ = false;  // we don't answer, but may still transmit
   bool transmitting_ = false; // our own frame is on the wire
 
   std::array<RxFrame, RXQ_N> rxq_ = {};
@@ -431,6 +437,7 @@ public:
   // Claims and configures both SMs, but doesn't start them.
   void init(PIO pio, uint pin_rx, uint pin_tx) {
     pio_ = pio;
+    pin_tx_ = pin_tx;
     tx_offset_ = (uint)pio_add_program(pio_, &iebus_tx_program);
     ack_offset_ = (uint)pio_add_program(pio_, &iebus_ack_program);
     tx_sm_ = (uint)pio_claim_unused_sm(pio_, true);
@@ -473,6 +480,23 @@ public:
   }
 
   bool is_muted() const { return muted_; }
+
+  // Hold the bus at a given level.
+  // Overrides and restores mute state upon release (i.e. set recessive).
+  void set_state(bool dominant) {
+    static bool saved_mute = false;
+    if (dominant) {
+      saved_mute = muted_;
+      mute(true);
+      pio_sm_set_pins_with_mask(pio_, tx_sm_, 0U, 1U << pin_tx_);
+    } else {
+      pio_sm_set_pins_with_mask(pio_, tx_sm_, 1U << pin_tx_, 1U << pin_tx_);
+      // The ack SM parks on `wait 1 irq`, which consumes a flag raised while it
+      // was down and drives the slot immediately -- Phy::mute's ordering.
+      pio_interrupt_clear(pio_, ack_irq);
+      mute(saved_mute);
+    }
+  }
 
   // Send start and broadcast bits.
   Send send_header(bool is_unicast) {
@@ -624,6 +648,7 @@ private:
   IEBusRx &rx_;
 
   PIO pio_;
+  uint pin_tx_;
   uint tx_sm_;
   uint tx_offset_;
   uint ack_sm_;
@@ -768,6 +793,8 @@ extern "C" void phy_mute(bool mute) { phy.mute(mute); }
 
 extern "C" bool phy_is_muted() { return phy.is_muted(); }
 
+extern "C" void phy_deafen(bool deaf) { phy.rx().deafen(deaf); }
+
 extern "C" bool phy_frame_pending() { return phy.rx().frame_pending(); }
 
 extern "C" void phy_guard_enter() {}
@@ -852,8 +879,8 @@ extern "C" Send phy_send_done(uint8_t *data_index) {
 
 #ifndef NDEBUG
 
-void phy_set_dominant() {}
-void phy_set_recessive() {}
+extern "C" void phy_set_dominant() { phy.tx().set_state(true); }
+extern "C" void phy_set_recessive() { phy.tx().set_state(false); }
 
   #ifdef MEASURE_BUS
 // Sample and dump bus bit timing over the serial link (REPL `M`).

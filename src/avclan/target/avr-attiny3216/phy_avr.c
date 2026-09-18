@@ -83,6 +83,10 @@ bool phy_is_muted() {
   return (((VPORTA_DIR & PIN4_bm) | (VPORTA_DIR & PIN0_bm)) == 0);
 }
 
+// No-op: acks are driven from inside the synchronous read path, which a deaf
+// caller never enters.
+void phy_deafen([[maybe_unused]] bool deaf) {}
+
 // True when the bus is being driven (i.e. not idle/floating).
 bool phy_frame_pending() { return (!BUS_IS_IDLE) != 0; }
 
@@ -621,8 +625,22 @@ void phy_guard_leave() {
 
 #ifndef NDEBUG
 
-void phy_set_dominant(void) { AVCLAN_setBusDriven(); }
-void phy_set_recessive(void) { AVCLAN_setBusIdle(); }
+// Hold the bus at a given level.
+// Overrides and restores mute state upon release (i.e. set recessive).
+static void phy_set_state(bool dominant) {
+  static bool saved_mute = false;
+  if (dominant) {
+    saved_mute = phy_is_muted();
+    AVCLAN_setBusDriven();
+    phy_mute(false);
+  } else {
+    AVCLAN_setBusIdle();
+    phy_mute(saved_mute);
+  }
+}
+
+void phy_set_dominant(void) { phy_set_state(true); }
+void phy_set_recessive(void) { phy_set_state(false); }
 
   #ifdef MEASURE_BUS
     #include <stdio.h> // phy_measure() reporting (debug builds only)
