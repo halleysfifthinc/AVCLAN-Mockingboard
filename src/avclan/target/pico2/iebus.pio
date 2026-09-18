@@ -112,6 +112,7 @@ push_slot:
                             ; time as possible to veto an ACK (i.e. clear it for
                             ; e.g. a bad length)
     mov x, status           ; Load ack_latch state into x
+    jmp !x wait_read
     irq next set ack_irq    ; iebus_ack released 33 cycles after sender began bit
                             ; (~65% of AVCLAN_BIT1_LOGIC_0), well 
                             ; iebus_ack, on the other (TX) PIO, holds it
