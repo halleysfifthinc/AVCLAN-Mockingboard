@@ -543,11 +543,15 @@ Read phy_read_length(uint8_t *length) {
   return (Read)0;
 }
 
-Read phy_read_data(uint8_t *data) {
-  const Read err = read_parity(phy_read_byte(data), BAD_DATA_PARITY);
-  if (err != (Read)0)
-    return err;
-  ack_slot();
+Read phy_read_data(uint8_t *data, uint8_t length, uint8_t *data_index) {
+  for (uint8_t i = 0; i < length; i++) {
+    const Read err = read_parity(phy_read_byte(&data[i]), BAD_DATA_PARITY);
+    if (err != (Read)0) {
+      *data_index = i;
+      return err;
+    }
+    ack_slot();
+  }
   return (Read)0;
 }
 
@@ -595,9 +599,17 @@ Send phy_send_length(uint8_t length, bool expect_ack) {
   return send_ack_slot(expect_ack, NAK_MESSAGE_LENGTH);
 }
 
-Send phy_send_data(uint8_t data, bool expect_ack) {
-  phy_send_bit(phy_send_byte(&data));
-  return send_ack_slot(expect_ack, NAK_DATA);
+Send phy_send_data(const uint8_t *data, uint8_t length, bool expect_ack,
+                   uint8_t *data_index) {
+  for (uint8_t i = 0; i < length; i++) {
+    phy_send_bit(phy_send_byte(&data[i]));
+    const Send err = send_ack_slot(expect_ack, NAK_DATA);
+    if (err != (Send)0) {
+      *data_index = i;
+      return err;
+    }
+  }
+  return (Send)0;
 }
 
 // Every field above is on the wire, and has reported its own outcome, by the

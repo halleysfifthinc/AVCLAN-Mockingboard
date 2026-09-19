@@ -50,14 +50,13 @@ void phy_guard_leave(void);
 
 /* Per-field frame I/O.
  *
- * Excluding the header and controller_addr send functions, all other send
- * functions may have asynchronous implementations (e.g. return before the send
- * has completed on the bus). Success is indicated by a zero value `Read` or
- * `Send` enum. Non-zero error codes indicate a synchronously completed send
- * failure. Otherwise, `phy_send_done` must be called to block until all queued
- * send's have completed, and may return the error code for a previous (queued)
- * send failure; a success return value indicates that all queued send's have
- * finished sending over the bus.
+ * All send functions may have asynchronous implementations (e.g. return before
+ * the send has completed on the bus). Success is indicated by a zero value
+ * `Read` or `Send` enum. Non-zero error codes indicate a synchronously
+ * completed send failure. Otherwise, `phy_send_done` must be called to block
+ * until all queued send's have completed, and may return the error code for a
+ * previous (queued) send failure; a success return value indicates that all
+ * queued send's have finished sending over the bus.
  *
  * The read functions are similarly optionally asynchronous, and may return the
  * results of buffered reads. When this is the case, phy_read_header returns the
@@ -75,25 +74,31 @@ Read phy_read_controller_addr(uint16_t *addr);
 Read phy_read_peripheral_addr(uint16_t *addr);
 Read phy_read_control(uint8_t *control);
 Read phy_read_length(uint8_t *length);
-Read phy_read_data(uint8_t *data);
+// Read `length` data bytes. `data_index` is only written to on error, with the
+// index of the failed byte.
+Read phy_read_data(uint8_t *data, uint8_t length, uint8_t *data_index);
 
-// Send start and broadcast bits. Always synchronous. Returns success or one of
-// these error values: MUTED, BUSY, or LOST_ARBITRATION (if another device
-// overrides our frame with a broadcast).
+// Send start and broadcast bits. Returns success or one of these error values:
+// MUTED, BUSY, or LOST_ARBITRATION (if another device overrides our frame with
+// a broadcast).
 Send phy_send_header(bool is_unicast);
 
-// Send the controller address. Always synchronous. Returns success or
-// LOST_ARBITRATION (a device with a lower device is sending a frame).
+// Send the controller address. Returns success or LOST_ARBITRATION (a device
+// with a lower device is sending a frame).
 Send phy_send_controller_addr(uint16_t addr);
 Send phy_send_peripheral_addr(uint16_t addr, bool expect_ack);
 Send phy_send_control(uint8_t control, bool expect_ack);
 Send phy_send_length(uint8_t length, bool expect_ack);
-Send phy_send_data(uint8_t data, bool expect_ack);
+// Send `length` data bytes. `data_index` is only written to for NAK_DATA.
+Send phy_send_data(const uint8_t *data, uint8_t length, bool expect_ack,
+                   uint8_t *data_index);
 
 // Allows asynchronous ports to block until the phy has finished sending the
 // frame. Returns success or the relevant field-specific NAK (e.g. NAK_ADDRESS,
-// etc) or CONTENDED_BUS. `data_index` is only written to for NAK_DATA. A fully
-// synchronous port should always report success.
+// etc) or CONTENDED_BUS; a port that queues the header and controller address
+// also reports their BUSY or LOST_ARBITRATION here. `data_index` is only
+// written to for NAK_DATA. A fully synchronous port should always report
+// success.
 Send phy_send_done(uint8_t *data_index);
 
 #ifndef NDEBUG

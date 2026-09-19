@@ -2,8 +2,8 @@
 .define public ack_irq          5   ; (PIO1) rx -> iebus_ack: hold this slot low
 
 ; This is used to set the clkdiv.
-; The delay cycle counts in read_bit (AVCLAN_READBIT_THRESHOLD) and iebus_ack
-; (AVCLAN_BIT0_LOGIC_0) must be updated in sync with this variable
+; The delay cycle counts in read_bit (AVCLAN_READBIT_THRESHOLD) and iebus_tx's
+; ack_drive (AVCLAN_BIT0_LOGIC_0) must be updated in sync with this variable
 .define public CYCLES_PER_READBIT_PERIOD 64
 
 .pio_version 1
@@ -105,18 +105,18 @@ push_slot:
     out x, 1                ; Load "has ACK"
     jmp !x wait_read
     wait 1 pin 0
-    wait 0 pin 0 [31]       ; Sender begins the ACK bit, and will hold it dominant
-                            ; for ~48 cycles (~AVCLAN_BIT1_LOGIC_0) before releasing 
+    wait 0 pin 0 [30]       ; Sender begins the ACK bit, and will hold it dominant
+                            ; for ~48 cycles (~AVCLAN_BIT1_LOGIC_0) before releasing
                             ; for peripheral to take over
                             ; Delay reloading ack_latch to give the driver as much
                             ; time as possible to veto an ACK (i.e. clear it for
                             ; e.g. a bad length)
     mov x, status           ; Load ack_latch state into x
     jmp !x wait_read
-    irq next set ack_irq    ; iebus_ack released 33 cycles after sender began bit
-                            ; (~65% of AVCLAN_BIT1_LOGIC_0), well 
-                            ; iebus_ack, on the other (TX) PIO, holds it
-                            ; dominant.
+    irq next set ack_irq    ; The ack SM (iebus_tx's ack_entry, on the other (TX)
+                            ; PIO) is released 32 cycles after sender began bit,
+                            ; and its jmp to ack_drive takes the slot over at 34
+                            ; (~70% of AVCLAN_BIT1_LOGIC_0), holding it dominant.
 .wrap
 
 ; Can execute one streamed instruction every 3 cycles
@@ -127,21 +127,6 @@ push_slot:
 ;                         ; Cycle 2: Execute the streamed instruction
 ;     jmp x-- do_exec     ; Cycle 3: Restart loop (if x != 0)
 ;     jmp wait_read
-
-; Send an ack for iebus_rx. Must be loaded on the same PIO as iebus_tx to properly
-; share the IEBUS_TX pin
-; Drives bus dominant for *less than* a complete AVCLAN_BIT0_LOGIC_0 duration. 
-; Delays are coordinated with the iebus_rx release to ensure this SM releases the
-; bus to recessive at the correct time
-.program iebus_ack
-.side_set 1
-
-    ; Released by iebus_rx after bus goes dominant
-    wait 1 irq ack_irq  side 1      ; Idle recessive; the wait clears the flag
-    set x, 1            side 0 [15] ; Dominant, taking the slot over from the sender
-hold:
-    jmp x-- hold        side 0 [15] ; 16 + 2*16 = 48 cycles, releasing at 
-                                    ; ~AVCLAN_BIT0_LOGIC_0 after the slot's leading edge
 
 .program iebus_tx
 .fifo tx
@@ -161,25 +146,44 @@ hold:
 .define public lost_arb_irq 6
 
 ;;; Emit or synchronize to a start bit
-; Reached by a CPU initiated force exec jmp
-public tx_startbit:
-    jmp pin originate       ; Recessive == bus idle => we originate
-    jmp joined
+; Reached by a CPU initiated force exec jmp to tx_startbit, with x = JOIN_SAMPLES
+; and y = IDLE_SAMPLES. We originate once the bus has stayed recessive for the
+; idle window. A dominant pulse is joined only if it outlasts every bit's
+; dominant period (i.e. it's a start bit); otherwise the bus is busy, reported as
+; a lost bid before any word is pulled.
+.define public IDLE_SAMPLES 11  ; 12 * 16 = 192 cycles (~2 * AVCLAN_BIT_LENGTH_MAX)
+; TODO: Explore tightening the idle window to 3 * AVCLAN_STARTBIT_LOGIC_1 (the
+; longest recessive period within a frame)
+.define public JOIN_SAMPLES 8   ; 9 * 12 = 108 cycles (> 1.2 * AVCLAN_BIT0_LOGIC_0)
 
-originate:
-    set x 24
-    set pins, 0     [15]    ; 16 cycles, then
+idle_ok:
+    jmp y-- tx_startbit [14]    ; Sampled every 16 cycles
+    set x 31                    ; Idle: originate
+    set pins, 0     [30]
+public tx_startbit:
+    jmp pin idle_ok
 hold:
-    jmp x-- hold    [15]    ; 25 * 16 = 416 total (~AVCLAN_STARTBIT_LOGIC_0)
+    jmp pin lost            ; Released too soon for a start bit (never while we drive)
+    jmp x-- hold    [10]    ; Sampled every 12 cycles, within a zero bit's recessive
+                            ; period (~AVCLAN_BIT0_LOGIC_1). Ours is 31 + 1 + 32 * 12
+                            ; = 416 total (~AVCLAN_STARTBIT_LOGIC_0)
     set pins, 1             ; Release
-joined:
     wait 1 pin 0    [31]    ; The start bit's trailing edge, whoever drove it
     jmp reset       [16]    ; 51 cycles from that edge to reset's first
                             ; `set pins, 0` (~AVCLAN_STARTBIT_LOGIC_1)
 
 handle_nak:
-    jmp x-- reset           ; Reset if NAK was expected
+    jmp x-- ack_done        ; Slot is over either way if a NAK was expected
     irq wait nak_irq
+
+;;; Close the acknowledge slot
+; The peripheral owns this slot's trailing edge, so the recessive period that
+; ends the slot is timed from its release rather than from our leading edge --
+; the one bit in a frame we don't drive to completion ourselves. A slot nobody
+; answered is already recessive and falls straight through.
+ack_done:
+    wait 1 pin 0    [12]    ; 15 cycles from the release to `set pins, 0` below
+                            ; (~AVCLAN_BIT0_LOGIC_1)
 
 reset:
 .wrap_target
@@ -202,6 +206,7 @@ bit_zero:
     ; device sending a zero will "override" the value of that bit)
     jmp !y bit_end  [2]     ; Delay 3 more cycles before releasing bus at ~AVCLAN_BIT0_LOGIC_0
     ; Fall through means we lost arbitration (we read a zero, when we expected a one)
+lost:
     irq wait lost_arb_irq
 .wrap
 
@@ -212,18 +217,28 @@ bit_end:
     jmp !x reset                ; Fall through to read ACK if "has ACK" is set
 
 ;;; read ack
+public ack_drive:
     set pins, 0         [31]    ; Start ACK bit with a AVCLAN_BIT1_LOGIC_0 length pulse
     out x, 1            [15]    ; Preload NAK ok
+public ack_release:
     set pins, 1         [15]    ; Release bus
-    jmp pin handle_nak  [28]    ; Sampled at 64 cycles (~AVCLAN_READBIT_THRESHOLD),
-                                ; then delayed for the full 96-cycle logic-0 period
-                                ; (Both flow paths add one more instr)
-    jmp reset
+    jmp pin handle_nak  [13]    ; Sampled at 64 cycles (~AVCLAN_READBIT_THRESHOLD);
+                                ; both flow paths reach ack_done one instr later
+    jmp ack_done
 
 slow_jmp:
-;;; The recessive ("prep") period in the send_bit loop is 2 instr's shorter than 
-; the non-"has ACK" branch and 
+;;; The recessive ("prep") period in the send_bit loop is 2 instr's shorter than
+; the non-"has ACK" branch and
     jmp send_bit        [3]
+
+;;; Send an ack for iebus_rx
+; Run by its own SM, wrapping from ack_release back to ack_entry: it borrows
+; ack_drive's 48-cycle pulse to hold the slot dominant for *less than* a complete
+; AVCLAN_BIT0_LOGIC_0, releasing at ~AVCLAN_BIT0_LOGIC_0 after the slot's
+; leading edge.
+public ack_entry:
+    wait 1 irq ack_irq          ; Released by iebus_rx after bus goes dominant
+    jmp ack_drive
 
 ; `mov pins, pins` reads the IN mapping (bit 0 == in base) and writes the OUT
 ; mapping (out base, 1 pin), so one program instance serves any src->dst pair;

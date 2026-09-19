@@ -1,15 +1,15 @@
 #include <array>
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <hardware/clocks.h>
+#include <limits>
 
 #include "avclan.h"
 #include "hal/phy.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
 #include "iebus.pio.h"
-#include "phy_debug.hpp"
 
 #define TICK_US 1000000
 #include "timing.h"
@@ -160,13 +160,13 @@ public:
   }
 
   // Disarm RX ACK'ing behavior; called prior to frame TX to prevent
-  // self-ACK'ing. Safe to rearm any time after sending controller addr.
+  // self-ACK'ing.
   void disarm_ack() {
     transmitting_ = true;
     sync_ack_arming();
   }
 
-  // Rearm RX ACK'ing behavior; called after sending controller addr.
+  // Rearm RX ACK'ing behavior; called once our frame is over or lost.
   void rearm_ack() {
     transmitting_ = false;
     sync_ack_arming();
@@ -189,6 +189,13 @@ private:
   static void __time_critical_func(irq_handler)() { instance_->isr(); }
 
   void __time_critical_func(isr)() {
+    // Every field after the controller address is followed by an ack slot,
+    // which the SM consumes whether or not it drives it.
+    const auto next_after_ack = [this](RxField next, uint8_t bits) {
+      state_ = next;
+      enqueue_rx(bits, true);
+    };
+
     while (!pio_sm_is_rx_fifo_empty(pio_, sm_)) {
       const auto slot = (uint16_t)pio_sm_get(pio_, sm_);
       uint16_t value = 0;
@@ -227,9 +234,7 @@ private:
             // still ahead of the SM. Re-dispatching the start-bit block hands
             // the rest of the frame back to it: those bits are far too short to
             // read as a start bit, so it re-syncs on the next real one by
-            // itself. This also settles a race on our own frames -- rearm_ack()
-            // restores y the moment we win the controller address, in time for
-            // that same read to have matched it.
+            // itself.
             pio_interrupt_clear(pio_, ack_latch);
             begin_frame();
             break;
@@ -359,13 +364,6 @@ private:
     begin_frame();
   }
 
-  // Every field after the controller address is followed by an ack slot, which
-  // the SM consumes whether or not it drives it.
-  void __time_critical_func(next_after_ack)(RxField next, uint8_t bits) {
-    state_ = next;
-    enqueue_rx(bits, true);
-  }
-
   // The initialized instance, for irq_handler: SDK IRQ handlers take no
   // context.
   static inline IEBusRx *instance_ = nullptr;
@@ -401,16 +399,17 @@ private:
   bool controller_ok_ = false; // parity verdict, held until the peripheral slot
 };
 
-// The transmit engine: the iebus_tx SM, plus the iebus_ack SM that drives the
-// ack slot on the rx engine's behalf. Both live on one PIO because they share
-// the TX pin.
+// The transmit engine: the iebus_tx SM, plus the ack SM that drives the ack
+// slot on the rx engine's behalf. Both run iebus_tx, sharing its ack-bit drive
+// and the TX pin.
 //
-// Everything past the arbitration window is queued, not sent, so the fields
-// report nothing and the frame's verdict comes from send_done.
+// Every field, arbitration included, is queued, not sent, so the fields report
+// nothing and the frame's verdict comes from send_done.
 class IEBusTx {
-  // The flag the SM parked on. Sticky until reported; nothing more is queued
-  // meanwhile.
-  enum class Fault : uint8_t { None, Nak, Mismatch };
+  // Word positions in a frame
+  static constexpr uint8_t WORD_PERIPHERAL = 2; // After broadcast, controller
+  static constexpr uint8_t WORD_CONTROL = 3;
+  static constexpr uint8_t WORD_LENGTH = 4;
 
 public:
   // The ack match lives in the rx SM but exists for our sake: it has to be
@@ -430,8 +429,7 @@ public:
     pio_set_sm_mask_enabled(pio_, sm_mask(), false);
     pio_remove_program_and_unclaim_sm(&iebus_tx_program, pio_, tx_sm_,
                                       tx_offset_);
-    pio_remove_program_and_unclaim_sm(&iebus_ack_program, pio_, ack_sm_,
-                                      ack_offset_);
+    pio_sm_unclaim(pio_, ack_sm_);
   }
 
   // Claims and configures both SMs, but doesn't start them.
@@ -439,7 +437,6 @@ public:
     pio_ = pio;
     pin_tx_ = pin_tx;
     tx_offset_ = (uint)pio_add_program(pio_, &iebus_tx_program);
-    ack_offset_ = (uint)pio_add_program(pio_, &iebus_ack_program);
     tx_sm_ = (uint)pio_claim_unused_sm(pio_, true);
     ack_sm_ = (uint)pio_claim_unused_sm(pio_, true);
 
@@ -455,17 +452,21 @@ public:
     sm_config_set_set_pins(&tx_cfg, pin_tx, 1);
     // Both the bit value and the arbitration check come from the readback.
     sm_config_set_jmp_pin(&tx_cfg, pin_rx);
+    // The start bit's trailing-edge `wait` indexes the IN mapping, not JMP_PIN.
+    sm_config_set_in_pins(&tx_cfg, pin_rx);
     sm_config_set_clkdiv(&tx_cfg, bus_clkdiv());
 
-    // Entry is `reset`, not the program start -- offset 0 is handle_nak, which
-    // would read the first word's top bit as the NAK flag.
+    // Entry is `reset`; offset 0 is the start-bit block.
     pio_sm_init(pio_, tx_sm_, tx_offset_ + iebus_tx_wrap_target, &tx_cfg);
 
-    pio_sm_config ack_cfg = iebus_ack_program_get_default_config(ack_offset_);
-    sm_config_set_sideset_pins(&ack_cfg, pin_tx);
+    pio_sm_config ack_cfg = iebus_tx_program_get_default_config(tx_offset_);
+    sm_config_set_wrap(&ack_cfg, tx_offset_ + iebus_tx_offset_ack_entry,
+                       tx_offset_ + iebus_tx_offset_ack_release);
+    sm_config_set_set_pins(&ack_cfg, pin_tx, 1);
     sm_config_set_clkdiv(&ack_cfg, bus_clkdiv());
 
-    pio_sm_init(pio_, ack_sm_, ack_offset_, &ack_cfg);
+    pio_sm_init(pio_, ack_sm_, tx_offset_ + iebus_tx_offset_ack_entry,
+                &ack_cfg);
     claimed_ = true;
   }
 
@@ -504,53 +505,67 @@ public:
       return MUTED;
 
     rx_.disarm_ack();
+    words_ = 0;
+    data_start_ = std::numeric_limits<uint8_t>::max();
 
-    // Jump to the tx_startbit section from the default "reset" stall on pull
-    pio_sm_exec(pio_, tx_sm_,
-                pio_encode_jmp(tx_offset_ + iebus_tx_offset_tx_startbit));
+    // Jump to the tx_startbit section from the default "reset" stall on pull,
+    // with the start-bit block's sample counts loaded
+    pio_sm_exec_wait_blocking(pio_, tx_sm_,
+                              pio_encode_set(pio_x, iebus_tx_JOIN_SAMPLES));
+    pio_sm_exec_wait_blocking(pio_, tx_sm_,
+                              pio_encode_set(pio_y, iebus_tx_IDLE_SAMPLES));
+    pio_sm_exec_wait_blocking(
+        pio_, tx_sm_, pio_encode_jmp(tx_offset_ + iebus_tx_offset_tx_startbit));
 
     // The broadcast bit carries no parity, so it is sent as a bare bit: length
     // 0 (one bit) with the parity slot standing in for the bit itself.
-    return arbitrate(is_unicast ? 1U : 0U, 0);
+    return send_field(0, is_unicast ? 1U : 0U, false, false);
   }
 
-  Send send_controller_addr(uint16_t addr) {
-    // Last field of the arbitration window; no acknowledge slot follows it.
-    const Send err = arbitrate(addr, 12);
-    if (err == Send{0}) {
-      // We won: nobody else is transmitting, so the match can come back.
-      rx_.rearm_ack();
-      words_ = 0;
-    }
-    return err;
-  }
-
-  // Past arbitration a field is only queued, and its outcome left to
-  // send_done. Once one has failed, the rest of the frame is dropped.
-  Send send_field(size_t len, uint32_t bits, bool expect_ack) {
+  // A field is only queued, and its outcome left to send_done. Once one has
+  // failed, the rest of the frame is dropped.
+  Send send_field(size_t len, uint32_t bits, bool has_ack, bool expect_ack) {
     if (muted_)
       return MUTED;
     if (!check())
-      put(encode_tx(len, (uint16_t)bits, true, expect_ack));
+      put(encode_tx(len, (uint16_t)bits, has_ack, expect_ack));
+    return Send{0};
+  }
+
+  Send send_data(const uint8_t *data, uint8_t length, bool expect_ack) {
+    if (muted_)
+      return MUTED;
+    data_start_ = words_;
+    for (uint8_t i = 0; i < length && !check(); i++)
+      put(encode_tx(8, data[i], true, expect_ack));
     return Send{0};
   }
 
   Send send_done(uint8_t *data_index) {
-    wait_done();
-    check();
-    const Fault fault = fault_;
-    fault_ = Fault::None;
+    const auto flagged = [this] {
+      return pio_interrupt_get(pio_, iebus_tx_lost_arb_irq) ||
+             pio_interrupt_get(pio_, iebus_tx_nak_irq);
+    };
 
-    if (fault == Fault::None)
-      return Send{0};
-    if (fault == Fault::Mismatch)
-      return CONTENDED_BUS;
-    switch (failed_word_) {
-      case 0: return NAK_ADDRESS;
-      case 1: return NAK_CONTROL;
-      case 2: return NAK_MESSAGE_LENGTH;
-      default: *data_index = (uint8_t)(failed_word_ - 3); return NAK_DATA;
-    }
+    // The second PC test confirms that SM has finished sending last value and
+    // not in-progress (i.e. pulled the last FIFO value and still mid-send)
+    const auto idle = [this] {
+      return pio_sm_is_tx_fifo_empty(pio_, tx_sm_) && // Read before the pc
+             pio_sm_get_pc(pio_, tx_sm_) == tx_offset_ + iebus_tx_wrap_target;
+    };
+
+    while (!(flagged() || idle()))
+      tight_loop_contents();
+
+    check();
+    // Our frame is over, won or not.
+    rx_.rearm_ack();
+    words_ = 0;
+    const Send err = fault_;
+    fault_ = Send{0};
+    if (err == NAK_DATA)
+      *data_index = (uint8_t)(failed_word_ - data_start_);
+    return err;
   }
 
 private:
@@ -573,48 +588,46 @@ private:
     return word;
   }
 
-  bool flagged() const {
-    return pio_interrupt_get(pio_, iebus_tx_lost_arb_irq) ||
-           pio_interrupt_get(pio_, iebus_tx_nak_irq);
-  }
-
-  // The SM has nothing left to do: every path through a word ends back on
-  // `reset`'s pull. The pc test only counts once the FIFO is empty -- before
-  // the SM takes a word it is still sitting on that same pull. A parked SM is
-  // not idle; see flagged.
-  bool idle() const {
-    return pio_sm_is_tx_fifo_empty(pio_, tx_sm_) && // Read before the pc
-           pio_sm_get_pc(pio_, tx_sm_) == tx_offset_ + iebus_tx_wrap_target;
-  }
-
-  void wait_done() {
-    while (!(flagged() || idle()))
-      tight_loop_contents();
-  }
-
   // Collect a flag if the SM has raised one, without waiting. Returns whether
   // the frame has failed, now or earlier.
   bool check() {
     const bool lost_arb = pio_interrupt_get(pio_, iebus_tx_lost_arb_irq);
     if (!lost_arb && !pio_interrupt_get(pio_, iebus_tx_nak_irq))
-      return fault_ != Fault::None;
+      return fault_ != Send{0};
 
     // Read the level before the clear throws it away, and clear before the
     // flag: releasing the SM with words still queued would send the rest of the
     // frame.
-    failed_word_ =
-        (uint8_t)(words_ - pio_sm_get_tx_fifo_level(pio_, tx_sm_) - 1U);
+    const auto pulled =
+        (uint8_t)(words_ - pio_sm_get_tx_fifo_level(pio_, tx_sm_));
+    failed_word_ = (uint8_t)(pulled - 1U);
     pio_sm_clear_fifos(pio_, tx_sm_);
 
     if (lost_arb) {
       pio_interrupt_clear(pio_, iebus_tx_lost_arb_irq);
-      // The winner's frame is still arriving; put the ack match back so we can
+      // The other frame is still arriving; put the ack match back so we can
       // answer it if it turns out to be addressed to us.
       rx_.rearm_ack();
-      fault_ = Fault::Mismatch;
+      // A bid lost before any word was pulled: the start-bit block saw the bus
+      // dominant with something other than a start bit.
+      if (pulled == 0)
+        fault_ = BUSY;
+      else if (failed_word_ < WORD_PERIPHERAL && failed_word_ < data_start_)
+        fault_ = LOST_ARBITRATION;
+      else
+        fault_ = CONTENDED_BUS;
     } else {
       pio_interrupt_clear(pio_, iebus_tx_nak_irq);
-      fault_ = Fault::Nak;
+      if (failed_word_ >= data_start_)
+        fault_ = NAK_DATA;
+      else if (failed_word_ == WORD_PERIPHERAL)
+        fault_ = NAK_ADDRESS;
+      else if (failed_word_ == WORD_CONTROL)
+        fault_ = NAK_CONTROL;
+      else if (failed_word_ == WORD_LENGTH)
+        fault_ = NAK_MESSAGE_LENGTH;
+      else
+        fault_ = NAK;
     }
     return true;
   }
@@ -631,20 +644,6 @@ private:
     words_++;
   }
 
-  // The arbitration window goes out a field at a time: a lost bid has to be
-  // known before anything more is queued.
-  Send arbitrate(uint32_t bits, uint8_t len) {
-    if (muted_)
-      return MUTED;
-    put(encode_tx(len, (uint16_t)bits, false, false));
-    wait_done();
-    // Reported here and now, so nothing is left for send_done. With no ack slot
-    // in these fields, the only fault is a lost bid.
-    const bool lost = check();
-    fault_ = Fault::None;
-    return lost ? LOST_ARBITRATION : Send{0};
-  }
-
   IEBusRx &rx_;
 
   PIO pio_;
@@ -652,17 +651,18 @@ private:
   uint tx_sm_;
   uint tx_offset_;
   uint ack_sm_;
-  uint ack_offset_;
   bool claimed_ = false; // init() ran, so the destructor has something to undo
 
   bool muted_ = false;
 
-  // Words put since arbitration was won, taken by the SM or not. Its flags park
-  // it, which freezes the FIFO, so the word it failed on is the last one it
-  // pulled: words_ - level - 1. Wrapping is harmless; the FIFO holds at most 8.
+  // Words put since the header, taken by the SM or not. Its flags park it,
+  // which freezes the FIFO, so the word it failed on is the last one it pulled:
+  // words_ - level - 1. Wrapping is harmless; the FIFO holds at most 8.
   uint8_t words_;
+  uint8_t data_start_; // Position of the first data word
   uint8_t failed_word_;
-  Fault fault_;
+  // Sticky until send_done reports it; nothing more is queued meanwhile.
+  Send fault_;
 };
 
 // The bus as a whole. Only it can hold the invariants that span the two
@@ -718,7 +718,7 @@ private:
   // Reading needs nothing but the pad's input buffer, which is on for both bus
   // pins already -- asserted here so the mirror cannot go dark if that changes.
   void pin_mirror_sm_init(uint sm, uint offset, uint src, uint dst) {
-    PIO pio = tx_.pio();
+    PIO pio = pio2;
     gpio_set_input_enabled(src, true);
     pio_gpio_init(pio, dst);
     pio_sm_set_consecutive_pindirs(pio, sm, dst, 1, true);
@@ -738,7 +738,7 @@ private:
   // IEBUS TX/RX pins to the LED pins so that dominant bus activity (i.e. LOW
   // state for IEBUS TX/RX pins) lights the respective LED
   void activity_leds_init() {
-    PIO pio = tx_.pio(); // iebus_rx fills its PIO
+    PIO pio = pio2; // iebus_rx and iebus_tx each fill a block
     // Indicators are cosmetic; never fail the bus bring-up for them.
     if (!pio_can_add_program(pio, &pin_mirror_program))
       return;
@@ -765,7 +765,7 @@ private:
   void activity_leds_deinit() {
     if (!leds_claimed_)
       return;
-    PIO pio = tx_.pio();
+    PIO pio = pio2;
     pio_sm_set_enabled(pio, led_sm_rx_, false);
     pio_sm_set_enabled(pio, led_sm_tx_, false);
     pio_sm_unclaim(pio, led_sm_rx_);
@@ -836,16 +836,10 @@ extern "C" Read phy_read_length(uint8_t *length) {
   return Read{0};
 }
 
-extern "C" Read phy_read_data(uint8_t *data) {
-  static uint8_t idx;
-  const IEBusRx::RxFrame &frame = phy.rx().frame();
-  if (idx >= frame.length)
-    idx = 0;
-  *data = frame.data[idx++];
-  if (idx >= frame.length) { // Frame consumed
-    idx = 0;
-    phy.rx().release();
-  }
+extern "C" Read phy_read_data(uint8_t *data, uint8_t length,
+                              [[maybe_unused]] uint8_t *data_index) {
+  memcpy(data, phy.rx().frame().data, length);
+  phy.rx().release();
   return Read{0};
 }
 
@@ -854,23 +848,25 @@ extern "C" Send phy_send_header(bool is_unicast) {
 }
 
 extern "C" Send phy_send_controller_addr(uint16_t addr) {
-  return phy.tx().send_controller_addr(addr);
+  return phy.tx().send_field(12, addr, false, false);
 }
 
 extern "C" Send phy_send_peripheral_addr(uint16_t addr, bool expect_ack) {
-  return phy.tx().send_field(12, addr, expect_ack);
+  return phy.tx().send_field(12, addr, true, expect_ack);
 }
 
 extern "C" Send phy_send_control(uint8_t control, bool expect_ack) {
-  return phy.tx().send_field(4, control, expect_ack);
+  return phy.tx().send_field(4, control, true, expect_ack);
 }
 
 extern "C" Send phy_send_length(uint8_t length, bool expect_ack) {
-  return phy.tx().send_field(8, length, expect_ack);
+  return phy.tx().send_field(8, length, true, expect_ack);
 }
 
-extern "C" Send phy_send_data(uint8_t data, bool expect_ack) {
-  return phy.tx().send_field(8, data, expect_ack);
+extern "C" Send phy_send_data(const uint8_t *data, uint8_t length,
+                              bool expect_ack,
+                              [[maybe_unused]] uint8_t *data_index) {
+  return phy.tx().send_data(data, length, expect_ack);
 }
 
 extern "C" Send phy_send_done(uint8_t *data_index) {

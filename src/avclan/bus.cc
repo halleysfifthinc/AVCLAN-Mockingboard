@@ -81,7 +81,9 @@ public:
   };
   Read read_control(uint8_t *control) { return phy_read_control(control); };
   Read read_length(uint8_t *length) { return phy_read_length(length); };
-  Read read_data(uint8_t *data) { return phy_read_data(data); };
+  Read read_data(uint8_t *data, uint8_t length, uint8_t *data_index) {
+    return phy_read_data(data, length, data_index);
+  };
 
   Send send_header(bool is_unicast) { return phy_send_header(is_unicast); };
   Send send_controller_addr(uint16_t addr) {
@@ -96,8 +98,9 @@ public:
   Send send_length(uint8_t length, bool expect_ack) {
     return phy_send_length(length, expect_ack);
   };
-  Send send_data(uint8_t data, bool expect_ack) {
-    return phy_send_data(data, expect_ack);
+  Send send_data(const uint8_t *data, uint8_t length, bool expect_ack,
+                 uint8_t *data_index) {
+    return phy_send_data(data, length, expect_ack, data_index);
   };
   // NOLINTEND(readability-convert-member-functions-to-static)
 };
@@ -183,14 +186,13 @@ auto Bus::read(Frame::Print print)
       goto handle_err;
     }
 
-    for (uint8_t i = 0; i < in->length; i++) {
-      err.type = handle.read_data(&in->data[i]);
-      if (err.type != Read{0}) {
-        if (print.verbose)
-          err.val = in->data[i];
+    uint8_t data_i = 0;
+    err.type = handle.read_data(in->data, in->length, &data_i);
+    if (err.type != Read{0}) {
+      if (print.verbose)
+        err.val = in->data[data_i];
 
-        goto handle_err;
-      }
+      goto handle_err;
     }
   } // destroy handle
 
@@ -279,17 +281,16 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
     if (err.type != Send{0})
       goto handle_err;
 
-    for (uint8_t i = 0; i < out.length; i++) {
-      err.type = handle.send_data(out.data[i], out.is_unicast);
-      if (err.type != Send{0}) {
-        err.val = i;
-        goto handle_err;
-      }
-    }
+    err.type =
+        handle.send_data(out.data, out.length, out.is_unicast, &err.val);
+    if (err.type != Send{0})
+      goto handle_err;
 
     // A phy that only queued the fields above settles them here
     uint8_t data_i = 0;
     err.type = phy_send_done(&data_i);
+    if (err.type == BUSY || err.type == LOST_ARBITRATION) // Queued header
+      continue;
     if (err.type != Send{0}) {
       err.val = data_i;
       goto handle_err;
