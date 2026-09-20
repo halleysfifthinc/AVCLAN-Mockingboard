@@ -350,6 +350,15 @@ Bus::Handle Bus::get() { return Handle{*this}; };
 void Bus::set_dominant() { phy_set_dominant(); }
 void Bus::set_recessive() { phy_set_recessive(); }
 
+Send Bus::sendbyte(uint8_t byte, bool ack) {
+  auto handle = get();
+  uint8_t data_i = 0;
+  if (const Send serr = handle.send_data(&byte, 1, ack, &data_i);
+      serr != Send{0})
+    return serr;
+  return phy_send_done(&data_i);
+}
+
   #ifdef MEASURE_BUS
 // Debug bit-timing measurement on the one physical bus; instance-scoped for
 // the same reason as is_active().
