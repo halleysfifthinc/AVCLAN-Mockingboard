@@ -6,7 +6,12 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <memory>
+#include <new>
 #include <type_traits>
+
+#include "FreeRTOS.h" // IWYU pragma: export
+#include "task.h"
 
 #include "frame.hpp"
 #include "hal/stdio.h"
@@ -16,7 +21,6 @@
   #include <array>
   #include <cstddef>
   #include <limits>
-  #include <new>
 
 namespace {
 template <class T, std::uint8_t N>
@@ -60,13 +64,27 @@ namespace avclan {
 #if defined(AVCLAN_FRAME_POOL_N)
 void *Frame::operator new(std::size_t /*count*/,
                           const std::nothrow_t & /*tag*/) noexcept {
-  return pool.acquire();
+  taskENTER_CRITICAL();
+  Frame *frame = pool.acquire();
+  taskEXIT_CRITICAL();
+  return frame;
 }
 // NOLINTNEXTLINE(misc-new-delete-overloads) false-positive
 void Frame::operator delete(void *ptr) noexcept {
+  taskENTER_CRITICAL();
   pool.release(static_cast<Frame *>(ptr));
+  taskEXIT_CRITICAL();
 }
 #endif
+
+std::unique_ptr<Frame> Frame::acquire() {
+  std::unique_ptr<Frame> frame(new (std::nothrow) Frame);
+  for (uint8_t retries = 0; !frame && retries < 3; retries++) {
+    vTaskDelay(pdMS_TO_TICKS(2));
+    frame.reset(new (std::nothrow) Frame);
+  }
+  return frame;
+}
 
 namespace {
 // Emit `value` as at least `width` (lowercase, as to_chars emits) hex digits,

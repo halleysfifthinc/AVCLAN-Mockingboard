@@ -3,11 +3,14 @@
 #include <cstdio>
 #include <unistd.h>
 
+#include "FreeRTOS.h" // IWYU pragma: export
+#include "semphr.h"
+
 #include "hal/stdio.h"
 #include "pico/stdio.h"
 #include "pico/stdio_usb.h"
 #include "pico/time.h"
-#include "tusb.h" // IWYU pragma: keep
+#include "tusb.h" // IWYU pragma: export
 
 // stdio_write_nonblock() is all-or-nothing. The CDC TX FIFO must hold the
 // largest buffer the app writes; that is a text frame log line (Frame::print),
@@ -26,10 +29,22 @@ bool drop_indicator_pending = false;
 void queue(const char *str, int len) {
   stdio_put_string(str, len, false, false);
 }
+
+SemaphoreHandle_t rx_ready = nullptr;
+
+// Called from the stdio_usb background IRQ after each tud_task() with RX data
+// pending.
+void on_rx([[maybe_unused]] void *param) {
+  BaseType_t woken = false;
+  xSemaphoreGiveFromISR(rx_ready, &woken);
+  portYIELD_FROM_ISR(woken);
+}
 } // namespace
 
 extern "C" void stdio_init() {
+  rx_ready = xSemaphoreCreateBinary();
   stdio_usb_init();
+  stdio_set_chars_available_callback(on_rx, nullptr);
   stdio_set_translate_crlf(&stdio_usb, false);
   // pico_stdio wraps printf/puts/putchar straight onto the CDC, but not
   // fputs/fwrite. Unbuffered stdout keeps the newlib path in step with them
@@ -37,21 +52,19 @@ extern "C" void stdio_init() {
   setvbuf(stdout, nullptr, _IONBF, 0);
 }
 
-// Overrides the SDK's weak newlib hook, which waits forever. EAGAIN rather than
-// a 0-length read: newlib's refill skips a stream that has ever seen EOF.
+// Overrides the SDK's weak newlib hook, which busy-waits.
 extern "C" int _read(int handle, char *buffer, int length) {
   if (handle != STDIN_FILENO) {
     errno = EBADF;
     return -1;
   }
 
-  const int count = stdio_get_until(buffer, length, make_timeout_time_us(0));
-  if (count < 0) {
-    errno = EAGAIN;
-    return -1;
+  while (true) {
+    const int count = stdio_get_until(buffer, length, make_timeout_time_us(0));
+    if (count > 0)
+      return count;
+    xSemaphoreTake(rx_ready, portMAX_DELAY);
   }
-
-  return count;
 }
 
 extern "C" bool stdio_write_nonblock(const void *buf, uint8_t len) {

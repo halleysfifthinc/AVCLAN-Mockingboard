@@ -7,6 +7,8 @@
 
 #include <stdint.h>
 
+#include "FreeRTOS.h" // IWYU pragma: export
+
 #include "avclan.h"
 
 #ifdef __cplusplus
@@ -30,21 +32,16 @@ void phy_mute(bool mute);
 // Non-mutating (e.g. theoretically const qualified/-able)
 bool phy_is_muted(void);
 
-// Withhold acknowledgement. Unlike mute this leaves TX alone: a deaf device
-// can still manipulate the bus/send frames, it just never responds (e.g. ACK,
-// etc). An empty implementation is sufficient for synchronous ports.
+// Do not respond to or log incoming frames. Can still send frames.
 void phy_deafen(bool deaf);
 
-// True when there is a frame to read. This may reflect current bus state (e.g.
-// a frame can be synchronously read from the bus) or indicate that a buffered
-// frame is available to "read".
-bool phy_frame_pending(void);
+// Blocks until a frame is ready
+void phy_wait_frame(TickType_t xTicksToWait);
 
 // Bus-transaction guard: quiesce the other async sources (e.g. interrupts)
 // so that bus read/send timing isn't disturbed. Re-enable relevant async
 // sources with `phy_guard_leave`.
-//  - May be a no-op on a target where contention isn't a concern.
-//  - May acquire a hardware lock to prevent concurrent use
+//  - May be a no-op on a target where concurrency/preemption isn't a concern.
 void phy_guard_enter(void);
 void phy_guard_leave(void);
 
@@ -67,8 +64,9 @@ void phy_guard_leave(void);
  *
  * `expect_ack` indicates whether the recipient should be ACK'ing; false for
  * broadcast frames which don't have a single recipient.
- *
  */
+
+// Returns NO_FRAME when there is no frame to read.
 Read phy_read_header(bool *is_unicast);
 Read phy_read_controller_addr(uint16_t *addr);
 Read phy_read_peripheral_addr(uint16_t *addr);

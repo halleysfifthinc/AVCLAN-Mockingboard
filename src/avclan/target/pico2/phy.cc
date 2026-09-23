@@ -5,6 +5,9 @@
 #include <hardware/clocks.h>
 #include <limits>
 
+#include "FreeRTOS.h" // IWYU pragma: export
+#include "semphr.h"
+
 #include "avclan.h"
 #include "hal/phy.h"
 #include "hardware/gpio.h"
@@ -136,11 +139,14 @@ public:
     prepare_ack();
     begin_frame();
 
+    xNotice = xSemaphoreCreateCounting(RXQ_N, 0); // one give per buffered frame
+    configASSERT(xNotice);
+
     pio_set_irq0_source_enabled(
         pio_, pio_get_rx_fifo_not_empty_interrupt_source(sm_), true);
     irq_ = (uint)pio_get_irq_num(pio_, 0);
     irq_set_exclusive_handler(irq_, irq_handler);
-    irq_set_priority(irq_, PICO_HIGHEST_IRQ_PRIORITY);
+    irq_set_priority(irq_, configMAX_SYSCALL_INTERRUPT_PRIORITY);
     irq_set_enabled(irq_, true);
   }
 
@@ -178,6 +184,10 @@ public:
   // Only valid while frame_pending().
   const RxFrame &frame() const { return rxq_[rxq_tail_]; }
 
+  void wait_frame(TickType_t xTicksToWait = portMAX_DELAY) {
+    xSemaphoreTake(xNotice, xTicksToWait);
+  }
+
   void release() { rxq_tail_ = (rxq_tail_ + 1) & (RXQ_N - 1); }
 
 private:
@@ -189,6 +199,7 @@ private:
   static void __time_critical_func(irq_handler)() { instance_->isr(); }
 
   void __time_critical_func(isr)() {
+    xHigherPriorityTaskWoken = false;
     // Every field after the controller address is followed by an ack slot,
     // which the SM consumes whether or not it drives it.
     const auto next_after_ack = [this](RxField next, uint8_t bits) {
@@ -219,15 +230,20 @@ private:
           // its own acks, and a copy here would only cost a queue slot. A frame
           // we owe an ack for is refused when there is no room for it -- the
           // NAK asks the sender to send it again, rather than losing it behind
-          // an ack we can't honour. Both come before the field checks: a frame
-          // being given up needs no parity verdict, and reporting one would
-          // name the wrong cause for the same NAK.
+          // an ack we can't honour. One we will not ack at all goes the same
+          // way: deaf we keep nothing, and a lost arbitration leaves the
+          // winner's frame unacked until we rearm. Not mute -- a muted device
+          // still listens, and its log takes a duplicate over a gap. They come
+          // before the field checks: a frame being given up needs no parity
+          // verdict, and reporting one would name the wrong cause for the same
+          // NAK.
           const bool ours =
               building_.controller_addr == (uint16_t)(self_addrp_ >> 1);
+          const bool not_acking = deafened_ || transmitting_;
           const bool refuse =
               !ours && queue_full() && pio_interrupt_get(pio_, ack_latch);
 
-          if (ours || refuse) {
+          if (ours || not_acking || refuse) {
             if (refuse)
               rxq_refused_ = rxq_refused_ + 1;
             // Withdrawing the ack is part of giving the frame up; its slot is
@@ -288,6 +304,7 @@ private:
           break;
       }
     }
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   }
 
   // Start (or restart) a frame. The start-bit block is dispatched like any
@@ -360,6 +377,7 @@ private:
     } else {
       rxq_[rxq_head_] = building_;
       rxq_head_ = (rxq_head_ + 1) & (RXQ_N - 1);
+      xSemaphoreGiveFromISR(xNotice, &xHigherPriorityTaskWoken);
     }
     begin_frame();
   }
@@ -392,6 +410,9 @@ private:
   volatile uint32_t rxq_drops_ = 0;
   // NAK'd for want of room; the sender still owns the frame and sends it again.
   volatile uint32_t rxq_refused_ = 0;
+
+  SemaphoreHandle_t xNotice = nullptr;
+  BaseType_t xHigherPriorityTaskWoken = false;
 
   RxFrame building_ = {};
   RxField state_ = RxField::Broadcast;
@@ -795,7 +816,9 @@ extern "C" bool phy_is_muted() { return phy.is_muted(); }
 
 extern "C" void phy_deafen(bool deaf) { phy.rx().deafen(deaf); }
 
-extern "C" bool phy_frame_pending() { return phy.rx().frame_pending(); }
+extern "C" void phy_wait_frame(TickType_t xTicksToWait) {
+  phy.rx().wait_frame(xTicksToWait);
+}
 
 extern "C" void phy_guard_enter() {}
 extern "C" void phy_guard_leave() {}
@@ -807,6 +830,8 @@ extern "C" void phy_guard_leave() {}
 // call of the frame; the caller abandons the frame on it, which releases it.
 
 extern "C" Read phy_read_header(bool *is_unicast) {
+  if (!phy.rx().frame_pending())
+    return Read::NO_FRAME;
   const IEBusRx::RxFrame &frame = phy.rx().frame();
   if (frame.err != Read{0}) {
     phy.rx().release();
