@@ -7,8 +7,10 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
-#include <new>
 #include <utility>
+
+#include "FreeRTOS.h" // IWYU pragma: export
+#include "task.h"
 
 #include "cdchanger.hpp"
 #include "frame.hpp"
@@ -18,17 +20,30 @@
 #include "queue.hpp"
 #include "stdshim.hpp"
 
-const char *const offon[] = {"OFF", "ON"};
-
-constexpr uint8_t CACHE_SIZE = AVCLAN_MSG_QUEUE_SIZE;
-static_assert(CACHE_SIZE >= AVCLAN_FRAME_POOL_N,
-              "CACHE_SIZE must be >= avclan::Frame allocator pool capacity");
-
 using namespace avclan;
 
 namespace {
-constinit Queue<Frame, CACHE_SIZE> incoming;
-constinit Queue<Frame, CACHE_SIZE> outgoing;
+using Periph = Peripheral<CDChanger>;
+
+const char *const offon[] = {"OFF", "ON"};
+
+constexpr uint8_t CACHE_SIZE = AVCLAN_MSG_QUEUE_SIZE;
+// A queue that can hold the entire Frame pool is never full, so the sender's
+// blocking push of a follow-up frame onto its own queue can't deadlock
+static_assert(CACHE_SIZE >= AVCLAN_FRAME_POOL_N,
+              "CACHE_SIZE must be >= avclan::Frame allocator pool capacity");
+
+// Must be ranked such that queues deterministically tend to empty
+constexpr UBaseType_t SendPriority = tskIDLE_PRIORITY + 3;
+constexpr UBaseType_t RoutePriority = tskIDLE_PRIORITY + 2;
+constexpr UBaseType_t PollPriority = tskIDLE_PRIORITY + 2;
+constexpr UBaseType_t ReceivePriority = tskIDLE_PRIORITY + 1;
+
+struct Context {
+  Periph &peripheral;
+  Queue<Frame> &incoming;
+  Queue<Frame> &outgoing;
+};
 
 uint8_t hexChars[2];
 uint8_t hexDigit = 0; // current digit being written to hexChars
@@ -61,48 +76,59 @@ void set_flag(bool *flag, bool val, const char *msg) {
 
 void Setup();
 void print_help();
-} // namespace
 
-int main() {
-  Bus phy;
-  using enum Action;
-  using enum Device;
-  Peripheral<CDChanger> peripheral(phy, 0x360);
+[[noreturn]] void vReceiverTask(void *pvParameters) {
   using Print = Frame::Print;
-
-  Setup();
-  print_help();
-
+  auto &[peripheral, incoming, outgoing] =
+      *static_cast<Context *>(pvParameters);
   while (true) {
     if (auto msg = peripheral.read(Print{.print = printAllFrames,
                                          .binary = printBinary,
                                          .verbose = verbose}))
       incoming.push(std::move(*msg));
+  }
+}
 
-    if (const auto *in = incoming.peek()) {
-      if (auto resp = peripheral.route(*in)) {
-        incoming.pop();
-        if (*resp) {
-          outgoing.push(std::move(*resp));
-          continue; // route can be long; re-check the bus before poll/send
-        }
-      }
+[[noreturn]] void vRoutingTask(void *pvParameters) {
+  auto &[peripheral, incoming, outgoing] =
+      *static_cast<Context *>(pvParameters);
+  while (true) {
+    const Frame *in = incoming.peek();
+    if (auto resp = peripheral.route(*in)) {
+      incoming.pop();
+      if (*resp)
+        outgoing.push(std::move(*resp));
     }
+  }
+}
 
+[[noreturn]] void vPollTask(void *pvParameters) {
+  auto &[peripheral, incoming, outgoing] =
+      *static_cast<Context *>(pvParameters);
+  while (true) {
     if (auto msg = peripheral.poll())
       outgoing.push(std::move(msg));
+  }
+}
 
-    if (auto out = outgoing.pop()) {
-      auto result =
-          peripheral.send(std::move(out), Print{.print = printAllFrames,
-                                                .binary = printBinary});
-      if (auto next = peripheral.react(std::move(result)))
-        outgoing.push(std::move(next));
+[[noreturn]] void vSenderTask(void *pvParameters) {
+  using Print = Frame::Print;
+  auto &[peripheral, incoming, outgoing] =
+      *static_cast<Context *>(pvParameters);
+  while (true) {
+    auto result = peripheral.send(
+        outgoing.pop(), Print{.print = printAllFrames, .binary = printBinary});
+    if (auto next = peripheral.react(std::move(result)))
+      outgoing.push(std::move(next));
+  }
+}
 
-      continue;
-    }
-
-    // stdin must be non-blocking: yielding EOF when idle/empty
+[[noreturn]] void vREPLTask(void *pvParameters) {
+  using enum Action;
+  using enum Device;
+  auto &[peripheral, incoming, outgoing] =
+      *static_cast<Context *>(pvParameters);
+  while (true) {
     if (int readkey = fgetc(stdin); readkey != EOF) {
       switch (readkey) {
         case '?': print_help(); break;
@@ -121,7 +147,7 @@ int main() {
         case 'x': set_flag(&printBinary, false, "Binary:"); break;
 
         case 'E': // Beep
-          if (auto out = std::unique_ptr<Frame>(new (std::nothrow) Frame)) {
+          if (auto out = Frame::acquire()) {
             out->is_unicast = true;
             out->peripheral_addr = peripheral.controller();
             {
@@ -136,7 +162,7 @@ int main() {
             puts("!! failed Frame alloc for Beep !! ");
           break;
         case 'P':
-          if (auto out = std::unique_ptr<Frame>(new (std::nothrow) Frame)) {
+          if (auto out = Frame::acquire()) {
             out->is_unicast = true;
             out->peripheral_addr = peripheral.controller();
             {
@@ -235,8 +261,7 @@ int main() {
           if (readSeq && seqIdx > 0) {
             if (readBinary) {
               if (data_tmp[seqIdx - 1] == 0x17) {
-                if (auto out =
-                        std::unique_ptr<Frame>(new (std::nothrow) Frame)) {
+                if (auto out = Frame::acquire()) {
                   if (out->parse(data_tmp, --seqIdx) ==
                       Frame::Error::Parse{0}) {
                     out->reaction = 1;
@@ -249,7 +274,7 @@ int main() {
                 goto DEFAULT; // reading binary and this is a real data byte;
                               // fall through to default
             } else {          // ASCII message
-              if (auto out = std::unique_ptr<Frame>(new (std::nothrow) Frame)) {
+              if (auto out = Frame::acquire()) {
                 const uint8_t sendLen =
                     seqIdx <= Frame::MAXLENGTH ? seqIdx : Frame::MAXLENGTH;
                 out->is_unicast = seqIsUnicast;
@@ -322,7 +347,34 @@ int main() {
       clearerr(stdin);
     } // if (readkey != EOF)
   }
-  return 0;
+}
+
+} // namespace
+
+int main() {
+  Setup();
+  print_help();
+
+  // Static: the scheduler reclaims main's stack for ISRs
+  static Bus phy;
+  static Periph peripheral(phy, 0x360);
+  static Queue<Frame> incoming(CACHE_SIZE);
+  static Queue<Frame> outgoing(CACHE_SIZE);
+  static Context ctx{
+      .peripheral = peripheral, .incoming = incoming, .outgoing = outgoing};
+
+  xTaskCreateAffinitySet(vSenderTask, "send/react", configMINIMAL_STACK_SIZE,
+                         &ctx, SendPriority, 0b01, nullptr);
+  xTaskCreateAffinitySet(vRoutingTask, "router", configMINIMAL_STACK_SIZE, &ctx,
+                         RoutePriority, 0b01, nullptr);
+  xTaskCreateAffinitySet(vPollTask, "poll", configMINIMAL_STACK_SIZE, &ctx,
+                         PollPriority, 0b01, nullptr);
+  xTaskCreateAffinitySet(vReceiverTask, "receiver", configMINIMAL_STACK_SIZE,
+                         &ctx, ReceivePriority, 0b01, nullptr);
+  xTaskCreateAffinitySet(vREPLTask, "repl", configMINIMAL_STACK_SIZE, &ctx,
+                         tskIDLE_PRIORITY, 0b01, nullptr);
+
+  vTaskStartScheduler();
 }
 
 namespace {

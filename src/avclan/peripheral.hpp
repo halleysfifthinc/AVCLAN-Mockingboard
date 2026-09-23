@@ -4,14 +4,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <memory>
-#include <new>
 #include <tuple>
+#include <type_traits>
 #include <utility>
+
+#include "FreeRTOS.h" // IWYU pragma: export
+#include "queue.h"
 
 #include "avclan.h"
 #include "bus.hpp"
@@ -38,18 +43,26 @@ public:
   static_assert(((Devs::id != NoDevice) && ...),
                 "a registered Device id collides with the NoDevice sentinel; "
                 "update the sentinel value in avclan.h");
+  static_assert(sizeof...(Devs) <= 0x100,
+                "too many devices: Notifier packs the device index into 8 bits");
 
-  Peripheral(Bus &bus, uint16_t address) : bus{bus}, address_{address} {
+  static constexpr UBaseType_t EMIT_QUEUE_LEN = 2 * sizeof...(Devs);
+
+  Peripheral(Bus &bus, uint16_t address)
+      : bus{bus}, address_{address},
+        emit_requests_{xQueueCreate(EMIT_QUEUE_LEN, sizeof(uint32_t))} {
+    configASSERT(emit_requests_);
     bus.init(address);
-    (std::get<Devs>(devices_).init(), ...);
+    (std::get<Devs>(devices_).init(Notifier{emit_requests_, index_of<Devs>()}),
+     ...);
   }
+  Peripheral(const Peripheral &) = delete;
 
   uint16_t controller() const { return controller_; };
   template <DeviceInterface Dev> Dev &device() {
     return std::get<Dev>(devices_);
   }
 
-  bool bus_is_active() const { return bus.is_active(); };
   void mute(bool mute) { bus.mute(mute); };
   bool is_muted() const { return bus.is_muted(); };
 
@@ -59,9 +72,6 @@ public:
 
   expected<std::unique_ptr<Frame>, Error::Read>
   read(Frame::Print print = Frame::Print{}) {
-    if (!bus.is_active())
-      return unexpected{detail::Error::Read::NO_FRAME};
-
     return bus.read(print);
   };
 
@@ -72,8 +82,9 @@ public:
     out->control = 0xF;
     auto err = bus.send(*out, print);
     if (err != Error::Send{0})
-      return unexpected{
-          detail::SendError{out->owning_device, out->reaction, err}};
+      return unexpected{detail::SendError{.owning_device = out->owning_device,
+                                          .reaction = out->reaction,
+                                          .err = err}};
 
     return out;
   };
@@ -88,7 +99,7 @@ public:
     if (is_muted() || in.length < 3)
       return {};
 
-    std::unique_ptr<Frame> out(new (std::nothrow) Frame);
+    std::unique_ptr<Frame> out = Frame::acquire();
     if (!out) {
       puts("!! failed Frame alloc in route !!");
       return unexpected{Error::Read::POOL_EMPTY};
@@ -207,53 +218,33 @@ public:
     return next;
   }
 
-  // Service ready devices in round-robin order
+  // Blocks until a device requests an emit; requests are served in order.
   std::unique_ptr<Frame> poll() {
-    using U = std::unique_ptr<Frame>;
-    auto does_emit = [&](DeviceInterface auto &dev) -> U {
-      if (!dev.pending())
-        return {};
-
-      U out(new (std::nothrow) Frame);
-      if (!out) {
-        puts("!! failed Frame alloc in poll !!");
-        return {};
-      }
-
-      originate(dev, *out, [](auto &d, auto &out) { d.emit(out); });
-      return out;
-    };
-
-    // Runtime tuple index helper
-    auto does_index_emit = [&](std::size_t t) -> U {
-      return [&]<std::size_t... Is>(std::index_sequence<Is...>) -> U {
-        U out;
-        ((Is == t && (out = does_emit(std::get<Is>(devices_)))) || ...);
-        return out;
-      }(std::index_sequence_for<Devs...>{});
-    };
-
-    constexpr std::size_t N = sizeof...(Devs);
-    if constexpr (N == 1) { // round-robin not needed
-      return does_emit(std::get<0>(devices_));
-    } else {
-      static uint8_t rr_ = 0; // round-robin cursor
-      const std::size_t start = rr_;
-      for (std::size_t t = start; t < N; ++t) // [start, N)
-        if (auto out = does_index_emit(t)) {
-          rr_ = (t + 1 == N) ? 0 : t + 1;
-          return out;
-        }
-      for (std::size_t t = 0; t < start; ++t) // [0, start); t+1 <= start < N
-        if (auto out = does_index_emit(t)) {
-          rr_ = t + 1;
-          return out;
-        }
+    std::unique_ptr<Frame> out = Frame::acquire();
+    if (!out) {
+      puts("!! failed Frame alloc in poll !!");
       return {};
     }
+
+    uint32_t val;
+    xQueueReceive(emit_requests_, &val, portMAX_DELAY);
+    const uint8_t index = val & 0xFF;
+
+    auto emit_d = [val](auto &d, auto &out) { d.emit(out, val >> 8); };
+    [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+      ((Is == index ? originate(std::get<Is>(devices_), *out, emit_d) : void()),
+       ...);
+    }(std::index_sequence_for<Devs...>{});
+    return out;
   }
 
 private:
+  // Dev's position in Devs
+  template <class Dev> static constexpr uint8_t index_of() {
+    constexpr std::array is_dev{std::is_same_v<Dev, Devs>...};
+    return std::ranges::find(is_dev, true) - is_dev.begin();
+  }
+
   template <Party P> void stamp(Frame &out) const {
     if constexpr (P == Sender)
       out.controller_addr = address_;
@@ -271,5 +262,6 @@ private:
   uint16_t controller_ = 0;
   const uint16_t address_;
   std::tuple<Devs...> devices_;
+  QueueHandle_t emit_requests_;
 };
 } // namespace avclan

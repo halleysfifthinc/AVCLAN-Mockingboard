@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 #include "avclan.h"
 
@@ -29,6 +30,9 @@ struct Frame {
 
   Error::Parse parse(const uint8_t *bytes, uint8_t len);
   void print(Print print) const;
+
+  // Retries every 2ms up to 3 times (max 6ms wait); null if still exhausted
+  static std::unique_ptr<Frame> acquire();
 
 #if defined(AVCLAN_FRAME_POOL_N)
   // O(1) heapless pooled allocation. Only `new (std::nothrow) Frame` is

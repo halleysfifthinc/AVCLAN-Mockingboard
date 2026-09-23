@@ -3,19 +3,22 @@
 // Copyright (C) 2015 Allen Hill <allenofthehills@gmail.com>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <memory>
+#include <mutex>
 
 #include "avclan.h"
 #include "cdchanger.hpp"
 #include "device.hpp"
 #include "frame.hpp"
-#include "hal/cd_timer.h"
 #include "hal/media.h"
 
 namespace {
 using namespace avclan;
+using namespace std::chrono_literals;
 
 constexpr uint8_t cdloading_resp[] = {to_underlying(Device::CD_CHANGER),
                                       to_underlying(Device::STATUS),
@@ -28,38 +31,44 @@ constexpr uint8_t cdloading_resp[] = {to_underlying(Device::CD_CHANGER),
                                       0x01,
                                       0x02};
 
-constexpr int WIRE_SIZE = 8;  // cd state report size in bytes
-constexpr int TIME_SKIP = 15; // seconds
+constexpr int WIRE_SIZE = 8; // cd state report size in bytes
+constexpr auto TIME_SKIP = 15s;
 constexpr int TWODIGIT_MAX = 99;
+constexpr auto MAX_TIME = std::chrono::minutes{TWODIGIT_MAX} + 59s;
 
-/* Pack a 0–TWODIGIT_MAX count into 2-digit BCD. Values >TWODIGIT_MAX (sentinels
-   such as 0xFF / 0x7F meaning "no time") pass through unchanged so they survive
-   the wire round-trip. */
+// Pack a 0–TWODIGIT_MAX count into 2-digit BCD
 constexpr uint8_t toBCD(uint8_t val) {
-  if (val > TWODIGIT_MAX)
-    return val;
   return (uint8_t)(((val / 10) << 4) | (val % 10));
 }
 
-extern "C" void incrementTime_callback(void *self) {
-  static_cast<avclan::CDChanger *>(self)->incrementTime();
-}
-
-extern "C" bool isPlaying_callback(void *self) {
-  return static_cast<avclan::CDChanger *>(self)->isPlaying();
+// Whole seconds, saturated to the displayable range
+constexpr std::chrono::seconds displaySeconds(std::chrono::milliseconds t) {
+  return std::clamp(std::chrono::floor<std::chrono::seconds>(t), -MAX_TIME,
+                    MAX_TIME);
 }
 } // namespace
 
 namespace avclan {
 
-void CDChanger::init() {
+void CDChanger::init(Notifier notif) {
   media_init();
-  cdtimer_init(this, &incrementTime_callback, &isPlaying_callback);
+  notifier = notif;
+  statusTimer = xTimerCreate(
+      "cd status", pdMS_TO_TICKS(1000), true, this, [](TimerHandle_t timer) {
+        auto &self = *static_cast<CDChanger *>(pvTimerGetTimerID(timer));
+        // Timer callbacks must not block; a refused request is re-made next
+        // tick
+        if (!self.statusQueued.exchange(true) && !self.notifier.notify(0, 0))
+          self.statusQueued = false;
+      });
+  configASSERT(statusTimer);
 }
 
 void CDChanger::handle(const Frame &in, Frame &out) {
   if (in.length < 4)
     return; // [Currently known] valid CDChanger frames have at least 4 bytes
+
+  std::optional<MediaAction> media;
 
   const uint8_t *data = &in.data[1];
   const auto from = static_cast<Device>(*data++);
@@ -73,7 +82,7 @@ void CDChanger::handle(const Frame &in, Frame &out) {
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wswitch-enum"
   // Unicast to CD changer: bytes are (0x00, from, to, action, [extra...]).
-  switch (action) {
+  switch (const std::lock_guard lock(mutex); action) {
     case Enable_Function_Req:
       out.is_unicast = true;
       out.length = sizeof(function_change_resp);
@@ -93,7 +102,7 @@ void CDChanger::handle(const Frame &in, Frame &out) {
       out.data[2] = to_underlying(from);
       out.data[3] = to_underlying(Disable_Function_Resp);
       if (isPlaying()) {
-        stopPlaying();
+        media = stopPlaying();
         state = 0;
         flags2 = 0x80;
         out.reaction = r_StatusReport;
@@ -165,47 +174,39 @@ void CDChanger::handle(const Frame &in, Frame &out) {
         ++track;
       else
         track = 1;
-      mins = 0xff;
-      secs = 0x7f;
-      flags2 &= ~NEGATIVE;
+      time.reset();
       generateStatus(out, true, Device::CMD_SW);
-      media_action(MediaAction::Track_Next);
+      media = MediaAction::Track_Next;
       out.reaction = r_TrackChange;
       break;
     case Track_Seek_Down:
       state = SEEKING_TRACK;
       // Track down returns to track beginning if in ~middle of song
-      if ((flags2 & NEGATIVE) != 0 || (mins == 0 && secs < 5)) {
+      if (const auto t = trackTime(); t && *t < 5s) {
         if (track > 1)
           --track;
         else
           track = TWODIGIT_MAX;
 
-        media_action(MediaAction::Track_Prev);
+        media = MediaAction::Track_Prev;
       }
-      mins = 0xff;
-      secs = 0x7f;
-      flags2 &= ~NEGATIVE;
+      time.reset();
       generateStatus(out, true, Device::CMD_SW);
       out.reaction = r_TrackChange;
       break;
     case Track_Fast_Forward: {
       state |= SEEKING;
-      incrementTime(TIME_SKIP);
+      seek(TIME_SKIP);
       generateStatus(out, true, Device::CMD_SW);
-      media_action(MediaAction::Skip_Forward);
-      cdtimer_reset(); // Skipped to a whole/round sec; ensure next tick
-                       // is ~1 sec from now
+      media = MediaAction::Skip_Forward;
       out.reaction = r_SendOnly;
       break;
     }
     case Track_Rewind: {
       state |= SEEKING;
-      incrementTime(-TIME_SKIP);
+      seek(-TIME_SKIP);
       generateStatus(out, true, Device::CMD_SW);
-      media_action(MediaAction::Skip_Backward);
-      cdtimer_reset(); // Skipped to a whole/round sec; ensure next tick
-                       // is ~1 sec from now
+      media = MediaAction::Skip_Backward;
       out.reaction = r_SendOnly;
       break;
     }
@@ -272,18 +273,24 @@ void CDChanger::handle(const Frame &in, Frame &out) {
     default: break;
   }
 #pragma GCC diagnostic pop
+
+  // Media action handled outside of switch to minimize lock duration
+  if (media)
+    media_action(*media);
 }
 
 std::unique_ptr<Frame>
 CDChanger::react(expected<std::unique_ptr<Frame>, detail::SendError> exp) {
+  std::optional<MediaAction> media;
+  std::unique_ptr<Frame> next;
 
-  if (!exp) {
+  if (const std::lock_guard lock(mutex); !exp) {
     if (exp.error().reaction == to_underlying(r_StateReport) &&
         exp.error().err == detail::Error::Send::NAK_ADDRESS &&
         ++failedStatusReports > 1) {
       failedStatusReports = 0;
-      stopPlaying(); // Disable periodic updates if e.g. no-one's
-                     // listening (car was turned off?)
+      media = stopPlaying(); // Disable periodic updates if e.g. no-one's
+                             // listening (car was turned off?)
     }
   } else {
     auto out = std::move(exp.value());
@@ -312,9 +319,9 @@ CDChanger::react(expected<std::unique_ptr<Frame>, detail::SendError> exp) {
         out->reaction = r_SendOnly;
         break;
       case r_TrackChange:
-        setTime(0, 0);
-        cdtimer_reset(); // Skipped to a whole/round sec; ensure next tick is
-                         // ~1 sec from now
+        setTime(0ms);
+        // Track starts at a whole sec; next status is ~1 sec out
+        xTimerReset(statusTimer, 0);
         [[fallthrough]];
       case r_NormalizeState:
         normalizeState();
@@ -327,7 +334,7 @@ CDChanger::react(expected<std::unique_ptr<Frame>, detail::SendError> exp) {
         out->reaction = r_BeganPlaying;
         break;
       case r_BeganPlaying:
-        startPlaying(); // only start PIT after normalizing state
+        media = startPlaying(); // only start status timer after normalizing
         out->reaction = r_Nothing;
         break;
       case r_StatusReport:
@@ -341,18 +348,19 @@ CDChanger::react(expected<std::unique_ptr<Frame>, detail::SendError> exp) {
     }
 
     if (out->reaction > r_Nothing)
-      return out;
+      next = std::move(out);
   }
 
-  return {};
+  if (media)
+    media_action(*media);
+  return next;
 }
 
 void CDChanger::enable(Frame &out) {
   if (!isPlaying()) {
-    if (mins > TWODIGIT_MAX)
-      mins = 0;
-    if (secs > TWODIGIT_MAX)
-      secs = 0;
+    const std::lock_guard lock(mutex);
+    if (!time)
+      setTime(0ms);
     state = SEEKING | SEEKING_TRACK;
     flags2 = 0x80;
     generateStatus(out, false, Device::STATUS);
@@ -360,85 +368,81 @@ void CDChanger::enable(Frame &out) {
   }
 }
 
-bool CDChanger::pending() { return cdtimer_pending(); }
-
-void CDChanger::emit(Frame &out) {
+void CDChanger::emit(Frame &out, uint32_t /*payload*/) {
+  statusQueued = false; // Clear first so a tick during emit() queues anew
+  const std::lock_guard lock(mutex);
   generateStatus(out, false, Device::STATUS);
   out.reaction = r_StateReport;
-  cdtimer_clear();
 }
 
 bool CDChanger::isPlaying() const { return playing; }
 
-// Sets CD_mode to play and resets timer count (so that the next interrupt is in
-// 1 sec)
-void CDChanger::startPlaying() {
+// Starts track time and the ~1 Hz status report (the first ~1 sec from now)
+std::optional<MediaAction> CDChanger::startPlaying() {
   static bool havePlayed = false;
+  std::optional<MediaAction> media;
   if (havePlayed)
-    media_action(MediaAction::Play);
+    media = MediaAction::Play;
   havePlayed |= true;
+  if (!playing)
+    refTick = xTaskGetTickCount();
   playing = true;
-  cdtimer_reset();
+  xTimerReset(statusTimer, 0);
+  return media;
 }
 
-void CDChanger::stopPlaying() {
-  cdtimer_disable();
+MediaAction CDChanger::stopPlaying() {
+  xTimerStop(statusTimer, 0);
+  time = trackTime();
   playing = false;
-  media_action(MediaAction::Pause);
+  return MediaAction::Pause;
+}
+
+std::optional<std::chrono::milliseconds> CDChanger::trackTime() const {
+  if (!time || !playing)
+    return time;
+  return *time + std::chrono::milliseconds{
+                     pdTICKS_TO_MS(xTaskGetTickCount() - refTick)};
+}
+
+void CDChanger::setTime(std::chrono::milliseconds t) {
+  time = t;
+  refTick = xTaskGetTickCount();
+}
+
+// Seek `by` from the current whole second; no-op while no time is shown
+void CDChanger::seek(std::chrono::seconds by) {
+  const auto t = trackTime();
+  if (!t)
+    return;
+  setTime(displaySeconds(*t + by));
+  if (playing) // Seeked to a whole sec; next status is ~1 sec out
+    xTimerReset(statusTimer, 0);
 }
 
 // Serialize cd_status into the wire format.
 // track/mins/secs, need converted from decimal to BCD
 void CDChanger::serialize(uint8_t *dst) const {
+  uint8_t mins = 0xFF; // "no time" sentinels
+  uint8_t secs = 0x7F;
+  bool negative = false;
+  if (const auto t = trackTime()) {
+    const auto sec = displaySeconds(*t);
+    const auto magnitude = std::chrono::abs(sec);
+    const auto wholeMins = std::chrono::floor<std::chrono::minutes>(magnitude);
+    mins = toBCD((uint8_t)wholeMins.count());
+    secs = toBCD((uint8_t)(magnitude - wholeMins).count());
+    negative = sec < 0s;
+  }
+
   *dst++ = cds;
   *dst++ = state;
   *dst++ = disc;
   *dst++ = toBCD(track);
-  *dst++ = toBCD(mins);
-  *dst++ = toBCD(secs);
+  *dst++ = mins;
+  *dst++ = secs;
   *dst++ = flags;
-  *dst++ = flags2;
-}
-
-void CDChanger::setTime(uint8_t min, uint8_t sec) {
-  mins = min;
-  secs = sec;
-}
-
-// Increment the time by inc_sec (REQUIRES |inc_sec| <= 59).
-void CDChanger::incrementTime(int8_t inc_sec) {
-  // Sentinel values (>TWODIGIT_MAX) mean "no time"; leave them alone until
-  // setTime() replaces them with a real count.
-  if (mins > TWODIGIT_MAX)
-    return;
-
-  if ((flags2 & NEGATIVE) != 0)
-    inc_sec = -inc_sec; // time forward shrinks a negative magnitude
-  int8_t sum = secs + inc_sec;
-
-  if (sum < 0 && mins == 0) {
-    // Stepped through zero: the display flips sign and counts away from it.
-    secs = (uint8_t)-sum;
-    flags2 ^= NEGATIVE;
-    return;
-  }
-
-  if (sum > 59) {
-    if (mins == TWODIGIT_MAX) { // saturate at 99:59 rather than wrap the hour
-      secs = 59;
-      return;
-    }
-    sum -= 60;
-    ++mins;
-  } else if (sum < 0) {
-    sum += 60;
-    --mins; // mins > 0: the mins == 0 borrow was handled above
-  }
-  secs = (uint8_t)sum;
-
-  // Zero is neither sign, so it must never display as -00:00.
-  if ((mins | secs) == 0)
-    flags2 &= ~NEGATIVE;
+  *dst++ = negative ? (flags2 | NEGATIVE) : (flags2 & ~NEGATIVE);
 }
 
 // Used for changed status messages
@@ -460,10 +464,8 @@ void CDChanger::generateStatus(Frame &status, bool is_unicast,
 }
 
 void CDChanger::normalizeState() {
-  if (mins > TWODIGIT_MAX)
-    mins = 0;
-  if (secs > TWODIGIT_MAX)
-    secs = 0;
+  if (!time)
+    setTime(0ms);
   state = PLAYBACK;
   flags &= (uint8_t)~(DISK_SCAN | SCAN);
 }

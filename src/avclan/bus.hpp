@@ -73,10 +73,6 @@ public:
   // frames addressed to it without further instruction. One address per bus.
   void init(uint16_t address);
 
-  // True when there is a frame to read and we aren't deafened. Depending on the
-  // target that means the bus has gone dominant or a frame is already buffered.
-  bool is_active() const;
-
   // Prevent the device from being active on the bus
   void mute(bool mute);
   bool is_muted() const { return muted_; };
@@ -101,7 +97,6 @@ private:
 
   // Assume mute after default ctor; only viable after init call
   bool muted_ = true;
-  bool deafened_ = false;
   bool inited_ = false;
 };
 
