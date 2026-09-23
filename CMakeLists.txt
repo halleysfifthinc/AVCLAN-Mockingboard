@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.30)
 
+include(FetchContent)
+
 if(AVCLAN_TARGET_SDK_FILE)
 include(${AVCLAN_TARGET_SDK_FILE})
 endif()
@@ -119,7 +121,6 @@ add_subdirectory(src/avclan/target/${AVCLAN_TARGET})
 # subdirectory to provide a port-supplied freestanding stdlib via
 # CMAKE_REQUIRED_INCLUDES, if necessary.
 include(CheckCXXSourceCompiles)
-include(FetchContent)
 find_program(GIT_EXECUTABLE git REQUIRED)
 
 if(TARGET libstdcpp)

@@ -5,8 +5,15 @@
 
 #pragma once
 
+#include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <memory>
+#include <optional>
+
+#include "FreeRTOS.h" // IWYU pragma: export
+#include "semphr.h"
+#include "timers.h"
 
 #include "avclan.h"
 #include "device.hpp"
@@ -60,16 +67,17 @@ public:
   };
 
   static constexpr Device id = Device::CD_CHANGER;
-  void init();
+  CDChanger() : mutex(xSemaphoreCreateMutex()) {}
+  CDChanger(const CDChanger &) = delete;
+
+  void init(Notifier notifier);
 
   void handle(const Frame &in, Frame &out);
   std::unique_ptr<Frame>
   react(expected<std::unique_ptr<Frame>, detail::SendError> exp);
   void enable(Frame &out);
   void disable(Frame &out);
-  static bool pending();
-  void emit(Frame &out);
-  void incrementTime(int8_t inc_sec = 1);
+  void emit(Frame &out, uint32_t payload);
   bool isPlaying() const;
 #ifndef NDEBUG
   void media_action(MediaAction action);
@@ -78,21 +86,43 @@ public:
 #endif
 
 private:
-  void startPlaying();
-  void stopPlaying();
+  // Implements the BasicLockable named requirements for an xSemaphore
+  class xMutex {
+  public:
+    explicit xMutex(SemaphoreHandle_t mutex) : mutex_{mutex} {}
+    xMutex(const xMutex &) = delete;
+
+    void lock() noexcept { xSemaphoreTake(mutex_, portMAX_DELAY); }
+    void unlock() noexcept { xSemaphoreGive(mutex_); }
+
+  private:
+    SemaphoreHandle_t mutex_ = nullptr;
+  };
+
+  std::optional<MediaAction> startPlaying();
+  MediaAction stopPlaying();
+  std::optional<std::chrono::milliseconds> trackTime() const;
+  void setTime(std::chrono::milliseconds t);
+  void seek(std::chrono::seconds by);
   void serialize(uint8_t *dst) const;
-  void setTime(uint8_t mins, uint8_t secs);
   void generateStatus(Frame &status, bool is_unicast, Device to) const;
   void normalizeState();
 
+  Notifier notifier{};
+  TimerHandle_t statusTimer = nullptr;
+  std::atomic<bool> statusQueued = false; // coalesces status emit requests
+  xMutex mutex;
+
+  // Track time is a stopwatch: `time` is relative to `refTick`, and
+  // advances while `playing`. nullopt means no time is shown.
+  std::optional<std::chrono::milliseconds> time;
+  TickType_t refTick = 0;
   bool playing = false;
   int failedStatusReports = 0;
   uint8_t cds = CD1;
   uint8_t state = SEEKING | SEEKING_TRACK;
   uint8_t disc = 1;
-  uint8_t track = 1;   // Decimal storage; serialize to BCD
-  uint8_t mins = 0xFF; // Decimal storage; serialize to BCD
-  uint8_t secs = 0x7F; // Decimal storage; serialize to BCD
+  uint8_t track = 1; // Decimal storage; serialize to BCD
   uint8_t flags = 0;
   uint8_t flags2 = 0x80;
 };

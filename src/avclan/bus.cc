@@ -30,11 +30,11 @@
   (zero) is not expected.
 */
 
-#include <concepts>
 #include <cstdint>
 #include <cstdio>
 #include <memory>
-#include <new>
+
+#include "FreeRTOS.h" // IWYU pragma: export
 
 #include "avclan.h"
 #include "bus.hpp"
@@ -112,21 +112,16 @@ void Bus::init(uint16_t address) {
   if (inited_)
     return;
   phy_init(address);
-  muted_ = false;    // phy_init leaves the bus TX unmuted
-  deafened_ = false; // Default to listening
+  muted_ = false; // phy_init leaves the bus TX unmuted
   inited_ = true;
 };
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-bool Bus::is_active() const { return !deafened_ && phy_frame_pending(); };
 void Bus::mute(bool mute) {
   phy_mute(mute);
   muted_ = mute; // Only update muted_ *AFTER* hardware has finished muting
 };
-void Bus::deafen(bool deaf) {
-  phy_deafen(deaf);
-  deafened_ = deaf; // Only update deafened_ *AFTER* the phy has stopped acking
-}
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+void Bus::deafen(bool deaf) { phy_deafen(deaf); }
 
 auto Bus::read(Frame::Print print)
     -> expected<std::unique_ptr<Frame>, Error::Read> {
@@ -137,11 +132,13 @@ auto Bus::read(Frame::Print print)
 
   using enum Read;
 
-  std::unique_ptr<Frame> in(new (std::nothrow) Frame);
+  std::unique_ptr<Frame> in = Frame::acquire();
   if (!in) {
     err.type = POOL_EMPTY;
     goto handle_err;
   }
+
+  phy_wait_frame(portMAX_DELAY);
 
   { // bound handle lifetime
     auto handle = get();
@@ -198,6 +195,8 @@ auto Bus::read(Frame::Print print)
 
   if (false) { // NOLINT(readability-simplify-boolean-expr)
   handle_err:;
+    if (err.type == NO_FRAME)
+      return unexpected{NO_FRAME};
     fputs("ERR(read): ", stdout);
     switch (err.type) {
       case POOL_EMPTY: puts("failed Frame alloc"); break;
@@ -281,8 +280,7 @@ auto Bus::send(const Frame &out, Frame::Print print) -> Send {
     if (err.type != Send{0})
       goto handle_err;
 
-    err.type =
-        handle.send_data(out.data, out.length, out.is_unicast, &err.val);
+    err.type = handle.send_data(out.data, out.length, out.is_unicast, &err.val);
     if (err.type != Send{0})
       goto handle_err;
 
@@ -360,8 +358,8 @@ Send Bus::sendbyte(uint8_t byte, bool ack) {
 }
 
   #ifdef MEASURE_BUS
-// Debug bit-timing measurement on the one physical bus; instance-scoped for
-// the same reason as is_active().
+// Debug bit-timing measurement on the one physical bus; instance-scoped like
+// deafen().
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void Bus::measure() { phy_measure(); }
   #endif
