@@ -91,17 +91,24 @@ target_compile_options(avclan PUBLIC
 target_include_directories(avclan PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/avclan)
 
-add_executable(mockingboard
-    src/sniffer.cc
-)
-target_link_libraries(mockingboard avclan)
+# Pull in the selected hardware target: its port sources, per-target headers,
+# hardware-specific compile options/definitions, device-pack handling, and the
+# flashing target. Added after the targets above so it can extend them.
+add_subdirectory(src/avclan/target/${AVCLAN_TARGET})
+
+if(NOT TARGET mockingboard)
+  add_executable(mockingboard
+      src/sniffer.cc
+  )
+  target_link_libraries(mockingboard avclan)
+endif()
 
 # Report firmware section sizes on every build, when the toolchain provides a
 # size tool (CMAKE_SIZE). A standalone custom target (rather than a POST_BUILD
 # command on mockingboard) so it prints even when the link is up to date:
 # custom targets with no output are always considered stale and re-run.
 # add_dependencies orders it after the link.
-if(CMAKE_SIZE)
+if(TARGET mockingboard AND CMAKE_SIZE)
     add_custom_target(mockingboard-size ALL
         COMMAND ${CMAKE_SIZE} $<TARGET_FILE:mockingboard>
         COMMENT "Section sizes: mockingboard firmware"
@@ -109,11 +116,6 @@ if(CMAKE_SIZE)
     )
     add_dependencies(mockingboard-size mockingboard)
 endif()
-
-# Pull in the selected hardware target: its port sources, per-target headers,
-# hardware-specific compile options/definitions, device-pack handling, and the
-# flashing target. Added after the targets above so it can extend them.
-add_subdirectory(src/avclan/target/${AVCLAN_TARGET})
 
 # --- Polyfill headers for std facilities the toolchain may lack -------------
 # tl::expected / tl::optional back-fill std::expected / std::optional (with

@@ -3,12 +3,14 @@
 #include <cstdint>
 #include <cstring>
 #include <hardware/clocks.h>
+#include <hardware/dma.h>
 #include <limits>
 
 #include "FreeRTOS.h" // IWYU pragma: export
 #include "semphr.h"
 
 #include "avclan.h"
+#include "frame.hpp"
 #include "hal/phy.h"
 #include "hardware/gpio.h"
 #include "hardware/pio.h"
@@ -382,8 +384,6 @@ private:
     begin_frame();
   }
 
-  // The initialized instance, for irq_handler: SDK IRQ handlers take no
-  // context.
   static inline IEBusRx *instance_ = nullptr;
 
   PIO pio_;
@@ -445,16 +445,27 @@ public:
   // relies on. The pad keeps its PIO function select: handing it back to SIO
   // would float the line, and a floating bus reads dominant.
   ~IEBusTx() {
-    if (!claimed_)
+    if (instance_ != this)
       return;
+    irq_set_enabled(irq_, false);
+    irq_remove_handler(irq_, irq_handler);
+    irq_set_enabled(DMA_IRQ_0, false);
+    irq_remove_handler(DMA_IRQ_0, dma_irq_handler);
+    pio_set_irq0_source_mask_enabled(pio_, TX_SOURCES, false);
     pio_set_sm_mask_enabled(pio_, sm_mask(), false);
     pio_remove_program_and_unclaim_sm(&iebus_tx_program, pio_, tx_sm_,
                                       tx_offset_);
     pio_sm_unclaim(pio_, ack_sm_);
+    dma_channel_cleanup(tx_dma_);
+    dma_channel_unclaim(tx_dma_);
+    instance_ = nullptr;
   }
 
   // Claims and configures both SMs, but doesn't start them.
   void init(PIO pio, uint pin_rx, uint pin_tx) {
+    hard_assert(instance_ == nullptr);
+    instance_ = this;
+
     pio_ = pio;
     pin_tx_ = pin_tx;
     tx_offset_ = (uint)pio_add_program(pio_, &iebus_tx_program);
@@ -480,6 +491,22 @@ public:
     // Entry is `reset`; offset 0 is the start-bit block.
     pio_sm_init(pio_, tx_sm_, tx_offset_ + iebus_tx_wrap_target, &tx_cfg);
 
+    tx_dma_ = (uint)dma_claim_unused_channel(true);
+    dma_cfg_ = dma_channel_get_default_config(tx_dma_);
+    channel_config_set_dreq(&dma_cfg_, pio_get_dreq(pio_, tx_sm_, true));
+    dma_channel_configure(tx_dma_, &dma_cfg_, &pio_->txf[tx_sm_], nullptr, 0,
+                          false);
+
+    irq_set_exclusive_handler(DMA_IRQ_0, dma_irq_handler);
+    irq_set_priority(DMA_IRQ_0, configMAX_SYSCALL_INTERRUPT_PRIORITY);
+    irq_set_enabled(DMA_IRQ_0, true);
+
+    // Sources stay masked until send_done waits on them.
+    irq_ = (uint)pio_get_irq_num(pio_, 0);
+    irq_set_exclusive_handler(irq_, irq_handler);
+    irq_set_priority(irq_, configMAX_SYSCALL_INTERRUPT_PRIORITY);
+    irq_set_enabled(irq_, true);
+
     pio_sm_config ack_cfg = iebus_tx_program_get_default_config(tx_offset_);
     sm_config_set_wrap(&ack_cfg, tx_offset_ + iebus_tx_offset_ack_entry,
                        tx_offset_ + iebus_tx_offset_ack_release);
@@ -488,7 +515,6 @@ public:
 
     pio_sm_init(pio_, ack_sm_, tx_offset_ + iebus_tx_offset_ack_entry,
                 &ack_cfg);
-    claimed_ = true;
   }
 
   PIO pio() const { return pio_; }
@@ -557,26 +583,24 @@ public:
     if (muted_)
       return MUTED;
     data_start_ = words_;
-    for (uint8_t i = 0; i < length && !check(); i++)
-      put(encode_tx(8, data[i], true, expect_ack));
+
+    if (check())
+      return Send{0};
+    for (uint8_t i = 0; i < length; i++)
+      dma_buf_[i] = encode_tx(8, data[i], true, expect_ack);
+    words_ += length;
+    dma_channel_acknowledge_irq0(tx_dma_); // Clear any stale IRQ
+    dma_channel_transfer_from_buffer_now(tx_dma_, &dma_buf_, length);
     return Send{0};
   }
 
   Send send_done(uint8_t *data_index) {
-    const auto flagged = [this] {
-      return pio_interrupt_get(pio_, iebus_tx_lost_arb_irq) ||
-             pio_interrupt_get(pio_, iebus_tx_nak_irq);
-    };
-
-    // The second PC test confirms that SM has finished sending last value and
-    // not in-progress (i.e. pulled the last FIFO value and still mid-send)
-    const auto idle = [this] {
-      return pio_sm_is_tx_fifo_empty(pio_, tx_sm_) && // Read before the pc
-             pio_sm_get_pc(pio_, tx_sm_) == tx_offset_ + iebus_tx_wrap_target;
-    };
-
-    while (!(flagged() || idle()))
-      tight_loop_contents();
+    // Pending the IRQ has the ISR judge a frame that ended before the unmask.
+    tx_task_ = xTaskGetCurrentTaskHandle();
+    pio_set_irq0_source_mask_enabled(pio_, FAULT_SOURCES, true);
+    dma_channel_set_irq0_enabled(tx_dma_, true); // Its ISR unmasks eof
+    irq_set_pending(irq_);
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     check();
     // Our frame is over, won or not.
@@ -590,22 +614,81 @@ public:
   }
 
 private:
-  // One field's word: [len:4][data+parity:len+1][has_ack:1][nak_ok:1][pad]. The
+  static constexpr uint32_t EOF_SOURCE = 1U
+                                         << (pis_interrupt0 + iebus_tx_eof_irq);
+  static constexpr uint32_t FAULT_SOURCES =
+      (1U << (pis_interrupt0 + iebus_tx_nak_irq)) |
+      (1U << (pis_interrupt0 + iebus_tx_lost_arb_irq));
+  static constexpr uint32_t TX_SOURCES = EOF_SOURCE | FAULT_SOURCES;
+
+  // Has the SM flagged a NAK or lost arbitration error?
+  bool flagged() const {
+    return (pio_->irq &
+            ((1U << iebus_tx_nak_irq) | (1U << iebus_tx_lost_arb_irq))) != 0;
+  }
+
+  // Has the SM returned to the reset instruction after emptying the fifo?
+  bool idle() const {
+    return pio_sm_is_tx_fifo_empty(pio_, tx_sm_) && // Read before the pc
+           pio_sm_get_pc(pio_, tx_sm_) == tx_offset_ + iebus_tx_wrap_target;
+  }
+
+  static void __time_critical_func(irq_handler)() { instance_->isr(); }
+
+  // Wakes tx task (blocked in send_done) once the frame is over, error or not.
+  // A frame ends with one of:
+  //  - Fault (NAK or bus contention)
+  //  - Idle DMA and idle SM
+  // The fault flags remain until check() collects them.
+  void __time_critical_func(isr)() {
+    if (!flagged()) {
+      // Clear/reset EOF trigger since not nak/lost_arb
+      pio_interrupt_clear(pio_, iebus_tx_eof_irq);
+      if (dma_channel_is_busy(tx_dma_) || !idle())
+        return; // Frame end conditions not met
+    }
+    // Past this point, the frame is over. The fault flags remain until check()
+    // collects them.
+
+    // Disable the IRQs since the frame is over
+    pio_set_irq0_source_mask_enabled(pio_, TX_SOURCES, false);
+    dma_channel_set_irq0_enabled(tx_dma_, false);
+
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    vTaskNotifyGiveFromISR(tx_task_, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+  }
+
+  static void __time_critical_func(dma_irq_handler)() { instance_->dma_isr(); }
+
+  // The data words are all in the FIFO, so only these last few eofs can signal
+  // end of frame. INTS is clear when the PIO ISR already ended it.
+  void __time_critical_func(dma_isr)() {
+    if (!dma_channel_get_irq0_status(tx_dma_))
+      return;
+    dma_channel_acknowledge_irq0(tx_dma_);
+    dma_channel_set_irq0_enabled(tx_dma_, false);
+    pio_set_irq0_source_mask_enabled(pio_, EOF_SOURCE, true);
+  }
+
+  // One field's word: [len:4][data+parity:len+1][next:5][nak_ok:1][pad]. The
   // SM sends count + 1 bits, so the count is `len` and the parity bit the
-  // driver appends rides along as the extra one. `has_ack` emits the
-  // acknowledge slot; a NAK in it raises nak_irq unless `nak_ok`, i.e. unless
-  // we don't `expect_ack`.
-  static constexpr uint32_t encode_tx(size_t len, uint16_t bits, bool has_ack,
-                                      bool expect_ack) {
+  // driver appends rides along as the extra one. `has_ack` sends it on to
+  // ack_drive for the acknowledge slot; a NAK in it raises nak_irq unless
+  // `nak_ok`, i.e. unless we don't `expect_ack`.
+  uint32_t encode_tx(size_t len, uint16_t bits, bool has_ack,
+                     bool expect_ack) const {
     const auto n = (uint8_t)(len + 1);
     // Masked so a bit above the field (the broadcast bit's copy of itself, when
     // len is 0) can't spill into the count.
     const uint16_t with_parity =
         ((bits << 1) | parity(bits)) & ((1U << n) - 1U);
+    const uint32_t next = tx_offset_ + (has_ack ? iebus_tx_offset_ack_drive
+                                                : iebus_tx_wrap_target);
     uint32_t word = (uint32_t)len << 28;
     word |= with_parity << (28 - n);
-    word |= (uint32_t)has_ack << (27 - n);
-    word |= (uint32_t)!expect_ack << (26 - n);
+    word |= next << (23 - n);
+    word |= (uint32_t)!expect_ack << (22 - n);
     return word;
   }
 
@@ -615,6 +698,15 @@ private:
     const bool lost_arb = pio_interrupt_get(pio_, iebus_tx_lost_arb_irq);
     if (!lost_arb && !pio_interrupt_get(pio_, iebus_tx_nak_irq))
       return fault_ != Send{0};
+
+    // A parked SM stalls the DMA with words still to write; stop it before the
+    // clear it would refill.
+    if (dma_channel_is_busy(tx_dma_)) {
+      words_ -= (uint8_t)(dma_channel_hw_addr(tx_dma_)->transfer_count &
+                          DMA_CH0_TRANS_COUNT_COUNT_BITS);
+      dma_channel_cleanup(tx_dma_);
+      dma_channel_set_config(tx_dma_, &dma_cfg_, false);
+    }
 
     // Read the level before the clear throws it away, and clear before the
     // flag: releasing the SM with words still queued would send the rest of the
@@ -666,13 +758,19 @@ private:
   }
 
   IEBusRx &rx_;
+  static inline IEBusTx *instance_ = nullptr;
 
   PIO pio_;
   uint pin_tx_;
   uint tx_sm_;
   uint tx_offset_;
   uint ack_sm_;
-  bool claimed_ = false; // init() ran, so the destructor has something to undo
+  uint irq_;
+
+  uint tx_dma_;
+  dma_channel_config dma_cfg_;
+  TaskHandle_t tx_task_ = nullptr;
+  std::array<uint32_t, Frame::MAXLENGTH> dma_buf_ = {};
 
   bool muted_ = false;
 
