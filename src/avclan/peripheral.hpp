@@ -43,8 +43,9 @@ public:
   static_assert(((Devs::id != NoDevice) && ...),
                 "a registered Device id collides with the NoDevice sentinel; "
                 "update the sentinel value in avclan.h");
-  static_assert(sizeof...(Devs) <= 0x100,
-                "too many devices: Notifier packs the device index into 8 bits");
+  static_assert(
+      sizeof...(Devs) <= 0x100,
+      "too many devices: Notifier packs the device index into 8 bits");
 
   static constexpr UBaseType_t EMIT_QUEUE_LEN = 2 * sizeof...(Devs);
 
@@ -68,6 +69,7 @@ public:
 
 #ifndef NDEBUG
   Bus &get_bus() { return bus; }
+  void set_controller(uint16_t addr) { controller_ = addr; }
 #endif
 
   expected<std::unique_ptr<Frame>, Error::Read>
