@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <iterator>
 #include <utility>
 
 #include "FreeRTOS.h" // IWYU pragma: export
@@ -123,229 +124,312 @@ void print_help();
   }
 }
 
-[[noreturn]] void vREPLTask(void *pvParameters) {
-  using enum Action;
-  using enum Device;
-  auto &[peripheral, incoming, outgoing] =
-      *static_cast<Context *>(pvParameters);
-  while (true) {
-    if (int readkey = fgetc(stdin); readkey != EOF) {
-      switch (readkey) {
-        case '?': print_help(); break;
-        case 'v': toggle_flag(&verbose, "Verbose errors:"); break;
-        case 'l': toggle_flag(&printAllFrames, "Logging:"); break;
-        case 'k': toggle_flag(&echoCharacters, "Echo characters:"); break;
-        case 'm':
-          toggle_flag(&muteBus, "Mute device:");
-          peripheral.mute(muteBus);
-          break;
+void begin_sequence(bool unicast) {
+  puts(unicast ? "READ SEQUENCE (U)> " : "READ SEQUENCE (B)> ");
+  lastPrintAllFrames = printAllFrames;
+  printAllFrames = false;
+  readSeq = true;
+  seqIdx = hexDigit = 0;
+  hexChars[0] = hexChars[1] = 0;
+  seqIsUnicast = unicast;
+}
 
-        // X/x isn't a toggle interface because this is used
-        // programmatically and is simpler than reading back the toggle
-        // state
-        case 'X': set_flag(&printBinary, true, "Binary:"); break;
-        case 'x': set_flag(&printBinary, false, "Binary:"); break;
+struct Command {
+  char key;
+  const char *help;
+  void (*run)(Context &);
+};
 
-        case 'E': // Beep
-          if (auto out = Frame::acquire()) {
-            out->is_unicast = true;
-            out->peripheral_addr = peripheral.controller();
-            {
-              const uint8_t beep[] = {0x00, to_underlying(CD_CHANGER),
-                                      to_underlying(BEEP_SPEAKERS), 0x60, 0x01};
-              out->length = sizeof(beep);
-              memcpy(out->data, beep, sizeof(beep));
-            }
-            out->reaction = 1;
-            outgoing.push(std::move(out));
-          } else
-            puts("!! failed Frame alloc for Beep !! ");
-          break;
-        case 'P':
-          if (auto out = Frame::acquire()) {
-            out->is_unicast = true;
-            out->peripheral_addr = peripheral.controller();
-            {
-              const uint8_t play[] = {0x00,
-                                      to_underlying(COMM_CTRL),
-                                      to_underlying(COMMUNICATION_V1),
-                                      to_underlying(Ejection),
-                                      to_underlying(CD_CHANGER),
-                                      0x01};
-              out->length = sizeof(play);
-              memcpy(out->data, play, sizeof(play));
-            }
-            out->reaction = CDChanger::reaction_t::r_Ejection;
-            outgoing.push(std::move(out));
-          } else
-            puts("!! failed Frame alloc for Play !! ");
-          break;
+constexpr Command commands[] = {
+    {.key = 'U',
+     .help = "begin reading for unicast message (send with Enter key)",
+     .run = [](Context &) static { begin_sequence(true); }},
+    {.key = 'B',
+     .help = "begin reading for broadcast message (send with Enter key)",
+     .run = [](Context &) static { begin_sequence(false); }},
+    {.key = 'm',
+     .help = "Toggle mute for mockingboard bus activity",
+     .run =
+         [](Context &ctx) static {
+           toggle_flag(&muteBus, "Mute device:");
+           ctx.peripheral.mute(muteBus);
+         }},
+    {.key = 'v',
+     .help = "Toggle verbose error logging",
+     .run = [](Context &) static { toggle_flag(&verbose, "Verbose errors:"); }},
+    {.key = 'l',
+     .help = "Toggle message logging",
+     .run = [](Context &) static { toggle_flag(&printAllFrames, "Logging:"); }},
+
+    // X/x isn't a toggle interface because this is used programmatically and
+    // is simpler than reading back the toggle state
+    {.key = 'X',
+     .help = "Turn binary logging ON",
+     .run = [](Context &) static { set_flag(&printBinary, true, "Binary:"); }},
+    {.key = 'x',
+     .help = "Turn binary logging OFF",
+     .run = [](Context &) static { set_flag(&printBinary, false, "Binary:"); }},
+
+    {.key = 'k',
+     .help = "Toggle character echo",
+     .run =
+         [](Context &) static {
+           toggle_flag(&echoCharacters, "Echo characters:");
+         }},
+    {.key = 'E',
+     .help = "Beep",
+     .run =
+         [](Context &ctx) static {
+           using enum Action;
+           using enum Device;
+           if (auto out = Frame::acquire()) {
+             out->is_unicast = true;
+             out->peripheral_addr = ctx.peripheral.controller();
+             {
+               const uint8_t beep[] = {0x00, to_underlying(CD_CHANGER),
+                                       to_underlying(BEEP_SPEAKERS), 0x60,
+                                       0x01};
+               out->length = sizeof(beep);
+               memcpy(out->data, beep, sizeof(beep));
+             }
+             out->reaction = 1;
+             ctx.outgoing.push(std::move(out));
+           } else
+             puts("!! failed Frame alloc for Beep !! ");
+         }},
+    {.key = 'P',
+     .help = "Play",
+     .run =
+         [](Context &ctx) static {
+           using enum Action;
+           using enum Device;
+           if (auto out = Frame::acquire()) {
+             out->is_unicast = true;
+             out->peripheral_addr = ctx.peripheral.controller();
+             {
+               const uint8_t play[] = {0x00,
+                                       to_underlying(COMM_CTRL),
+                                       to_underlying(COMMUNICATION_V1),
+                                       to_underlying(Ejection),
+                                       to_underlying(CD_CHANGER),
+                                       0x01};
+               out->length = sizeof(play);
+               memcpy(out->data, play, sizeof(play));
+             }
+             out->reaction = CDChanger::reaction_t::r_Ejection;
+             ctx.outgoing.push(std::move(out));
+           } else
+             puts("!! failed Frame alloc for Play !! ");
+         }},
 
 #ifndef NDEBUG
-        case 'g': peripheral.device<CDChanger>().mic_toggle(); break;
-        case 'p':
-          fputs("First play/pause begin ... ", stdout);
-          peripheral.device<CDChanger>().media_action(MediaAction::Play_Pause);
-          while (peripheral.device<CDChanger>().media_busy()) {}
-          fputs("end\nSecond play/pause begin ... ", stdout);
-          peripheral.device<CDChanger>().media_action(MediaAction::Play_Pause);
-          while (peripheral.device<CDChanger>().media_busy()) {}
-          puts("end");
-          break;
-        case 's':
-          fputs("Skip begin ... ", stdout);
-          peripheral.device<CDChanger>().media_action(MediaAction::Track_Next);
-          while (peripheral.device<CDChanger>().media_busy()) {}
-          puts("end");
-          break;
-        case 'b':
-          fputs("Skip back begin ... ", stdout);
-          peripheral.device<CDChanger>().media_action(MediaAction::Track_Prev);
-          while (peripheral.device<CDChanger>().media_busy()) {}
-          puts("end");
-          break;
-        case '+':
-          peripheral.get_bus().deafen(true);
-          peripheral.get_bus().set_dominant();
-          puts("Set bus dominant...");
-          break;
-        case '-':
-          peripheral.get_bus().set_recessive();
-          peripheral.get_bus().deafen(false);
-          puts("Set bus recessive...");
-          break;
+    {.key = 'g',
+     .help = "Toggle MIC_CONTROL high/low",
+     .run =
+         [](Context &ctx) static {
+           ctx.peripheral.device<CDChanger>().mic_toggle();
+         }},
+    // Confirm pulse function and refractory timing
+    {.key = 'p',
+     .help = "double MIC play/pause pulse",
+     .run =
+         [](Context &ctx) static {
+           auto &cdc = ctx.peripheral.device<CDChanger>();
+           fputs("First play/pause begin ... ", stdout);
+           cdc.media_action(MediaAction::Play_Pause);
+           while (cdc.media_busy()) {}
+           fputs("end\nSecond play/pause begin ... ", stdout);
+           cdc.media_action(MediaAction::Play_Pause);
+           while (cdc.media_busy()) {}
+           puts("end");
+         }},
+    {.key = 's',
+     .help = "MIC skip forward",
+     .run =
+         [](Context &ctx) static {
+           auto &cdc = ctx.peripheral.device<CDChanger>();
+           fputs("Skip begin ... ", stdout);
+           cdc.media_action(MediaAction::Track_Next);
+           while (cdc.media_busy()) {}
+           puts("end");
+         }},
+    {.key = 'b',
+     .help = "MIC skip backward",
+     .run =
+         [](Context &ctx) static {
+           auto &cdc = ctx.peripheral.device<CDChanger>();
+           fputs("Skip back begin ... ", stdout);
+           cdc.media_action(MediaAction::Track_Prev);
+           while (cdc.media_busy()) {}
+           puts("end");
+         }},
   #ifdef MEASURE_BUS
-        case 'M': peripheral.get_bus().measure(); break;
+    {'M', "Measure bit-timing (pulse-widths and periods)",
+     [](Context &ctx) static { ctx.peripheral.get_bus().measure(); }},
   #endif
+    {.key = '+',
+     .help = "Set bus driven/dominant",
+     .run =
+         [](Context &ctx) static {
+           ctx.peripheral.get_bus().deafen(true);
+           ctx.peripheral.get_bus().set_dominant();
+           puts("Set bus dominant...");
+         }},
+    {.key = '-',
+     .help = "Set bus idle/recessive",
+     .run =
+         [](Context &ctx) static {
+           ctx.peripheral.get_bus().set_recessive();
+           ctx.peripheral.get_bus().deafen(false);
+           puts("Set bus recessive...");
+         }},
 #endif
 
-        case 0x10: // Signals binary sequence incoming
-          if (!readSeq && !readBinary) {
-            readSeq = readBinary = true;
-            seqIdx = 0;
-            break;
-          } else
-            goto DEFAULT; // reading binary and this is a real data byte
+    {.key = '?',
+     .help = "Print this message",
+     .run = [](Context &) static { print_help(); }},
+};
 
-        case 'U': // Send command
-          puts("READ SEQUENCE (U)> ");
-          lastPrintAllFrames = printAllFrames;
-          printAllFrames = false;
-          readSeq = true;
-          seqIdx = hexDigit = 0;
-          hexChars[0] = hexChars[1] = 0;
-          seqIsUnicast = true;
-          break;
-        case 'B': // Send broadcast
-          puts("READ SEQUENCE (B)> ");
-          lastPrintAllFrames = printAllFrames;
-          printAllFrames = false;
-          readSeq = true;
-          seqIdx = hexDigit = 0;
-          hexChars[0] = hexChars[1] = 0;
-          seqIsUnicast = false;
-          break;
-        case '\r': // Eat carriage return too
-          if (readBinary)
-            goto DEFAULT;
-          [[fallthrough]];
-        case '\n':
-          if (readSeq && !readBinary && seqIdx == 0) {
-            // Nothing to send, so leave the mode instead: an escape for an
-            // entry started by accident.
-            readSeq = false;
-            hexDigit = hexChars[0] = hexChars[1] = 0;
-            printAllFrames = lastPrintAllFrames;
+static_assert(
+    [] {
+      for (size_t i = 0; i < std::size(commands); i++)
+        for (size_t j = i + 1; j < std::size(commands); j++)
+          if (commands[i].key == commands[j].key)
+            return false;
+      return true;
+    }(),
+    "REPL command keys must be unique");
+static_assert(
+    [] {
+      for (const auto &cmd : commands)
+        if (cmd.key == 0x10 || cmd.key == '\r' || cmd.key == '\n')
+          return false;
+      return true;
+    }(),
+    "REPL command keys 0x10, CR and LF are reserved for sequence entry");
+
+[[noreturn]] void vREPLTask(void *pvParameters) {
+  auto &ctx = *static_cast<Context *>(pvParameters);
+  auto &[peripheral, incoming, outgoing] = ctx;
+  while (true) {
+    const int readkey = fgetc(stdin);
+    if (readkey == EOF) {
+      clearerr(stdin);
+      continue;
+    }
+
+    if (!readSeq) {
+      if (readkey == 0x10) { // Signals binary sequence incoming
+        readSeq = readBinary = true;
+        seqIdx = 0;
+      } else {
+        for (const auto &cmd : commands) {
+          if (cmd.key == readkey) {
+            cmd.run(ctx);
             break;
           }
-          if (readSeq && seqIdx > 0) {
-            if (readBinary) {
-              if (data_tmp[seqIdx - 1] == 0x17) {
-                if (auto out = Frame::acquire()) {
-                  if (out->parse(data_tmp, --seqIdx) ==
-                      Frame::Error::Parse{0}) {
-                    out->reaction = 1;
-                    outgoing.push(std::move(out));
-                    readSeq = readBinary = false;
-                  }
-                } else
-                  puts("!! failed Frame alloc for input message !!");
-              } else
-                goto DEFAULT; // reading binary and this is a real data byte;
-                              // fall through to default
-            } else {          // ASCII message
+        }
+      }
+      continue;
+    }
+
+    switch (readkey) {
+      case '\r': // Eat carriage return too
+        if (readBinary)
+          goto DEFAULT;
+        [[fallthrough]];
+      case '\n':
+        if (!readBinary && seqIdx == 0) {
+          // Nothing to send, so leave the mode instead: an escape for an
+          // entry started by accident.
+          readSeq = false;
+          hexDigit = hexChars[0] = hexChars[1] = 0;
+          printAllFrames = lastPrintAllFrames;
+          break;
+        }
+        if (seqIdx > 0) {
+          if (readBinary) {
+            if (data_tmp[seqIdx - 1] == 0x17) {
               if (auto out = Frame::acquire()) {
-                const uint8_t sendLen =
-                    seqIdx <= Frame::MAXLENGTH ? seqIdx : Frame::MAXLENGTH;
-                out->is_unicast = seqIsUnicast;
-                out->peripheral_addr =
-                    seqIsUnicast ? peripheral.controller() : 0x1FF;
-                out->length = sendLen;
-                memcpy(out->data, data_tmp, sendLen);
-                out->reaction = 1;
-                outgoing.push(std::move(out));
-
-                if (seqIdx > Frame::MAXLENGTH)
-                  printf("!! sequence too long (%u > %u), truncated !!\n",
-                         static_cast<unsigned>(seqIdx),
-                         static_cast<unsigned>(Frame::MAXLENGTH));
-
-                // Only leave hex-entry mode and restore logging once the
-                // message actually sent, so a failed alloc can be retried
-                // with '\n' instead of silently dropping the entry.
-                readSeq = false;
-                seqIdx = hexDigit = 0;
-                printAllFrames = lastPrintAllFrames;
+                if (out->parse(data_tmp, --seqIdx) == Frame::Error::Parse{0}) {
+                  out->reaction = 1;
+                  outgoing.push(std::move(out));
+                  readSeq = readBinary = false;
+                }
               } else
                 puts("!! failed Frame alloc for input message !!");
-            }
-            break;
-          }
-        DEFAULT:
-        default:
-          if (readSeq) {
-            // Binary mode carries the full wire preamble; hex mode is payload
-            // only, so it stops one past MAXLENGTH to let '\n' report overflow.
-            if (seqIdx >= (readBinary ? sizeof(data_tmp)
-                                      : uint8_t{Frame::MAXLENGTH + 1})) {
-              puts("!! sequence buffer full, ignoring further input !!");
               break;
             }
+            // Otherwise a real data byte
+          } else { // ASCII message
+            if (auto out = Frame::acquire()) {
+              const uint8_t sendLen =
+                  seqIdx <= Frame::MAXLENGTH ? seqIdx : Frame::MAXLENGTH;
+              out->is_unicast = seqIsUnicast;
+              out->peripheral_addr =
+                  seqIsUnicast ? peripheral.controller() : 0x1FF;
+              out->length = sendLen;
+              memcpy(out->data, data_tmp, sendLen);
+              out->reaction = 1;
+              outgoing.push(std::move(out));
 
-            if (readBinary) {
-              data_tmp[seqIdx++] = readkey;
-            } else {
-              // Only take valid hex digits
-              if (isxdigit(readkey) == 0)
-                break;
+              if (seqIdx > Frame::MAXLENGTH)
+                printf("!! sequence too long (%u > %u), truncated !!\n",
+                       static_cast<unsigned>(seqIdx),
+                       static_cast<unsigned>(Frame::MAXLENGTH));
 
-              hexChars[hexDigit++] = readkey;
-
-              if (hexDigit == 2) {
-                char h, l;
-                h = toupper(hexChars[0]);
-                h += (h < ':') ? 0xd0 : 0xc9; // digit or letter
-
-                l = toupper(hexChars[1]);
-                l += (l < ':') ? 0xd0 : 0xc9;
-
-                data_tmp[seqIdx++] = (h << 4) | l;
-                hexDigit = hexChars[0] = hexChars[1] = 0;
-              }
-              if (echoCharacters) {
-                fputs("CURRENT SEQUENCE > ", stdout);
-                for (uint8_t i = 0; i < seqIdx; i++) {
-                  printf("%02X", static_cast<unsigned>(data_tmp[i]));
-                  putchar(' ');
-                }
-                putchar('\n');
-              }
-            }
+              // Only leave hex-entry mode and restore logging once the
+              // message actually sent, so a failed alloc can be retried
+              // with '\n' instead of silently dropping the entry.
+              readSeq = false;
+              seqIdx = hexDigit = 0;
+              printAllFrames = lastPrintAllFrames;
+            } else
+              puts("!! failed Frame alloc for input message !!");
+            break;
           }
-      } // switch (readkey)
-    } else {
-      clearerr(stdin);
-    } // if (readkey != EOF)
+        }
+        [[fallthrough]];
+      DEFAULT:
+      default:
+        // Binary mode carries the full wire preamble; hex mode is payload
+        // only, so it stops one past MAXLENGTH to let '\n' report overflow.
+        if (seqIdx >=
+            (readBinary ? sizeof(data_tmp) : uint8_t{Frame::MAXLENGTH + 1})) {
+          puts("!! sequence buffer full, ignoring further input !!");
+          break;
+        }
+
+        if (readBinary) {
+          data_tmp[seqIdx++] = readkey;
+        } else {
+          // Only take valid hex digits
+          if (isxdigit(readkey) == 0)
+            break;
+
+          hexChars[hexDigit++] = readkey;
+
+          if (hexDigit == 2) {
+            char h, l;
+            h = toupper(hexChars[0]);
+            h += (h < ':') ? 0xd0 : 0xc9; // digit or letter
+
+            l = toupper(hexChars[1]);
+            l += (l < ':') ? 0xd0 : 0xc9;
+
+            data_tmp[seqIdx++] = (h << 4) | l;
+            hexDigit = hexChars[0] = hexChars[1] = 0;
+          }
+          if (echoCharacters) {
+            fputs("CURRENT SEQUENCE > ", stdout);
+            for (uint8_t i = 0; i < seqIdx; i++) {
+              printf("%02X", static_cast<unsigned>(data_tmp[i]));
+              putchar(' ');
+            }
+            putchar('\n');
+          }
+        }
+    } // switch (readkey)
   }
 }
 
@@ -386,26 +470,8 @@ void Setup() {
 
 void print_help() {
   puts("AVCLAN Mockingboard v1");
-  puts("U - begin reading for unicast message (send with Enter key)\n"
-       "B - begin reading for broadcast message (send with Enter key)\n"
-       "m - Toggle mute for mockingboard bus activity\n"
-       "v - Toggle verbose error logging\n"
-       "l - Toggle message logging\n"
-       "X/x - Turn binary logging ON or OFF, respectively\n"
-       "k - Toggle character echo\n"
-       "E - Beep\n"
-       "P - Play\n"
-#ifndef NDEBUG
-       "g - Toggle MIC_CONTROL high/low\n"
-       "p - double MIC play/pause pulse\n" // Confirm pulse function and
-                                           // refractory timing
-       "s - MIC skip forward\n"
-       "b - MIC skip backward\n"
-       "M - Measure bit-timing (pulse-widths and periods)\n"
-       "+ - Set bus driven/dominant\n"
-       "- - Set bus idle/recessive\n"
-#endif
-       "? - Print this message");
+  for (const auto &cmd : commands)
+    printf("%c - %s\n", cmd.key, cmd.help);
 }
 
 } // namespace
