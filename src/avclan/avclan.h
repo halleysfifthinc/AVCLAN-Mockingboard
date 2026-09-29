@@ -5,6 +5,9 @@
 
 #include <stdint.h>
 
+#include "FreeRTOS.h" // IWYU pragma: export
+#include "task.h"
+
 #ifdef __cplusplus
   #define AVCLAN_ENUM_CLASS class
 
@@ -25,6 +28,16 @@ constexpr std::underlying_type_t<Enum> to_underlying(Enum e) noexcept {
 #else
   #define AVCLAN_ENUM_CLASS
 #endif
+
+enum TaskPriority : UBaseType_t {
+  BToothPriority = tskIDLE_PRIORITY + 4,
+  // Message handlers must be ranked such that queues deterministically tend to
+  // empty
+  SendPriority = tskIDLE_PRIORITY + 3,
+  RoutePriority = tskIDLE_PRIORITY + 2,
+  PollPriority = tskIDLE_PRIORITY + 2,
+  ReceivePriority = tskIDLE_PRIORITY + 1,
+};
 
 enum AVCLAN_ENUM_CLASS Action : uint8_t {
   // LAN related

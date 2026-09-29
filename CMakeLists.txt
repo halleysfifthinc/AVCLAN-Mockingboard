@@ -24,6 +24,7 @@ set_property(CACHE AVCLAN_TARGET PROPERTY STRINGS "avr-attiny3216" "pico2" "esp3
 # --- Firmware configuration options ----------------------------------------
 set(AVCLAN_MSG_QUEUE_SIZE 16 CACHE STRING "Size of incoming/outgoing queues")
 set(AVCLAN_FRAME_POOL_N 14 CACHE STRING "Pool allocator capacity for avclan::Frame (must be <= incoming/outgoing queue size)")
+option(AVCLAN_BLUETOOTH "Build the Bluetooth endpoints" ON)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_CXX_STANDARD 23)
@@ -90,6 +91,18 @@ target_compile_options(avclan PUBLIC
 # build. The selected target adds its own per-target include path.
 target_include_directories(avclan PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/avclan)
+
+# The optional Bluetooth endpoints, on top of the core. The selected target adds
+# the platform port and the Bluetooth stack. Linking it defines AVCLAN_BLUETOOTH
+# for the app.
+if(AVCLAN_BLUETOOTH)
+  add_library(avclan_bluetooth STATIC)
+  target_link_libraries(avclan_bluetooth PUBLIC avclan)
+  target_compile_definitions(avclan_bluetooth
+    INTERFACE
+      AVCLAN_BLUETOOTH=1
+  )
+endif()
 
 # Pull in the selected hardware target: its port sources, per-target headers,
 # hardware-specific compile options/definitions, device-pack handling, and the

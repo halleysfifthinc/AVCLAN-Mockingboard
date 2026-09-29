@@ -38,14 +38,24 @@ pico_generate_pio_header(avclan ${CMAKE_CURRENT_LIST_DIR}/iebus.pio)
 target_link_libraries(avclan PUBLIC
     hardware_pio
     hardware_dma
-    pico_stdlib 
+    pico_stdlib
     pico_stdio_usb
-    pico_multicore
-    pico_async_context_freertos
     freertos_config
     FreeRTOS-Kernel-Heap4
 )
 pico_enable_stdio_usb(avclan 1)
+
+if(AVCLAN_BLUETOOTH)
+  target_sources(avclan_bluetooth PRIVATE
+      bluetooth.cc
+  )
+  target_link_libraries(avclan_bluetooth PUBLIC
+      pico_cyw43_arch_sys_freertos
+  )
+  target_compile_definitions(avclan_bluetooth PUBLIC
+      CYW43_LWIP=0
+  )
+endif()
 
 # stdio_write_nonblock() is all-or-nothing and the largest buffer is a ~186 byte
 # frame log line; the SDK default of 64 would drop every one. PUBLIC so the
@@ -59,6 +69,7 @@ add_executable(mockingboard
 )
 target_link_libraries(mockingboard PUBLIC
     avclan
+    $<TARGET_NAME_IF_EXISTS:avclan_bluetooth>
 )
 
 # Silence warnings in TinyUSB, and only there.

@@ -13,6 +13,10 @@
 #include "FreeRTOS.h" // IWYU pragma: export
 #include "task.h"
 
+#include "avclan.h"
+#if AVCLAN_BLUETOOTH
+  #include "bluetooth/platform.h"
+#endif
 #include "cdchanger.hpp"
 #include "frame.hpp"
 #include "hal/board.h"
@@ -34,12 +38,6 @@ constexpr uint8_t CACHE_SIZE = AVCLAN_MSG_QUEUE_SIZE;
 // blocking push of a follow-up frame onto its own queue can't deadlock
 static_assert(CACHE_SIZE >= AVCLAN_FRAME_POOL_N,
               "CACHE_SIZE must be >= avclan::Frame allocator pool capacity");
-
-// Must be ranked such that queues deterministically tend to empty
-constexpr UBaseType_t SendPriority = tskIDLE_PRIORITY + 3;
-constexpr UBaseType_t RoutePriority = tskIDLE_PRIORITY + 2;
-constexpr UBaseType_t PollPriority = tskIDLE_PRIORITY + 2;
-constexpr UBaseType_t ReceivePriority = tskIDLE_PRIORITY + 1;
 
 struct Context {
   Periph &peripheral;
@@ -462,6 +460,9 @@ int main() {
   static Periph peripheral(phy, 0x360);
 #ifndef NDEBUG
   peripheral.set_controller(0x190);
+#endif
+#if AVCLAN_BLUETOOTH
+  bluetooth::platform::init();
 #endif
   static Queue<Frame> incoming(CACHE_SIZE);
   static Queue<Frame> outgoing(CACHE_SIZE);
