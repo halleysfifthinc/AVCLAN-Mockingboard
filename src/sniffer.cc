@@ -442,10 +442,16 @@ int main() {
   // Static: the scheduler reclaims main's stack for ISRs
   static Bus phy;
   static Periph peripheral(phy, 0x360);
+#ifndef NDEBUG
+  peripheral.set_controller(0x190);
+#endif
   static Queue<Frame> incoming(CACHE_SIZE);
   static Queue<Frame> outgoing(CACHE_SIZE);
   static Context ctx{
-      .peripheral = peripheral, .incoming = incoming, .outgoing = outgoing};
+      .peripheral = peripheral,
+      .incoming = incoming,
+      .outgoing = outgoing,
+  };
 
   xTaskCreateAffinitySet(vSenderTask, "send/react", configMINIMAL_STACK_SIZE,
                          &ctx, SendPriority, 0b01, nullptr);
