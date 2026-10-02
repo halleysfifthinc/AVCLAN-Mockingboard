@@ -3,13 +3,15 @@
 
 The Wireshark dissector in scripts/packet-analysis/avclan_plugin.lua is the
 authoritative source of truth for AVC-LAN device and action names. Its
-`known_devices` / `known_actions` tables and the firmware's C++ enums
-(`enum class Device` in src/avclan/device.hpp, `enum ... Action` in
-src/avclan/avclan.h) encode the same numeric values and drift apart by hand.
+`known_devices` / `known_actions` (+ per-destination tables such as
+`known_amp_actions`) tables and the firmware's C++ enums (`enum class Device` in
+src/avclan/device.hpp, `enum ... Action` in src/avclan/avclan.h) encode the same
+numeric values and drift apart by hand. One enum may mirror several Lua tables,
+so a value can carry more than one name.
 
-This tool reconciles them, matching entries *by value* so a value renamed in
-the dissector is propagated into C++ (and to every reference under src/), not
-just added/removed.
+This tool reconciles them, matching entries *by value* (then by name within a
+value) so a value renamed in the dissector is propagated into C++ (and to every
+reference under src/), not just added/removed.
 
     Default (no flags)   lint the dissector names AND report enum drift; write
                          nothing; exit non-zero if either has problems. This is
@@ -27,6 +29,10 @@ Reconciliation rules (see the project plan for the full rationale):
     List_Functions_Req) is NOT a change -- the existing C++ spelling is kept.
   * A beyond-case difference is a rename: the C++ member is renamed to the
     house-style form of the dissector name and all references are updated.
+    When a value has several names, only a value left with exactly one
+    unmatched name on each side is a rename; anything else is reported as
+    adds plus C++-only errors and must be resolved by hand.
+  * Names must be unique across all tables feeding one enum (lint).
   * Full mirror: every active dissector entry missing from C++ is added; if C++
     carries a value the dissector lacks, that is an error (reported, not
     dropped). Commented-out ("pencil-in") Lua entries are ignored.
@@ -65,14 +71,14 @@ ENUM_SPECS = [
     {
         "name": "Action",
         "path": os.path.join("src", "avclan", "avclan.h"),
-        "lua_table": "known_actions",
+        "lua_tables": ["known_actions", "known_amp_actions"],
         "style": "action",
         "hexfmt": "0x%02x",
     },
     {
         "name": "Device",
         "path": os.path.join("src", "avclan", "device.hpp"),
-        "lua_table": "known_devices",
+        "lua_tables": ["known_devices"],
         "style": "device",
         "hexfmt": "0x%02X",
     },
@@ -172,6 +178,18 @@ def parse_lua_table(lines, table_name):
     return entries
 
 
+def parse_spec_tables(lines, spec):
+    """Concatenate the active entries of every Lua table a spec mirrors, in
+    spec order. Exits if a table is missing."""
+    entries = []
+    for table in spec["lua_tables"]:
+        table_entries = parse_lua_table(lines, table)
+        if table_entries is None:
+            sys.exit("error: Lua table '%s' not found" % table)
+        entries.extend(table_entries)
+    return entries
+
+
 def find_enum_body(lines, enum_name):
     """Locate `enum [macro] <name> ... {` and its closing brace. Returns
     (open_idx, close_idx) as line indices, or None."""
@@ -220,7 +238,7 @@ def find_address_spec(root):
                     return {
                         "name": "Address",
                         "path": os.path.relpath(path, root),
-                        "lua_table": "known_addresses",
+                        "lua_tables": ["known_addresses"],
                         "style": "device",
                         "hexfmt": "0x%03X",
                     }
@@ -272,49 +290,71 @@ class Drift:
         self.renames = []   # (old_name, new_name, value)
         self.adds = []      # (value, new_name)
         self.cpp_only = []  # (value, name)
+        self.matched = {}   # Lua entry index -> CppMember (renames included)
 
     def clean(self):
         return not (self.renames or self.adds or self.cpp_only)
 
 
 def reconcile(spec, lua_entries, members):
+    """Match by value, then by name within a value. A value left with exactly
+    one unmatched name on each side is a rename; any other leftover is an add
+    (Lua) or a cpp_only error (C++)."""
     stylefn = STYLERS[spec["style"]]
     drift = Drift(spec)
-    cpp_by_val = {m.value: m for m in members}
-    lua_vals = set()
-    for e in lua_entries:
-        lua_vals.add(e.value)
-        target = stylefn(e.name)
-        if e.value in cpp_by_val:
-            cur = cpp_by_val[e.value].name
-            if canonical(cur) != canonical(e.name):
-                drift.renames.append((cur, target, e.value))
-        else:
-            drift.adds.append((e.value, target))
+    lua_by_val = {}
+    for i, e in enumerate(lua_entries):
+        lua_by_val.setdefault(e.value, []).append(i)
+    cpp_by_val = {}
     for m in members:
-        if m.value not in lua_vals:
+        cpp_by_val.setdefault(m.value, []).append(m)
+
+    unmatched = {}  # value -> (unmatched Lua indices, unmatched C++ members)
+    for value in set(lua_by_val) | set(cpp_by_val):
+        cpp_left = list(cpp_by_val.get(value, []))
+        lua_left = []
+        for i in lua_by_val.get(value, []):
+            key = canonical(lua_entries[i].name)
+            m = next((m for m in cpp_left if canonical(m.name) == key), None)
+            if m is None:
+                lua_left.append(i)
+            else:
+                cpp_left.remove(m)
+                drift.matched[i] = m
+        if len(lua_left) == 1 and len(cpp_left) == 1:
+            m = cpp_left[0]
+            drift.matched[lua_left[0]] = m
+            drift.renames.append((m.name, stylefn(lua_entries[lua_left[0]].name), value))
+        else:
+            unmatched[value] = (lua_left, cpp_left)
+
+    # Report in Lua / C++ file order.
+    for i, e in enumerate(lua_entries):
+        if e.value in unmatched and i in unmatched[e.value][0]:
+            drift.adds.append((i, e.value, stylefn(e.name)))
+    for m in members:
+        if m.value in unmatched and m in unmatched[m.value][1]:
             drift.cpp_only.append((m.value, m.name))
     return drift
 
 # ---- fix: rewrite enum bodies + references ---------------------------------
 
 
-def compute_insertions(adds, lua_order, present_idx, close_idx, indent, hexfmt):
-    """Map each added value to the line index it should be inserted before,
-    mirroring the Lua table order. Returns {index: [rendered_line, ...]}."""
+def compute_insertions(adds, n_entries, present_idx, close_idx, indent, hexfmt):
+    """Map each added Lua entry to the line index it should be inserted before,
+    mirroring the Lua table order. `present_idx` maps a Lua entry index to its
+    matched C++ line. Returns {index: [rendered_line, ...]}."""
     groups = {}
-    order_pos = {v: i for i, v in enumerate(lua_order)}
-    for value, name in adds:  # adds are already in Lua order
-        pos = order_pos[value]
+    for pos, value, name in adds:  # adds are already in Lua order
         ins = None
         for j in range(pos - 1, -1, -1):
-            if lua_order[j] in present_idx:
-                ins = present_idx[lua_order[j]] + 1
+            if j in present_idx:
+                ins = present_idx[j] + 1
                 break
         if ins is None:
-            for j in range(pos + 1, len(lua_order)):
-                if lua_order[j] in present_idx:
-                    ins = present_idx[lua_order[j]]
+            for j in range(pos + 1, n_entries):
+                if j in present_idx:
+                    ins = present_idx[j]
                     break
         if ins is None:
             ins = close_idx
@@ -328,10 +368,9 @@ def apply_additions(path, spec, lua_entries, drift):
         return
     lines = read_lines(path)
     parsed = parse_cpp_enum(lines, spec["name"])
-    members, _open_idx, close_idx, indent = parsed
-    present_idx = {m.value: m.idx for m in members}
-    lua_order = [e.value for e in lua_entries]
-    groups = compute_insertions(drift.adds, lua_order, present_idx,
+    _members, _open_idx, close_idx, indent = parsed
+    present_idx = {i: m.idx for i, m in drift.matched.items()}
+    groups = compute_insertions(drift.adds, len(lua_entries), present_idx,
                                 close_idx, indent, spec["hexfmt"])
     for ins in sorted(groups, reverse=True):
         lines[ins:ins] = groups[ins]
@@ -434,7 +473,7 @@ def print_drift(drift):
     spec = drift.spec
     for old, new, value in drift.renames:
         print("  rename %s -> %s  (0x%02X)" % (old, new, value))
-    for value, name in drift.adds:
+    for _pos, value, name in drift.adds:
         print("  add    %s = 0x%02X" % (name, value))
     for value, name in drift.cpp_only:
         print("  ERROR  %s (0x%02X) is in C++ %s but not the dissector"
@@ -452,9 +491,7 @@ def build_specs(root):
 
 
 def load(root, spec, lua_lines):
-    entries = parse_lua_table(lua_lines, spec["lua_table"])
-    if entries is None:
-        sys.exit("error: Lua table '%s' not found" % spec["lua_table"])
+    entries = parse_spec_tables(lua_lines, spec)
     parsed = parse_cpp_enum(read_lines(os.path.join(root, spec["path"])), spec["name"])
     if parsed is None:
         sys.exit("error: C++ enum '%s' not found in %s" % (spec["name"], spec["path"]))
@@ -482,13 +519,12 @@ def main():
     # ---- lint (all modes) ----
     lint_failed = False
     for spec in specs:
-        entries = parse_lua_table(lua_lines, spec["lua_table"])
-        if entries is None:
-            sys.exit("error: Lua table '%s' not found" % spec["lua_table"])
+        entries = parse_spec_tables(lua_lines, spec)
         problems = lint_table(entries, LUA_REL)
         if problems:
             lint_failed = True
-            print("dissector name problems in %s (%s):" % (spec["lua_table"], LUA_REL))
+            print("dissector name problems in %s (%s):"
+                  % (", ".join(spec["lua_tables"]), LUA_REL))
             print_lint(spec, LUA_REL, problems)
 
     if args.lint:

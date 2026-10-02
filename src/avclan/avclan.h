@@ -101,6 +101,13 @@ enum AVCLAN_ENUM_CLASS Action : uint8_t {
   Playback_Status = 0xf1, // Typically unprompted, sent to Device::STATUS
   Loading_Status = 0xf3,  // Typically unprompted, sent to Device::STATUS
   Report_TOC = 0xf9,
+
+  // Amplifier (to Device::AUDIO_AMP; values alias the actions above)
+  Amp_Balance = 0x91,
+  Amp_Fade = 0x92,
+  Amp_Bass = 0x93,
+  Amp_Mid = 0x94,
+  Amp_Treble = 0x95,
 };
 
 // Media functions a source device can perform (ultimately bounded by the Action

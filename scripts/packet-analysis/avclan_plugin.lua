@@ -370,7 +370,19 @@ local known_actions = {
 }
 local known_actions_names = invert(known_actions)
 
+-- Actions addressed to AUDIO_AMP. The codes overlap known_actions, so the
+-- destination device selects the table.
+local known_amp_actions = {
+    [0x91] = "AMP_BALANCE",
+    [0x92] = "AMP_FADE",
+    [0x93] = "AMP_BASS",
+    [0x94] = "AMP_MID",
+    [0x95] = "AMP_TREBLE", -- inferred from report field order, unobserved
+}
+local known_amp_actions_names = invert(known_amp_actions)
+
 local f_action = ProtoField.uint8("avclan.action", "Action", base.HEX, known_actions)
+local f_amp_action = ProtoField.uint8("avclan.amp.action", "Amp action", base.HEX, known_amp_actions)
 local f_functions = ProtoField.bytes("avclan.functions", "Functions", base.SPACE, "Device functions")
 
 local f_ping_count = ProtoField.uint8("avclan.ping.count", "Ping count")
@@ -414,6 +426,10 @@ local f_radio_freq = ProtoField.uint16("avclan.radio.freq", "Radio frequency")
 -- Volume is BCD encoded here. NOTE: @enkiusz treats the volume byte as plain
 -- binary (no BCD conversion); the two disagree for values with a nibble > 9.
 local f_amp_volume = ProtoField.uint8("avclan.amp.volume", "Volume", base.DEC)
+
+-- Relative step (1-4) of a volume knob turn. The HU's amp ignores
+-- it and moves one level per frame.
+local f_amp_volume_step = ProtoField.uint8("avclan.amp.volume_step", "Volume step", base.DEC)
 
 -- Amp bass, mid, treble, fade, and balance are offset-binary (offset-16) encoded
 local f_amp_bass = ProtoField.uint8("avclan.amp.bass", "Bass", base.HEX, {
@@ -529,7 +545,9 @@ avclanproto.fields = {
     f_radioflag_reg,
     f_radioflag_st,
     f_radioflag_ta,
+    f_amp_action,
     f_amp_volume,
+    f_amp_volume_step,
     f_amp_bass,
     f_amp_mid,
     f_amp_treble,
@@ -656,29 +674,42 @@ end
 -- preserving the historical precedence order.
 -- ---------------------------------------------------------------------------
 
--- CMD_SW source. Sub-commands to the amplifier (actions 0x90-0x95) set a
--- tone/level control; these codes collide with physical-interface actions, so
--- the CMD_SW -> AUDIO_AMP device pair disambiguates them.
+-- CMD_SW source. Actions to the amplifier come from known_amp_actions, whose
+-- codes collide with known_actions, except the volume knob turns.
 local function decode_cmd_sw(subtree, buffer, offset, to_device)
-    add_action(subtree, buffer(offset+2,1))
-    local action = field_action().value
-    if to_device == known_devices_names["AUDIO_AMP"] then
-        local amptree = subtree:add(avclanproto, buffer(offset+2,-1), "Device: Audio amplifier control")
-        local param = buffer(offset+3,1)
-        if action == 0x90 then -- VOLUME (BCD)
-            local vol_raw = param:uint()
-            amptree:add(f_amp_volume, param, bcd2dec(vol_raw) or vol_raw):append_text(" (VOLUME)")
-        elseif action == 0x91 then
-            amptree:add(f_amp_balance, param)
-        elseif action == 0x92 then
-            amptree:add(f_amp_fade, param)
-        elseif action == 0x93 then
-            amptree:add(f_amp_bass, param)
-        elseif action == 0x94 then
-            amptree:add(f_amp_mid, param)
-        elseif action == 0x95 then
-            amptree:add(f_amp_treble, param)
+    if to_device ~= known_devices_names["AUDIO_AMP"] then
+        add_action(subtree, buffer(offset+2,1))
+        return
+    end
+    local action_range = buffer(offset+2,1)
+    local action = action_range:uint()
+    local knob_turn = action == known_actions_names["PWRVOL_KNOB_RIGHTHAND_TURN"] or
+        action == known_actions_names["PWRVOL_KNOB_LEFTHAND_TURN"]
+    if knob_turn then
+        add_action(subtree, action_range)
+    else
+        local item = subtree:add(f_amp_action, action_range)
+        if known_amp_actions[action] == nil then
+            item:add_proto_expert_info(pe_unknown_action)
         end
+    end
+    if buffer:len() <= offset+3 then
+        return
+    end
+    local amptree = subtree:add(avclanproto, buffer(offset+2,-1), "Device: Audio amplifier control")
+    local param = buffer(offset+3,1)
+    if knob_turn then
+        amptree:add(f_amp_volume_step, param)
+    elseif action == known_amp_actions_names["AMP_BALANCE"] then
+        amptree:add(f_amp_balance, param)
+    elseif action == known_amp_actions_names["AMP_FADE"] then
+        amptree:add(f_amp_fade, param)
+    elseif action == known_amp_actions_names["AMP_BASS"] then
+        amptree:add(f_amp_bass, param)
+    elseif action == known_amp_actions_names["AMP_MID"] then
+        amptree:add(f_amp_mid, param)
+    elseif action == known_amp_actions_names["AMP_TREBLE"] then
+        amptree:add(f_amp_treble, param)
     end
 end
 
