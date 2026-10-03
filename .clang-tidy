@@ -2,7 +2,6 @@
 Checks: |
   -*,
   bugprone-*,
-  cppcoreguidelines-
   clang-diagnostic-*,
   clang-analyzer-*,
   misc-*,
@@ -17,7 +16,9 @@ Checks: |
   -modernize-use-std-print,
   -readability-magic-numbers,
   -readability-function-cognitive-complexity,
-  -misc-non-private-member-variables-in-classes
+  -readability-inconsistent-ifelse-braces,
+  -misc-non-private-member-variables-in-classes,
+  -misc-multiple-inheritance
 WarningsAsErrors: ""
 ExcludeHeaderFilterRegex: "out/build"
 HeaderFilterRegex: "^src/.*"
@@ -32,9 +33,13 @@ CheckOptions:
   - key: readability-magic-numbers.IgnoredIntegerValues
     value: "3;10;0x80;0xc0;0xFF;0x7f;0xf"
   - key: readability-identifier-length.IgnoredVariableNames
-    value: "(in|to|id)"
+    value: "^(in|to|id|[ijk_])$"
   - key: readability-identifier-length.IgnoredParameterNames
     value: "(in|to|x)"
+  - key: readability-identifier-length.MinimumLoopCounterNameLength
+    value: "0"
+  - key: readability-identifier-length.LineCountThreshold
+    value: "6"
   - key: bugprone-argument-comment.CommentBoolLiterals
     value: "0"
   - key: bugprone-argument-comment.CommentCharacterLiterals
