@@ -46,7 +46,7 @@ public:
     REPEAT = 1 << 4,
     DISK_SCAN = 1 << 5,
     SCAN = 1 << 6,
-    NEGATIVE = 1 << 6,
+    NEGATIVE = 1 << 6, // in flags2
   };
 
   /// Message state machine

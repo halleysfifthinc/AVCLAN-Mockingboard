@@ -20,16 +20,18 @@ namespace {
 using namespace avclan;
 using namespace std::chrono_literals;
 
-constexpr uint8_t cdloading_resp[] = {to_underlying(Device::CD_CHANGER),
-                                      to_underlying(Device::STATUS),
-                                      to_underlying(Action::Loading_Status),
-                                      0x00,
-                                      0x01,
-                                      0x00,
-                                      0x01,
-                                      0x00,
-                                      0x01,
-                                      0x02};
+constexpr uint8_t cdloading_resp[] = {
+    to_underlying(Device::CD_CHANGER),
+    to_underlying(Device::STATUS),
+    to_underlying(Action::Loading_Status),
+    0x00,
+    0x01,
+    0x00,
+    0x01,
+    0x00,
+    0x01,
+    0x02,
+};
 
 constexpr int WIRE_SIZE = 8; // cd state report size in bytes
 constexpr auto TIME_SKIP = 15s;

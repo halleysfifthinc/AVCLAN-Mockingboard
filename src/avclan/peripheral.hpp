@@ -84,9 +84,11 @@ public:
     out->control = 0xF;
     auto err = bus.send(*out, print);
     if (err != Error::Send{0})
-      return unexpected{detail::SendError{.owning_device = out->owning_device,
-                                          .reaction = out->reaction,
-                                          .err = err}};
+      return unexpected{detail::SendError{
+          .owning_device = out->owning_device,
+          .reaction = out->reaction,
+          .err = err,
+      }};
 
     return out;
   };
@@ -109,8 +111,9 @@ public:
 
     // 0xFF placeholders are variant bytes filled by writing directly to
     // out->data[N] after memcpy.
-    static const uint8_t lancheck_resp[] = {0x00, to_underlying(COMM_CTRL),
-                                            to_underlying(LAN), 0xFF, 0xFF};
+    static const uint8_t lancheck_resp[] = {
+        0x00, to_underlying(COMM_CTRL), to_underlying(LAN), 0xFF, 0xFF,
+    };
 
     stamp<Recipient>(*out);
 
@@ -166,9 +169,11 @@ public:
         case PACK3(COMMUNICATION_V1, COMM_CTRL, to_underlying(Ping_Req)):
         case PACK3(COMMUNICATION_V2, COMM_CTRL, to_underlying(Ping_Req)): {
           out->is_unicast = true;
-          const uint8_t ping_resp[] = {0x00, to_underlying(COMM_CTRL),
-                                       from, to_underlying(Ping_Resp),
-                                       0xFF, b3};
+          const uint8_t ping_resp[] = {
+              0x00, to_underlying(COMM_CTRL),
+              from, to_underlying(Ping_Resp),
+              0xFF, b3,
+          };
           out->length = sizeof(ping_resp);
           memcpy(out->data, ping_resp, sizeof(ping_resp));
           out->reaction = 1;

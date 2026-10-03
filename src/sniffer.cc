@@ -83,9 +83,11 @@ void print_help();
   auto &[peripheral, incoming, outgoing] =
       *static_cast<Context *>(pvParameters);
   while (true) {
-    if (auto msg = peripheral.read(Print{.print = printAllFrames,
-                                         .binary = printBinary,
-                                         .verbose = verbose}))
+    if (auto msg = peripheral.read(Print{
+            .print = printAllFrames,
+            .binary = printBinary,
+            .verbose = verbose,
+        }))
       incoming.push(std::move(*msg));
   }
 }
@@ -141,153 +143,197 @@ struct Command {
 };
 
 constexpr Command commands[] = {
-    {.key = 'U',
-     .help = "begin reading for unicast message (send with Enter key)",
-     .run = [](Context &) static { begin_sequence(true); }},
-    {.key = 'B',
-     .help = "begin reading for broadcast message (send with Enter key)",
-     .run = [](Context &) static { begin_sequence(false); }},
-    {.key = 'm',
-     .help = "Toggle mute for mockingboard bus activity",
-     .run =
-         [](Context &ctx) static {
-           toggle_flag(&muteBus, "Mute device:");
-           ctx.peripheral.mute(muteBus);
-         }},
-    {.key = 'v',
-     .help = "Toggle verbose error logging",
-     .run = [](Context &) static { toggle_flag(&verbose, "Verbose errors:"); }},
-    {.key = 'l',
-     .help = "Toggle message logging",
-     .run = [](Context &) static { toggle_flag(&printAllFrames, "Logging:"); }},
+    {
+        .key = 'U',
+        .help = "begin reading for unicast message (send with Enter key)",
+        .run = [](Context &) static { begin_sequence(true); },
+    },
+    {
+        .key = 'B',
+        .help = "begin reading for broadcast message (send with Enter key)",
+        .run = [](Context &) static { begin_sequence(false); },
+    },
+    {
+        .key = 'm',
+        .help = "Toggle mute for mockingboard bus activity",
+        .run =
+            [](Context &ctx) static {
+              toggle_flag(&muteBus, "Mute device:");
+              ctx.peripheral.mute(muteBus);
+            },
+    },
+    {
+        .key = 'v',
+        .help = "Toggle verbose error logging",
+        .run =
+            [](Context &) static { toggle_flag(&verbose, "Verbose errors:"); },
+    },
+    {
+        .key = 'l',
+        .help = "Toggle message logging",
+        .run =
+            [](Context &) static { toggle_flag(&printAllFrames, "Logging:"); },
+    },
 
     // X/x isn't a toggle interface because this is used programmatically and
     // is simpler than reading back the toggle state
-    {.key = 'X',
-     .help = "Turn binary logging ON",
-     .run = [](Context &) static { set_flag(&printBinary, true, "Binary:"); }},
-    {.key = 'x',
-     .help = "Turn binary logging OFF",
-     .run = [](Context &) static { set_flag(&printBinary, false, "Binary:"); }},
+    {
+        .key = 'X',
+        .help = "Turn binary logging ON",
+        .run =
+            [](Context &) static { set_flag(&printBinary, true, "Binary:"); },
+    },
+    {
+        .key = 'x',
+        .help = "Turn binary logging OFF",
+        .run =
+            [](Context &) static { set_flag(&printBinary, false, "Binary:"); },
+    },
 
-    {.key = 'k',
-     .help = "Toggle character echo",
-     .run =
-         [](Context &) static {
-           toggle_flag(&echoCharacters, "Echo characters:");
-         }},
-    {.key = 'E',
-     .help = "Beep",
-     .run =
-         [](Context &ctx) static {
-           using enum Action;
-           using enum Device;
-           if (auto out = Frame::acquire()) {
-             out->is_unicast = true;
-             out->peripheral_addr = ctx.peripheral.controller();
-             {
-               const uint8_t beep[] = {0x00, to_underlying(CD_CHANGER),
-                                       to_underlying(BEEP_SPEAKERS), 0x60,
-                                       0x01};
-               out->length = sizeof(beep);
-               memcpy(out->data, beep, sizeof(beep));
-             }
-             out->reaction = 1;
-             ctx.outgoing.push(std::move(out));
-           } else
-             puts("!! failed Frame alloc for Beep !! ");
-         }},
-    {.key = 'P',
-     .help = "Play",
-     .run =
-         [](Context &ctx) static {
-           using enum Action;
-           using enum Device;
-           if (auto out = Frame::acquire()) {
-             out->is_unicast = true;
-             out->peripheral_addr = ctx.peripheral.controller();
-             {
-               const uint8_t play[] = {0x00,
-                                       to_underlying(COMM_CTRL),
-                                       to_underlying(COMMUNICATION_V1),
-                                       to_underlying(Ejection),
-                                       to_underlying(CD_CHANGER),
-                                       0x01};
-               out->length = sizeof(play);
-               memcpy(out->data, play, sizeof(play));
-             }
-             out->reaction = CDChanger::reaction_t::r_Ejection;
-             ctx.outgoing.push(std::move(out));
-           } else
-             puts("!! failed Frame alloc for Play !! ");
-         }},
+    {
+        .key = 'k',
+        .help = "Toggle character echo",
+        .run =
+            [](Context &) static {
+              toggle_flag(&echoCharacters, "Echo characters:");
+            },
+    },
+    {
+        .key = 'E',
+        .help = "Beep",
+        .run =
+            [](Context &ctx) static {
+              using enum Action;
+              using enum Device;
+              if (auto out = Frame::acquire()) {
+                out->is_unicast = true;
+                out->peripheral_addr = ctx.peripheral.controller();
+                {
+                  const uint8_t beep[] = {
+                      0x00,
+                      to_underlying(CD_CHANGER),
+                      to_underlying(BEEP_SPEAKERS),
+                      0x60,
+                      0x01,
+                  };
+                  out->length = sizeof(beep);
+                  memcpy(out->data, beep, sizeof(beep));
+                }
+                out->reaction = 1;
+                ctx.outgoing.push(std::move(out));
+              } else
+                puts("!! failed Frame alloc for Beep !! ");
+            },
+    },
+    {
+        .key = 'P',
+        .help = "Play",
+        .run =
+            [](Context &ctx) static {
+              using enum Action;
+              using enum Device;
+              if (auto out = Frame::acquire()) {
+                out->is_unicast = true;
+                out->peripheral_addr = ctx.peripheral.controller();
+                {
+                  const uint8_t play[] = {
+                      0x00,
+                      to_underlying(COMM_CTRL),
+                      to_underlying(COMMUNICATION_V1),
+                      to_underlying(Ejection),
+                      to_underlying(CD_CHANGER),
+                      0x01,
+                  };
+                  out->length = sizeof(play);
+                  memcpy(out->data, play, sizeof(play));
+                }
+                out->reaction = CDChanger::reaction_t::r_Ejection;
+                ctx.outgoing.push(std::move(out));
+              } else
+                puts("!! failed Frame alloc for Play !! ");
+            },
+    },
 
 #ifndef NDEBUG
-    {.key = 'g',
-     .help = "Toggle MIC_CONTROL high/low",
-     .run =
-         [](Context &ctx) static {
-           ctx.peripheral.device<CDChanger>().mic_toggle();
-         }},
+    {
+        .key = 'g',
+        .help = "Toggle MIC_CONTROL high/low",
+        .run =
+            [](Context &ctx) static {
+              ctx.peripheral.device<CDChanger>().mic_toggle();
+            },
+    },
     // Confirm pulse function and refractory timing
-    {.key = 'p',
-     .help = "double MIC play/pause pulse",
-     .run =
-         [](Context &ctx) static {
-           auto &cdc = ctx.peripheral.device<CDChanger>();
-           fputs("First play/pause begin ... ", stdout);
-           cdc.media_action(MediaAction::Play_Pause);
-           while (cdc.media_busy()) {}
-           fputs("end\nSecond play/pause begin ... ", stdout);
-           cdc.media_action(MediaAction::Play_Pause);
-           while (cdc.media_busy()) {}
-           puts("end");
-         }},
-    {.key = 's',
-     .help = "MIC skip forward",
-     .run =
-         [](Context &ctx) static {
-           auto &cdc = ctx.peripheral.device<CDChanger>();
-           fputs("Skip begin ... ", stdout);
-           cdc.media_action(MediaAction::Track_Next);
-           while (cdc.media_busy()) {}
-           puts("end");
-         }},
-    {.key = 'b',
-     .help = "MIC skip backward",
-     .run =
-         [](Context &ctx) static {
-           auto &cdc = ctx.peripheral.device<CDChanger>();
-           fputs("Skip back begin ... ", stdout);
-           cdc.media_action(MediaAction::Track_Prev);
-           while (cdc.media_busy()) {}
-           puts("end");
-         }},
+    {
+        .key = 'p',
+        .help = "double MIC play/pause pulse",
+        .run =
+            [](Context &ctx) static {
+              auto &cdc = ctx.peripheral.device<CDChanger>();
+              fputs("First play/pause begin ... ", stdout);
+              cdc.media_action(MediaAction::Play_Pause);
+              while (cdc.media_busy()) {}
+              fputs("end\nSecond play/pause begin ... ", stdout);
+              cdc.media_action(MediaAction::Play_Pause);
+              while (cdc.media_busy()) {}
+              puts("end");
+            },
+    },
+    {
+        .key = 's',
+        .help = "MIC skip forward",
+        .run =
+            [](Context &ctx) static {
+              auto &cdc = ctx.peripheral.device<CDChanger>();
+              fputs("Skip begin ... ", stdout);
+              cdc.media_action(MediaAction::Track_Next);
+              while (cdc.media_busy()) {}
+              puts("end");
+            },
+    },
+    {
+        .key = 'b',
+        .help = "MIC skip backward",
+        .run =
+            [](Context &ctx) static {
+              auto &cdc = ctx.peripheral.device<CDChanger>();
+              fputs("Skip back begin ... ", stdout);
+              cdc.media_action(MediaAction::Track_Prev);
+              while (cdc.media_busy()) {}
+              puts("end");
+            },
+    },
   #ifdef MEASURE_BUS
     {'M', "Measure bit-timing (pulse-widths and periods)",
      [](Context &ctx) static { ctx.peripheral.get_bus().measure(); }},
   #endif
-    {.key = '+',
-     .help = "Set bus driven/dominant",
-     .run =
-         [](Context &ctx) static {
-           ctx.peripheral.get_bus().deafen(true);
-           ctx.peripheral.get_bus().set_dominant();
-           puts("Set bus dominant...");
-         }},
-    {.key = '-',
-     .help = "Set bus idle/recessive",
-     .run =
-         [](Context &ctx) static {
-           ctx.peripheral.get_bus().set_recessive();
-           ctx.peripheral.get_bus().deafen(false);
-           puts("Set bus recessive...");
-         }},
+    {
+        .key = '+',
+        .help = "Set bus driven/dominant",
+        .run =
+            [](Context &ctx) static {
+              ctx.peripheral.get_bus().deafen(true);
+              ctx.peripheral.get_bus().set_dominant();
+              puts("Set bus dominant...");
+            },
+    },
+    {
+        .key = '-',
+        .help = "Set bus idle/recessive",
+        .run =
+            [](Context &ctx) static {
+              ctx.peripheral.get_bus().set_recessive();
+              ctx.peripheral.get_bus().deafen(false);
+              puts("Set bus recessive...");
+            },
+    },
 #endif
 
-    {.key = '?',
-     .help = "Print this message",
-     .run = [](Context &) static { print_help(); }},
+    {
+        .key = '?',
+        .help = "Print this message",
+        .run = [](Context &) static { print_help(); },
+    },
 };
 
 static_assert(
