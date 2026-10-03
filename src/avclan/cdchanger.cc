@@ -52,15 +52,13 @@ constexpr std::chrono::seconds displaySeconds(std::chrono::milliseconds t) {
 
 namespace avclan {
 
-void CDChanger::init(Notifier notif) {
-  notifier = notif;
+void CDChanger::init(NotifyQueues queues) {
+  Notifier::init(queues);
+  // A refused request is re-made by the next tick
   statusTimer = xTimerCreate(
       "cd status", pdMS_TO_TICKS(1000), true, this, [](TimerHandle_t timer) {
-        auto &self = *static_cast<CDChanger *>(pvTimerGetTimerID(timer));
-        // Timer callbacks must not block; a refused request is re-made next
-        // tick
-        if (!self.statusQueued.exchange(true) && !self.notifier.notify(0, 0))
-          self.statusQueued = false;
+        static_cast<CDChanger *>(pvTimerGetTimerID(timer))
+            ->notify(condition, r_StateReport);
       });
   configASSERT(statusTimer);
 }
@@ -369,9 +367,8 @@ void CDChanger::enable(Frame &out) {
   }
 }
 
-void CDChanger::emit(Frame &out, uint32_t /*payload*/) {
-  statusQueued = false; // Clear first so a tick during emit() queues anew
-  const std::lock_guard lock(mutex);
+// `payload` is the reaction of the frame to emit
+void CDChanger::fill(Frame &out, condition_t /*tag*/, uint32_t payload) {
   generateStatus(out, false, Device::STATUS);
   out.reaction = r_StateReport;
 }

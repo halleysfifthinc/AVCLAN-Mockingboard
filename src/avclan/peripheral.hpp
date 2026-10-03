@@ -47,14 +47,25 @@ public:
       sizeof...(Devs) <= 0x100,
       "too many devices: Notifier packs the device index into 8 bits");
 
-  static constexpr UBaseType_t EMIT_QUEUE_LEN = 2 * sizeof...(Devs);
+  // A device queues each condition at most once, so the condition queue is
+  // never full when a condition is notified
+  // Min length of 1 required by FreeRTOS/xQueueCreate
+  static constexpr UBaseType_t CONDITION_QUEUE_LEN =
+      std::max<UBaseType_t>(1, (0 + ... + Devs::conditions));
+  static constexpr UBaseType_t EVENT_QUEUE_LEN =
+      std::max<UBaseType_t>(1, (0 + ... + Devs::reserve_events));
 
   Peripheral(Bus &bus, uint16_t address)
       : bus{bus}, address_{address},
-        emit_requests_{xQueueCreate(EMIT_QUEUE_LEN, sizeof(uint32_t))} {
-    configASSERT(emit_requests_);
+        conditions_{xQueueCreate(CONDITION_QUEUE_LEN, sizeof(uint32_t))},
+        events_{xQueueCreate(EVENT_QUEUE_LEN, sizeof(uint32_t))},
+        notifications_{xQueueCreateSet(CONDITION_QUEUE_LEN + EVENT_QUEUE_LEN)} {
+    configASSERT(conditions_ && events_ && notifications_);
+    xQueueAddToSet(conditions_, notifications_);
+    xQueueAddToSet(events_, notifications_);
     bus.init(address);
-    (std::get<Devs>(devices_).init(Notifier{emit_requests_, index_of<Devs>()}),
+    (std::get<Devs>(devices_).init(
+         NotifyQueues{conditions_, events_, index_of<Devs>()}),
      ...);
   }
   Peripheral(const Peripheral &) = delete;
@@ -225,23 +236,34 @@ public:
     return next;
   }
 
-  // Blocks until a device requests an emit; requests are served in order.
+  // Blocks until a device notifies; notifications are served in order. Every
+  // notification WILL cause a frame filled in `emit` to be sent. `emit` MUST
+  // produce a valid/reasonable frame to send.
   std::unique_ptr<Frame> poll() {
+    // Acquired before dequeuing: without a frame, the notification stays queued
     std::unique_ptr<Frame> out = Frame::acquire();
     if (!out) {
       puts("!! failed Frame alloc in poll !!");
       return {};
     }
 
-    uint32_t val;
-    xQueueReceive(emit_requests_, &val, portMAX_DELAY);
-    const uint8_t index = val & 0xFF;
+    uint32_t item;
+    QueueSetMemberHandle_t from =
+        xQueueSelectFromSet(notifications_, portMAX_DELAY);
+    xQueueReceive(from, &item, 0);
+    const uint8_t id = item & 0xFF;
 
-    auto emit_d = [val](auto &d, auto &out) { d.emit(out, val >> 8); };
+    auto emit_d = [&](auto &d, auto &out) {
+      if (from == conditions_)
+        d.emit(out, condition, item >> 8);
+      else
+        d.emit(out, event, item >> 8);
+    };
     [&]<std::size_t... Is>(std::index_sequence<Is...>) {
-      ((Is == index ? originate(std::get<Is>(devices_), *out, emit_d) : void()),
+      ((Is == id ? originate(std::get<Is>(devices_), *out, emit_d) : void()),
        ...);
     }(std::index_sequence_for<Devs...>{});
+    configASSERT(out->reaction > 0);
     return out;
   }
 
@@ -269,6 +291,8 @@ private:
   uint16_t controller_ = 0;
   const uint16_t address_;
   std::tuple<Devs...> devices_;
-  QueueHandle_t emit_requests_;
+  QueueHandle_t conditions_;
+  QueueHandle_t events_;
+  QueueSetHandle_t notifications_; // both queues, in arrival order
 };
 } // namespace avclan

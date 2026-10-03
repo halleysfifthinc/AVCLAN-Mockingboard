@@ -5,14 +5,13 @@
 
 #pragma once
 
-#include <atomic>
 #include <chrono>
+#include <concepts>
 #include <cstdint>
 #include <memory>
 #include <optional>
 
 #include "FreeRTOS.h" // IWYU pragma: export
-#include "semphr.h"
 #include "timers.h"
 
 #include "avclan.h"
@@ -22,7 +21,7 @@
 
 namespace avclan {
 
-class CDChanger {
+class CDChanger : public UpdateNotifier<CDChanger> {
 public:
   enum State : uint8_t {
     OPEN = 0x01,
@@ -68,32 +67,24 @@ public:
   };
 
   static constexpr Device id = Device::CD_CHANGER;
-  CDChanger() : mutex(xSemaphoreCreateMutex()) {}
+  static constexpr uint8_t conditions = 2; // r_StateReport, r_Ejection
+  static constexpr uint8_t reserve_events = 0;
+  CDChanger() = default;
   CDChanger(const CDChanger &) = delete;
 
-  void init(Notifier notifier);
+  void init(NotifyQueues queues);
 
   void handle(const Frame &in, Frame &out);
   std::unique_ptr<Frame>
   react(expected<std::unique_ptr<Frame>, detail::SendError> exp);
   void enable(Frame &out);
   void disable(Frame &out);
-  void emit(Frame &out, uint32_t payload);
   bool isPlaying() const;
 
 private:
-  // Implements the BasicLockable named requirements for an xSemaphore
-  class xMutex {
-  public:
-    explicit xMutex(SemaphoreHandle_t mutex) : mutex_{mutex} {}
-    xMutex(const xMutex &) = delete;
+  friend Notifier<CDChanger>;
 
-    void lock() noexcept { xSemaphoreTake(mutex_, portMAX_DELAY); }
-    void unlock() noexcept { xSemaphoreGive(mutex_); }
-
-  private:
-    SemaphoreHandle_t mutex_ = nullptr;
-  };
+  void fill(Frame &out, condition_t tag, uint32_t payload);
 
   std::optional<MediaAction> startPlaying();
   MediaAction stopPlaying();
@@ -104,10 +95,7 @@ private:
   void generateStatus(Frame &status, bool is_unicast, Device to) const;
   void normalizeState();
 
-  Notifier notifier{};
   TimerHandle_t statusTimer = nullptr;
-  std::atomic<bool> statusQueued = false; // coalesces status emit requests
-  xMutex mutex;
 
   // Track time is a stopwatch: `time` is relative to `refTick`, and
   // advances while `playing`. nullopt means no time is shown.
