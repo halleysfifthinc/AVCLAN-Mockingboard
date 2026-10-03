@@ -14,7 +14,7 @@
 #include "cdchanger.hpp"
 #include "device.hpp"
 #include "frame.hpp"
-#include "hal/media.h"
+#include "media.h"
 
 namespace {
 using namespace avclan;
@@ -53,7 +53,6 @@ constexpr std::chrono::seconds displaySeconds(std::chrono::milliseconds t) {
 namespace avclan {
 
 void CDChanger::init(Notifier notif) {
-  media_init();
   notifier = notif;
   statusTimer = xTimerCreate(
       "cd status", pdMS_TO_TICKS(1000), true, this, [](TimerHandle_t timer) {
@@ -471,11 +470,5 @@ void CDChanger::normalizeState() {
   state = PLAYBACK;
   flags &= (uint8_t)~(DISK_SCAN | SCAN);
 }
-
-#ifndef NDEBUG
-void CDChanger::media_action(MediaAction action) { ::media_action(action); }
-bool CDChanger::media_busy() const { return ::media_busy(); };
-void CDChanger::mic_toggle() { media_mic_toggle(); };
-#endif
 
 } // namespace avclan

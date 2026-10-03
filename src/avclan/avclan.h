@@ -110,23 +110,6 @@ enum AVCLAN_ENUM_CLASS Action : uint8_t {
   Amp_Treble = 0x95,
 };
 
-// Media functions a source device can perform (ultimately bounded by the Action
-// set above).
-enum AVCLAN_ENUM_CLASS MediaAction : uint8_t {
-  Play = 0x01,
-  Pause = 0x02,
-  Play_Pause = Play | Pause,
-  Skip_Forward,
-  Skip_Backward,
-  Track_Next,
-  Track_Prev,
-  Repeat,
-  Repeat_Single,
-  Shuffle,
-  Volume_Up,
-  Volume_Down,
-};
-
 #ifdef __cplusplus
 enum class Device : uint8_t;
 

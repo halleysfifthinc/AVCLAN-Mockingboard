@@ -30,7 +30,6 @@ include(${freertos_kernel_SOURCE_DIR}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Ke
 
 target_sources(avclan PRIVATE
     phy.cc
-    media.cc
     board.cc
     stdio.cc
     )

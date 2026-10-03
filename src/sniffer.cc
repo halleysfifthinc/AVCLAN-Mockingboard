@@ -17,6 +17,7 @@
 #include "frame.hpp"
 #include "hal/board.h"
 #include "hal/stdio.h"
+#include "media.h"
 #include "peripheral.hpp"
 #include "queue.hpp"
 #include "stdshim.hpp"
@@ -256,52 +257,23 @@ constexpr Command commands[] = {
 
 #ifndef NDEBUG
     {
-        .key = 'g',
-        .help = "Toggle MIC_CONTROL high/low",
-        .run =
-            [](Context &ctx) static {
-              ctx.peripheral.device<CDChanger>().mic_toggle();
-            },
-    },
-    // Confirm pulse function and refractory timing
-    {
         .key = 'p',
-        .help = "double MIC play/pause pulse",
+        .help = "Pause then play",
         .run =
-            [](Context &ctx) static {
-              auto &cdc = ctx.peripheral.device<CDChanger>();
-              fputs("First play/pause begin ... ", stdout);
-              cdc.media_action(MediaAction::Play_Pause);
-              while (cdc.media_busy()) {}
-              fputs("end\nSecond play/pause begin ... ", stdout);
-              cdc.media_action(MediaAction::Play_Pause);
-              while (cdc.media_busy()) {}
-              puts("end");
+            [](Context &) static {
+              media_action(MediaAction::Pause);
+              media_action(MediaAction::Play);
             },
     },
     {
         .key = 's',
-        .help = "MIC skip forward",
-        .run =
-            [](Context &ctx) static {
-              auto &cdc = ctx.peripheral.device<CDChanger>();
-              fputs("Skip begin ... ", stdout);
-              cdc.media_action(MediaAction::Track_Next);
-              while (cdc.media_busy()) {}
-              puts("end");
-            },
+        .help = "Fast-forward",
+        .run = [](Context &) static { media_action(MediaAction::Track_Next); },
     },
     {
         .key = 'b',
-        .help = "MIC skip backward",
-        .run =
-            [](Context &ctx) static {
-              auto &cdc = ctx.peripheral.device<CDChanger>();
-              fputs("Skip back begin ... ", stdout);
-              cdc.media_action(MediaAction::Track_Prev);
-              while (cdc.media_busy()) {}
-              puts("end");
-            },
+        .help = "Rewind",
+        .run = [](Context &) static { media_action(MediaAction::Track_Prev); },
     },
   #ifdef MEASURE_BUS
     {'M', "Measure bit-timing (pulse-widths and periods)",

@@ -18,6 +18,7 @@
 #include "avclan.h"
 #include "device.hpp"
 #include "frame.hpp"
+#include "media.h"
 
 namespace avclan {
 
@@ -79,11 +80,6 @@ public:
   void disable(Frame &out);
   void emit(Frame &out, uint32_t payload);
   bool isPlaying() const;
-#ifndef NDEBUG
-  void media_action(MediaAction action);
-  bool media_busy() const;
-  void mic_toggle();
-#endif
 
 private:
   // Implements the BasicLockable named requirements for an xSemaphore
