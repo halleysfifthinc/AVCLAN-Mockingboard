@@ -21,7 +21,8 @@
 #include "frame.hpp"
 #include "hal/board.h"
 #include "hal/stdio.h"
-#include "media.h"
+#include "media/binding.hpp"
+#include "media/playback.hpp"
 #include "peripheral.hpp"
 #include "queue.hpp"
 #include "stdshim.hpp"
@@ -260,25 +261,6 @@ constexpr Command commands[] = {
     },
 
 #ifndef NDEBUG
-    {
-        .key = 'p',
-        .help = "Pause then play",
-        .run =
-            [](Context &) static {
-              media_action(MediaAction::Pause);
-              media_action(MediaAction::Play);
-            },
-    },
-    {
-        .key = 's',
-        .help = "Fast-forward",
-        .run = [](Context &) static { media_action(MediaAction::Track_Next); },
-    },
-    {
-        .key = 'b',
-        .help = "Rewind",
-        .run = [](Context &) static { media_action(MediaAction::Track_Prev); },
-    },
   #if AVCLAN_BLUETOOTH
     {
         .key = 'F',
@@ -476,6 +458,8 @@ int main() {
 #endif
 #if AVCLAN_BLUETOOTH
   static bluetooth::Mobile mobile;
+  static media::Binding<media::Playback> playback;
+  peripheral.device<CDChanger>().attach(playback);
 #endif
   static Queue<Frame> incoming(CACHE_SIZE);
   static Queue<Frame> outgoing(CACHE_SIZE);

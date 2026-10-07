@@ -237,9 +237,9 @@ public:
     return next;
   }
 
-  // Blocks until a device notifies; notifications are served in order. Every
-  // notification WILL cause a frame filled in `emit` to be sent. `emit` MUST
-  // produce a valid/reasonable frame to send.
+  // Blocks until a device notifies; notifications are served in order. `emit`
+  // runs the device's deferred work and optionally fills a frame;
+  // otherwise returns null.
   std::unique_ptr<Frame> poll() {
     uint32_t item;
     QueueSetMemberHandle_t from =
@@ -265,8 +265,11 @@ public:
       ((Is == id ? originate(std::get<Is>(devices_), *out, emit_d) : void()),
        ...);
     }(std::index_sequence_for<Devs...>{});
-    configASSERT(out->reaction > 0);
-    return out;
+
+    if (out->reaction > 0)
+      return out;
+
+    return {};
   }
 
 private:

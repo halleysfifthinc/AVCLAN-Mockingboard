@@ -83,7 +83,8 @@ struct NotifyQueues {
 //  supported *per device*
 // `Derived` provides `fill(Frame &out, Tag, uint32_t payload)` for each
 // notification kind it uses; emit() calls it under `mutex`, so the bus tasks
-// hold `mutex` while they touch device state.
+// hold `mutex` while they touch device state. fill() leaves `out.reaction` at 0
+// when no frame is due.
 template <class Derived> class Notifier {
 public:
   void emit([[maybe_unused]] Frame &out, [[maybe_unused]] condition_t tag,

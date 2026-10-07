@@ -6,7 +6,6 @@
 #pragma once
 
 #include <chrono>
-#include <concepts>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -17,11 +16,15 @@
 #include "avclan.h"
 #include "device.hpp"
 #include "frame.hpp"
-#include "media.h"
+#include "media/binding.hpp"
+#include "media/playback.hpp"
 
 namespace avclan {
 
-class CDChanger : public UpdateNotifier<CDChanger> {
+class CDChanger : public Notifier<CDChanger>,
+                  public media::View<CDChanger, media::Playback> {
+  using Playback = media::Playback;
+
 public:
   enum State : uint8_t {
     OPEN = 0x01,
@@ -64,10 +67,11 @@ public:
     r_Ejection,
     r_Report_Load,
     r_StateReport, // *IS* a status report (follow-up or unprompted)
+    r_Drain,       // Condition only, never a frame's: apply pending reports
   };
 
   static constexpr Device id = Device::CD_CHANGER;
-  static constexpr uint8_t conditions = 2; // r_StateReport, r_Ejection
+  static constexpr uint8_t conditions = 3; // r_StateReport, r_Ejection, r_Drain
   static constexpr uint8_t reserve_events = 0;
   CDChanger() = default;
   CDChanger(const CDChanger &) = delete;
@@ -78,34 +82,55 @@ public:
   std::unique_ptr<Frame>
   react(expected<std::unique_ptr<Frame>, detail::SendError> exp);
   void reported_active(Frame &out);
-  bool isPlaying() const;
+
+  void receive(const Playback::Shuffle &s);
+  void receive(const Playback::Repeat &r);
+  void receive(const Playback::Track &t);
+  void receive(const Playback::Position &p);
+  void receive(const Playback::Playing &p);
+  void receive(const Playback::Connected &c);
 
 private:
   friend Notifier<CDChanger>;
+  friend media::View<CDChanger, Playback>;
 
+  void wake(const Playback::Report &msg);
   void fill(Frame &out, condition_t tag, uint32_t payload);
 
-  std::optional<MediaAction> startPlaying();
-  MediaAction stopPlaying();
+  void startPlaying();
+  void stopPlaying();
   std::optional<std::chrono::milliseconds> trackTime() const;
   void setTime(std::chrono::milliseconds t);
-  void seek(std::chrono::seconds by);
+  void rebaseTime();
+  void seek(std::chrono::milliseconds to);
+  void beginSeeking(Playback::Direction direction);
+  void endSeeking();
   void serialize(uint8_t *dst) const;
   void generateStatus(Frame &status, bool is_unicast, Device to) const;
   void normalizeState();
 
   TimerHandle_t statusTimer = nullptr;
 
-  // Track time is a stopwatch: `time` is relative to `refTick`, and
-  // advances while `playing`. nullopt means no time is shown.
+  // Track time is a stopwatch: `time` is relative to `refTick`, and advances
+  // while `playing` and the source isn't paused. nullopt means no time is
+  // shown. rebaseTime() must precede any change to `playing` or
+  // `sourcePlaying`.
   std::optional<std::chrono::milliseconds> time;
   TickType_t refTick = 0;
+  // The head unit activated us (activation began)
+  bool active = false;
+  // Activation completed; status timer runs
   bool playing = false;
+  // What the source last reported; nullopt: no reports (the clock free-runs)
+  std::optional<bool> sourcePlaying;
   int failedStatusReports = 0;
   uint8_t cds = CD1;
   uint8_t state = SEEKING | SEEKING_TRACK;
+  // FF/RW held down. SEEKING (state) is also set outside of FF/RW.
+  Playback::Direction seeking = Playback::Direction::None;
   uint8_t disc = 1;
-  uint8_t track = 1; // Decimal storage; serialize to BCD
+  uint8_t track = 1; // Decimal storage; serialize to BCD. 0: no track (source
+                     // has no active player)
   uint8_t flags = 0;
   uint8_t flags2 = 0x80;
 };
