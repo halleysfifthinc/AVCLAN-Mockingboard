@@ -8,8 +8,12 @@
 
 #include "btstack.h" // IWYU pragma: export
 
+#include "a2dp_sink.hpp"
+#include "avrcp.hpp"
 #include "bonds.hpp"
 #include "gap.hpp"
+#include "media/binding.hpp"
+#include "media/playback.hpp"
 
 namespace avclan::bluetooth {
 
@@ -21,9 +25,15 @@ public:
   Mobile();
   Mobile(const Mobile &) = delete;
 
+  // Before the scheduler starts
+  void attach(media::Binding<media::Playback> &b) { avrcp.attach(b); }
+  void attach(media::Binding<media::Volume> &b) { avrcp.attach(b); }
+
 #ifndef NDEBUG
   // Delete all bonds, then open the pairing window
   void forget_pairings();
+  // As if the Playback view had sent it
+  void inject(const media::Playback::Request &r) { avrcp.deliver(r); }
 #endif
 
 private:
@@ -38,6 +48,8 @@ private:
   void work();
 
   Gap gap;
+  Avrcp avrcp;
+  A2dpSink a2dp{avrcp};
   Bonds bonds{*this};
   btstack_packet_callback_registration_t hci_registration{
       .callback = &on_hci_event,

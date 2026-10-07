@@ -33,7 +33,7 @@ void Mobile::forget_pairings() {
 }
 #endif
 
-void Mobile::connect(bd_addr_t addr) {}
+void Mobile::connect(bd_addr_t addr) { a2dp.connect(addr); }
 
 // Runs once on BTstack's context
 void Mobile::setup() {
@@ -49,6 +49,8 @@ void Mobile::setup() {
 #endif
 
   gap.setup();
+  a2dp.setup();
+  avrcp.setup();
 
   hci_add_event_handler(&hci_registration);
 
@@ -65,6 +67,8 @@ void Mobile::work() {
     gap.enter_pairing();
   }
 #endif
+
+  avrcp.drain();
 }
 
 // Connect, pair, encrypt and disconnect events are all logged, for diagnosing

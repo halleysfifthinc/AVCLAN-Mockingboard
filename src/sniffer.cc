@@ -460,6 +460,7 @@ int main() {
   static bluetooth::Mobile mobile;
   static media::Binding<media::Playback> playback;
   peripheral.device<CDChanger>().attach(playback);
+  mobile.attach(playback);
 #endif
   static Queue<Frame> incoming(CACHE_SIZE);
   static Queue<Frame> outgoing(CACHE_SIZE);

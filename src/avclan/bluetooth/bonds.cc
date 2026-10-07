@@ -206,7 +206,7 @@ void Bonds::reconnect_try_next() {
   printf("reconnect attempt %u/%u: %s\n", *reconnect_idx + 1, count,
          bd_addr_to_str(addr.data()));
 
-  // mobile.connect(addr.data());
+  mobile.connect(addr.data());
 
   // Guard against an attempt that never reports a connection result (e.g.
   // the connect failed to start) so the queue can't stall.

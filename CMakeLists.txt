@@ -98,6 +98,8 @@ target_include_directories(avclan PUBLIC
 # for the app.
 if(AVCLAN_BLUETOOTH)
   add_library(avclan_bluetooth STATIC
+      src/avclan/bluetooth/a2dp_sink.cc
+      src/avclan/bluetooth/avrcp.cc
       src/avclan/bluetooth/bonds.cc
       src/avclan/bluetooth/gap.cc
       src/avclan/bluetooth/mobile.cc
