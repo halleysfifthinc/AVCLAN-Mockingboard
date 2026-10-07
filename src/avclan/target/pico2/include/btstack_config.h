@@ -26,9 +26,11 @@
 #define HCI_OUTGOING_PRE_BUFFER_SIZE              4
 #define HCI_ACL_PAYLOAD_SIZE                      (1691 + 4)
 #define HCI_ACL_CHUNK_SIZE_ALIGNMENT              4
-#define MAX_NR_AVDTP_CONNECTIONS                  1
+// AVDTP, AVRCP (controller + target) and L2CAP hold two phones, which overlap
+// while one takes over from the other
+#define MAX_NR_AVDTP_CONNECTIONS                  2
 #define MAX_NR_AVDTP_STREAM_ENDPOINTS             1
-#define MAX_NR_AVRCP_CONNECTIONS                  2
+#define MAX_NR_AVRCP_CONNECTIONS                  4
 #define MAX_NR_BNEP_CHANNELS                      0
 #define MAX_NR_BNEP_SERVICES                      0
 #define MAX_NR_BTSTACK_LINK_KEY_DB_MEMORY_ENTRIES 2
@@ -36,7 +38,7 @@
 #define MAX_NR_HCI_CONNECTIONS                    2
 #define MAX_NR_HID_HOST_CONNECTIONS               0
 #define MAX_NR_HFP_CONNECTIONS                    0
-#define MAX_NR_L2CAP_CHANNELS                     4
+#define MAX_NR_L2CAP_CHANNELS                     8
 #define MAX_NR_L2CAP_SERVICES                     3
 #define MAX_NR_RFCOMM_CHANNELS                    0
 #define MAX_NR_RFCOMM_MULTIPLEXERS                0

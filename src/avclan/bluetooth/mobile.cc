@@ -102,11 +102,25 @@ void Mobile::on_hci_event(uint8_t packet_type, uint16_t /* channel */,
       printf("authentication complete, status 0x%02x\n",
              hci_event_authentication_complete_get_status(packet));
       break;
+#endif
+    // V2 shares V1's layout for these fields
     case HCI_EVENT_ENCRYPTION_CHANGE:
+    case HCI_EVENT_ENCRYPTION_CHANGE_V2:
+#ifndef NDEBUG
       printf("encryption change: enabled=%u\n",
              hci_event_encryption_change_get_encryption_enabled(packet));
-      break;
 #endif
+      if (hci_event_encryption_change_get_status(packet) == ERROR_CODE_SUCCESS &&
+          hci_event_encryption_change_get_encryption_enabled(packet) != 0)
+        self->bonds.on_encrypted(
+            hci_event_encryption_change_get_connection_handle(packet));
+      break;
+    case HCI_EVENT_CONNECTION_REQUEST: {
+      BdAddr addr;
+      hci_event_connection_request_get_bd_addr(packet, addr.data());
+      self->bonds.on_connection_request(addr);
+      break;
+    }
     case HCI_EVENT_LINK_KEY_NOTIFICATION: {
       BdAddr addr;
       // Same layout as the request (BTstack's hci.c reads it this way too)

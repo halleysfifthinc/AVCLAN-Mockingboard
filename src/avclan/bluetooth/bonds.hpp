@@ -26,6 +26,12 @@ static_assert(sizeof(BdAddr) == BD_ADDR_LEN);
 //  - Reconnect to most recently connected device
 //  - Don't automatically reconnect following an intentional disconnect
 //  - Reconnect to (eligible) paired devices in reverse recency
+//  - One phone at a time. A paired phone that connects takes over from the
+//    connected one (no manual disconnect first).
+//    It takes over once its link is encrypted, so an unpaired device can't
+//    drop the connected phone.
+//  - Our own reconnect never displaces a connected phone; one answered late
+//    is dropped
 class Bonds {
 public:
   explicit Bonds(Mobile &mobile) : mobile{mobile} {}
@@ -36,9 +42,12 @@ public:
   bool is_empty() const { return count == 0; }
   void reconnect_start();
 
+  // Only a phone-initiated ACL is preceded by a connection request
+  void on_connection_request(const BdAddr &addr);
   // Fires for both an incoming (phone-initiated) ACL and our own reconnect
   void on_connected(hci_con_handle_t handle, BdAddr addr);
   void on_connect_failed(const BdAddr &addr);
+  void on_encrypted(hci_con_handle_t handle);
   // BTstack has already stored (or declined to store) the key by the time the
   // app sees HCI_EVENT_LINK_KEY_NOTIFICATION
   bool on_link_key(BdAddr addr);
@@ -72,6 +81,7 @@ private:
   static bool has_link_key(BdAddr &addr);
 
   std::span<Entry> active() { return {stored.entries.data(), count}; }
+  void adopt(hci_con_handle_t handle, BdAddr addr);
   void save();
   // When full, a new phone overwrites back(), the bond BTstack just evicted
   void promote(const BdAddr &addr);
@@ -106,6 +116,11 @@ private:
   // suffices.
   BdAddr current_peer{};
   hci_con_handle_t current_handle = HCI_CON_HANDLE_INVALID;
+  // The phone whose connection request is in progress
+  std::optional<BdAddr> requester;
+  // A phone-initiated ACL that takes over once encrypted
+  BdAddr newcomer_peer{};
+  hci_con_handle_t newcomer_handle = HCI_CON_HANDLE_INVALID;
 };
 
 } // namespace avclan::bluetooth

@@ -64,25 +64,43 @@ void Bonds::reconnect_start() {
   reconnect_try_next();
 }
 
-void Bonds::on_connected(hci_con_handle_t handle, BdAddr addr) {
-  current_handle = handle;
-  current_peer = addr;
-  reconnect_stop();
+void Bonds::on_connection_request(const BdAddr &addr) { requester = addr; }
 
-  // Re-storing the key refreshes its eviction age to match promote()
-  link_key_t key;
-  link_key_type_t type;
-  if (!gap_get_link_key_for_bd_addr(addr.data(), key, &type))
-    return;
-  gap_store_link_key_for_bd_addr(addr.data(), key, type);
-  promote(addr);
+void Bonds::on_connected(hci_con_handle_t handle, BdAddr addr) {
+  const bool phone_initiated = requester == addr;
+  requester.reset();
+  if (current_handle == HCI_CON_HANDLE_INVALID) {
+    adopt(handle, addr);
+  } else if (phone_initiated) {
+    newcomer_handle = handle;
+    newcomer_peer = addr;
+  } else {
+    printf("dropping late reconnect to %s; another phone is connected\n",
+           bd_addr_to_str(addr.data()));
+    gap_disconnect(handle);
+  }
 }
 
 void Bonds::on_connect_failed(const BdAddr &addr) {
+  if (requester == addr)
+    requester.reset();
   if (!reconnect_idx || addr != active()[*reconnect_idx].addr)
     return;
   ++*reconnect_idx;
   reconnect_try_next();
+}
+
+// The old phone's disconnect then arrives for a handle that is no longer
+// current, so it keeps its auto-reconnect
+void Bonds::on_encrypted(hci_con_handle_t handle) {
+  if (handle != newcomer_handle)
+    return;
+  // bd_addr_to_str() returns one shared buffer: one address per printf
+  printf("%s takes over from ", bd_addr_to_str(newcomer_peer.data()));
+  printf("%s\n", bd_addr_to_str(current_peer.data()));
+  gap_disconnect(current_handle);
+  newcomer_handle = HCI_CON_HANDLE_INVALID;
+  adopt(handle, newcomer_peer);
 }
 
 bool Bonds::on_link_key(BdAddr addr) {
@@ -93,6 +111,8 @@ bool Bonds::on_link_key(BdAddr addr) {
 }
 
 void Bonds::on_disconnected(hci_con_handle_t handle, uint8_t reason) {
+  if (handle == newcomer_handle)
+    newcomer_handle = HCI_CON_HANDLE_INVALID;
   if (handle != current_handle)
     return;
   current_handle = HCI_CON_HANDLE_INVALID;
@@ -125,6 +145,20 @@ bool Bonds::has_link_key(BdAddr &addr) {
   link_key_t key;
   link_key_type_t type;
   return gap_get_link_key_for_bd_addr(addr.data(), key, &type);
+}
+
+void Bonds::adopt(hci_con_handle_t handle, BdAddr addr) {
+  current_handle = handle;
+  current_peer = addr;
+  reconnect_stop();
+
+  // Re-storing the key refreshes its eviction age to match promote()
+  link_key_t key;
+  link_key_type_t type;
+  if (!gap_get_link_key_for_bd_addr(addr.data(), key, &type))
+    return;
+  gap_store_link_key_for_bd_addr(addr.data(), key, type);
+  promote(addr);
 }
 
 void Bonds::save() {
