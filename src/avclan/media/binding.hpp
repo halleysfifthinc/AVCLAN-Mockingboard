@@ -37,8 +37,11 @@
 #include <algorithm>
 #include <array>
 #include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <tuple>
+#include <utility>
 #include <variant>
 
 #include "FreeRTOS.h" // IWYU pragma: export
@@ -101,6 +104,75 @@ template <Domain D> struct Binding {
   }
 };
 
+template <class Message> class Mailbox {};
+
+// Holds the latest pending message of each type, so it never fills. A push
+// replaces a pending message of its type and moves it to the back. Callable
+// from any task; holds a critical section briefly and never waits on another
+// task.
+template <class... Ts> class Mailbox<std::variant<Ts...>> {
+  using Message = std::variant<Ts...>;
+
+public:
+  void push(const Message &msg) {
+    const auto type = static_cast<uint8_t>(msg.index());
+    taskENTER_CRITICAL();
+    store(msg);
+    const auto end = order.begin() + count;
+    if (const auto pending = std::find(order.begin(), end, type);
+        pending != end)
+      std::rotate(pending, pending + 1, end);
+    else
+      order[count++] = type;
+    taskEXIT_CRITICAL();
+  }
+
+  // Returns a popped message to the front, unless one of its type was pushed
+  // since
+  void push_front(const Message &msg) {
+    const auto type = static_cast<uint8_t>(msg.index());
+    taskENTER_CRITICAL();
+    if (const auto end = order.begin() + count;
+        std::find(order.begin(), end, type) == end) {
+      store(msg);
+      std::shift_right(order.begin(), end + 1, 1);
+      order[0] = type;
+      ++count;
+    }
+    taskEXIT_CRITICAL();
+  }
+
+  std::optional<Message> pop() {
+    std::optional<Message> msg;
+    taskENTER_CRITICAL();
+    if (count > 0) {
+      msg = load(order[0]);
+      std::shift_left(order.begin(), order.begin() + count, 1);
+      --count;
+    }
+    taskEXIT_CRITICAL();
+    return msg;
+  }
+
+private:
+  void store(const Message &msg) {
+    std::visit([this]<class T>(const T &m) { std::get<T>(slots) = m; }, msg);
+  }
+
+  Message load(uint8_t type) const {
+    Message msg;
+    [&]<size_t... I>(std::index_sequence<I...>) {
+      ((I == type ? void(msg.template emplace<I>(std::get<I>(slots))) : void()),
+       ...);
+    }(std::index_sequence_for<Ts...>{});
+    return msg;
+  }
+
+  std::tuple<Ts...> slots{}; // only those listed in `order` are pending
+  std::array<uint8_t, sizeof...(Ts)> order{}; // oldest write first
+  uint8_t count = 0;
+};
+
 // Receives `In` requests and sends `Out` reports. `Derived` provides:
 // - a public `receive(const M &)` for each alternative M of `In`. Ignore
 //   specific alternatives using empty overloads (catch-all `receive(const
@@ -155,48 +227,6 @@ protected:
   }
 
 private:
-  template <class Message> class Mailbox {};
-
-  // Holds the latest pending message of each type, so it never fills. A push
-  // replaces a pending message of its type and moves it to the back. Callable
-  // from any task; holds a critical section briefly and never waits on another
-  // task.
-  template <class... Ts> class Mailbox<std::variant<Ts...>> {
-    using Message = std::variant<Ts...>;
-
-  public:
-    void push(const Message &msg) {
-      const auto type = static_cast<uint8_t>(msg.index());
-      taskENTER_CRITICAL();
-      slots[type] = msg;
-      const auto end = order.begin() + count;
-      if (const auto pending = std::find(order.begin(), end, type);
-          pending != end)
-        std::rotate(pending, pending + 1, end);
-      else
-        order[count++] = type;
-      taskEXIT_CRITICAL();
-    }
-
-    std::optional<Message> pop() {
-      std::optional<Message> msg;
-      taskENTER_CRITICAL();
-      if (count > 0) {
-        msg = slots[order[0]];
-        std::shift_left(order.begin(), order.begin() + count, 1);
-        --count;
-      }
-      taskEXIT_CRITICAL();
-      return msg;
-    }
-
-  private:
-    static constexpr auto types = std::variant_size_v<Message>;
-    std::array<Message, types> slots{};
-    std::array<uint8_t, types> order{}; // pending types, oldest write first
-    uint8_t count = 0;
-  };
-
   Mailbox<In> mailbox;
   Binding<D> *binding = nullptr;
 };
