@@ -384,7 +384,7 @@ private:
     begin_frame();
   }
 
-  static inline IEBusRx *instance_ = nullptr;
+  inline static constinit IEBusRx *instance_ = nullptr;
 
   PIO pio_;
   uint sm_;
@@ -758,7 +758,7 @@ private:
   }
 
   IEBusRx &rx_;
-  static inline IEBusTx *instance_ = nullptr;
+  inline static constinit IEBusTx *instance_ = nullptr;
 
   PIO pio_;
   uint pin_tx_;
