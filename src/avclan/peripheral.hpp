@@ -241,18 +241,19 @@ public:
   // notification WILL cause a frame filled in `emit` to be sent. `emit` MUST
   // produce a valid/reasonable frame to send.
   std::unique_ptr<Frame> poll() {
-    // Acquired before dequeuing: without a frame, the notification stays queued
-    std::unique_ptr<Frame> out = Frame::acquire();
-    if (!out) {
-      puts("!! failed Frame alloc in poll !!");
-      return {};
-    }
-
     uint32_t item;
     QueueSetMemberHandle_t from =
         xQueueSelectFromSet(notifications_, portMAX_DELAY);
     xQueueReceive(from, &item, 0);
     const uint8_t id = item & 0xFF;
+
+    std::unique_ptr<Frame> out = Frame::acquire();
+    if (!out) {
+      puts("!! failed Frame alloc in poll; waiting !!");
+      do
+        out = Frame::acquire();
+      while (!out);
+    }
 
     auto emit_d = [&](auto &d, auto &out) {
       if (from == conditions_)
