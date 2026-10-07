@@ -25,6 +25,7 @@ set_property(CACHE AVCLAN_TARGET PROPERTY STRINGS "avr-attiny3216" "pico2" "esp3
 set(AVCLAN_MSG_QUEUE_SIZE 16 CACHE STRING "Size of incoming/outgoing queues")
 set(AVCLAN_FRAME_POOL_N 14 CACHE STRING "Pool allocator capacity for avclan::Frame (must be <= incoming/outgoing queue size)")
 option(AVCLAN_BLUETOOTH "Build the Bluetooth endpoints" ON)
+option(AVCLAN_BLUETOOTH_LOG "BTstack info logs and HCI dump on stdout (Debug builds only)" OFF)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_CXX_STANDARD 23)
@@ -96,9 +97,15 @@ target_include_directories(avclan PUBLIC
 # the platform port and the Bluetooth stack. Linking it defines AVCLAN_BLUETOOTH
 # for the app.
 if(AVCLAN_BLUETOOTH)
-  add_library(avclan_bluetooth STATIC)
+  add_library(avclan_bluetooth STATIC
+      src/avclan/bluetooth/bonds.cc
+      src/avclan/bluetooth/gap.cc
+      src/avclan/bluetooth/mobile.cc
+  )
   target_link_libraries(avclan_bluetooth PUBLIC avclan)
   target_compile_definitions(avclan_bluetooth
+    PUBLIC
+      $<$<AND:$<CONFIG:Debug>,$<BOOL:${AVCLAN_BLUETOOTH_LOG}>>:AVCLAN_BLUETOOTH_LOG=1>
     INTERFACE
       AVCLAN_BLUETOOTH=1
   )

@@ -51,6 +51,10 @@ if(AVCLAN_BLUETOOTH)
   )
   target_link_libraries(avclan_bluetooth PUBLIC
       pico_cyw43_arch_sys_freertos
+      pico_btstack_cyw43
+      pico_btstack_ble
+      pico_btstack_classic
+      pico_btstack_sbc_decoder
   )
   target_compile_definitions(avclan_bluetooth PUBLIC
       CYW43_LWIP=0
@@ -73,11 +77,13 @@ target_link_libraries(mockingboard PUBLIC
 )
 
 # Silence warnings in TinyUSB, and only there.
-file(GLOB_RECURSE _tinyusb_sources ${PICO_TINYUSB_PATH}/src/*.c)
-set_source_files_properties(${_tinyusb_sources}
+file(GLOB_RECURSE _system_sources 
+    ${PICO_TINYUSB_PATH}/src/*.c
+    ${PICO_BTSTACK_PATH}/src/*.c)
+set_source_files_properties(${_system_sources}
     TARGET_DIRECTORY avclan mockingboard
-    PROPERTIES COMPILE_OPTIONS "-w")
-unset(_tinyusb_sources)
+    PROPERTIES COMPILE_OPTIONS "-Wno-switch-enum;-Wno-unused-function;-fno-analyzer")
+unset(_system_sources)
 
 pico_add_extra_outputs(mockingboard)
 

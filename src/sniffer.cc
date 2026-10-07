@@ -15,7 +15,7 @@
 
 #include "avclan.h"
 #if AVCLAN_BLUETOOTH
-  #include "bluetooth/platform.h"
+  #include "bluetooth/mobile.hpp"
 #endif
 #include "cdchanger.hpp"
 #include "frame.hpp"
@@ -39,10 +39,16 @@ constexpr uint8_t CACHE_SIZE = AVCLAN_MSG_QUEUE_SIZE;
 static_assert(CACHE_SIZE >= AVCLAN_FRAME_POOL_N,
               "CACHE_SIZE must be >= avclan::Frame allocator pool capacity");
 
-struct Context {
+struct Pipeline {
   Periph &peripheral;
   Queue<Frame> &incoming;
   Queue<Frame> &outgoing;
+};
+
+struct Context : Pipeline {
+#if AVCLAN_BLUETOOTH
+  bluetooth::Mobile &mobile;
+#endif
 };
 
 uint8_t hexChars[2];
@@ -80,7 +86,7 @@ void print_help();
 [[noreturn]] void vReceiverTask(void *pvParameters) {
   using Print = Frame::Print;
   auto &[peripheral, incoming, outgoing] =
-      *static_cast<Context *>(pvParameters);
+      *static_cast<Pipeline *>(pvParameters);
   while (true) {
     if (auto msg = peripheral.read(Print{
             .print = printAllFrames,
@@ -93,7 +99,7 @@ void print_help();
 
 [[noreturn]] void vRoutingTask(void *pvParameters) {
   auto &[peripheral, incoming, outgoing] =
-      *static_cast<Context *>(pvParameters);
+      *static_cast<Pipeline *>(pvParameters);
   while (true) {
     const Frame *in = incoming.peek();
     if (auto resp = peripheral.route(*in)) {
@@ -106,7 +112,7 @@ void print_help();
 
 [[noreturn]] void vPollTask(void *pvParameters) {
   auto &[peripheral, incoming, outgoing] =
-      *static_cast<Context *>(pvParameters);
+      *static_cast<Pipeline *>(pvParameters);
   while (true) {
     if (auto msg = peripheral.poll())
       outgoing.push(std::move(msg));
@@ -116,7 +122,7 @@ void print_help();
 [[noreturn]] void vSenderTask(void *pvParameters) {
   using Print = Frame::Print;
   auto &[peripheral, incoming, outgoing] =
-      *static_cast<Context *>(pvParameters);
+      *static_cast<Pipeline *>(pvParameters);
   while (true) {
     auto result = peripheral.send(
         outgoing.pop(), Print{.print = printAllFrames, .binary = printBinary});
@@ -273,6 +279,13 @@ constexpr Command commands[] = {
         .help = "Rewind",
         .run = [](Context &) static { media_action(MediaAction::Track_Prev); },
     },
+  #if AVCLAN_BLUETOOTH
+    {
+        .key = 'F',
+        .help = "Forget all Bluetooth pairings",
+        .run = [](Context &ctx) static { ctx.mobile.forget_pairings(); },
+    },
+  #endif
   #ifdef MEASURE_BUS
     {'M', "Measure bit-timing (pulse-widths and periods)",
      [](Context &ctx) static { ctx.peripheral.get_bus().measure(); }},
@@ -326,7 +339,7 @@ static_assert(
 
 [[noreturn]] void vREPLTask(void *pvParameters) {
   auto &ctx = *static_cast<Context *>(pvParameters);
-  auto &[peripheral, incoming, outgoing] = ctx;
+  auto &[peripheral, incoming, outgoing] = static_cast<Pipeline &>(ctx);
   while (true) {
     const int readkey = fgetc(stdin);
     if (readkey == EOF) {
@@ -462,24 +475,30 @@ int main() {
   peripheral.set_controller(0x190);
 #endif
 #if AVCLAN_BLUETOOTH
-  bluetooth::platform::init();
+  static bluetooth::Mobile mobile;
 #endif
   static Queue<Frame> incoming(CACHE_SIZE);
   static Queue<Frame> outgoing(CACHE_SIZE);
-  static Context ctx{
+  static Pipeline pipeline{
       .peripheral = peripheral,
       .incoming = incoming,
       .outgoing = outgoing,
   };
+  static Context ctx{
+      pipeline,
+#if AVCLAN_BLUETOOTH
+      mobile,
+#endif
+  };
 
   xTaskCreateAffinitySet(vSenderTask, "send/react", configMINIMAL_STACK_SIZE,
-                         &ctx, SendPriority, 0b01, nullptr);
-  xTaskCreateAffinitySet(vRoutingTask, "router", configMINIMAL_STACK_SIZE, &ctx,
-                         RoutePriority, 0b01, nullptr);
-  xTaskCreateAffinitySet(vPollTask, "poll", configMINIMAL_STACK_SIZE, &ctx,
+                         &pipeline, SendPriority, 0b01, nullptr);
+  xTaskCreateAffinitySet(vRoutingTask, "router", configMINIMAL_STACK_SIZE,
+                         &pipeline, RoutePriority, 0b01, nullptr);
+  xTaskCreateAffinitySet(vPollTask, "poll", configMINIMAL_STACK_SIZE, &pipeline,
                          PollPriority, 0b01, nullptr);
   xTaskCreateAffinitySet(vReceiverTask, "receiver", configMINIMAL_STACK_SIZE,
-                         &ctx, ReceivePriority, 0b01, nullptr);
+                         &pipeline, ReceivePriority, 0b01, nullptr);
   xTaskCreateAffinitySet(vREPLTask, "repl", configMINIMAL_STACK_SIZE, &ctx,
                          tskIDLE_PRIORITY, 0b01, nullptr);
 
