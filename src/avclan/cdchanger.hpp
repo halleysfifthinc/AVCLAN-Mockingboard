@@ -132,6 +132,8 @@ private:
   uint8_t track = 1; // Decimal storage; serialize to BCD. 0: no track (source
                      // has no active player)
   uint8_t flags = 0;
+  // The random bits the head unit last asked for; shown when shuffle is on
+  uint8_t requestedRandom = RANDOM;
   uint8_t flags2 = 0x80;
 };
 

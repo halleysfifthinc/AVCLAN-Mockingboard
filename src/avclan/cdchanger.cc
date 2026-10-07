@@ -77,14 +77,16 @@ void CDChanger::handle(const Frame &in, Frame &out) {
       0x00, to_underlying(Device::CD_CHANGER), 0xFF, 0xFF, 0x01};
 
   // The source has one shuffle and one repeat setting for both the disc and
-  // whole-changer flags
-  const auto requestShuffle = [this] {
-    send(Playback::SetShuffle{(flags & (RANDOM | DISK_RANDOM)) != 0});
+  // whole-changer flags. `flags` changes only once the source reports.
+  const auto requestShuffle = [this](uint8_t want) {
+    if (const uint8_t random = want & (RANDOM | DISK_RANDOM); random != 0)
+      requestedRandom = random;
+    send(Playback::SetShuffle{(want & (RANDOM | DISK_RANDOM)) != 0});
   };
-  const auto requestRepeat = [this] {
-    if ((flags & REPEAT) != 0)
+  const auto requestRepeat = [this](uint8_t want) {
+    if ((want & REPEAT) != 0)
       send(Playback::SetRepeat{Playback::RepeatMode::Track});
-    else if ((flags & DISK_REPEAT) != 0)
+    else if ((want & DISK_REPEAT) != 0)
       send(Playback::SetRepeat{Playback::RepeatMode::All});
     else
       send(Playback::SetRepeat{Playback::RepeatMode::Off});
@@ -224,51 +226,43 @@ void CDChanger::handle(const Frame &in, Frame &out) {
       break;
     }
     case CD_Enable_Random:
-      flags |= RANDOM;
       generateStatus(out, true, Device::CMD_SW);
-      requestShuffle();
+      requestShuffle(flags | RANDOM);
       out.reaction = r_StatusReport;
       break;
     case CD_Disable_Random:
-      flags &= ~RANDOM;
       generateStatus(out, true, Device::CMD_SW);
-      requestShuffle();
+      requestShuffle(flags & ~RANDOM);
       out.reaction = r_StatusReport;
       break;
     case CD_Enable_Repeat:
-      flags |= REPEAT;
       generateStatus(out, true, Device::CMD_SW);
-      requestRepeat();
+      requestRepeat(flags | REPEAT);
       out.reaction = r_StatusReport;
       break;
     case CD_Disable_Repeat:
-      flags &= ~REPEAT;
       generateStatus(out, true, Device::CMD_SW);
-      requestRepeat();
+      requestRepeat(flags & ~REPEAT);
       out.reaction = r_StatusReport;
       break;
     case CD_Enable_Disk_Random:
-      flags |= DISK_RANDOM;
       generateStatus(out, true, Device::CMD_SW);
-      requestShuffle();
+      requestShuffle(flags | DISK_RANDOM);
       out.reaction = r_StatusReport;
       break;
     case CD_Disable_Disk_Random:
-      flags &= ~DISK_RANDOM;
       generateStatus(out, true, Device::CMD_SW);
-      requestShuffle();
+      requestShuffle(flags & ~DISK_RANDOM);
       out.reaction = r_StatusReport;
       break;
     case CD_Enable_Disk_Repeat:
-      flags |= DISK_REPEAT;
       generateStatus(out, true, Device::CMD_SW);
-      requestRepeat();
+      requestRepeat(flags | DISK_REPEAT);
       out.reaction = r_StatusReport;
       break;
     case CD_Disable_Disk_Repeat:
-      flags &= ~DISK_REPEAT;
       generateStatus(out, true, Device::CMD_SW);
-      requestRepeat();
+      requestRepeat(flags & ~DISK_REPEAT);
       out.reaction = r_StatusReport;
       break;
     case CD_Enable_Scan:
@@ -545,10 +539,9 @@ void CDChanger::normalizeState() {
 // The receive()s run under `mutex`, from drain()
 
 void CDChanger::receive(const Playback::Shuffle &s) {
-  if (!s.on)
-    flags &= (uint8_t)~(RANDOM | DISK_RANDOM);
-  else if ((flags & (RANDOM | DISK_RANDOM)) == 0)
-    flags |= RANDOM;
+  flags &= (uint8_t)~(RANDOM | DISK_RANDOM);
+  if (s.on)
+    flags |= requestedRandom;
 }
 
 void CDChanger::receive(const Playback::Repeat &r) {
