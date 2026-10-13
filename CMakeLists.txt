@@ -68,8 +68,9 @@ endif()
 # are contributed by its subdirectory.
 add_library(avclan STATIC
     src/avclan/frame.cc
-    src/avclan/cdchanger.cc
     src/avclan/bus.cc
+    src/avclan/devices/cdchanger.cc
+    src/avclan/devices/amplifier.cc
 )
 
 target_compile_definitions(avclan PUBLIC

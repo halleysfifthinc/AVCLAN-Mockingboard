@@ -17,7 +17,8 @@
 #if AVCLAN_BLUETOOTH
   #include "bluetooth/mobile.hpp"
 #endif
-#include "cdchanger.hpp"
+#include "devices/amplifier.hpp"
+#include "devices/cdchanger.hpp"
 #include "frame.hpp"
 #include "hal/board.h"
 #include "hal/stdio.h"
@@ -30,7 +31,7 @@
 using namespace avclan;
 
 namespace {
-using Periph = Peripheral<CDChanger>;
+using Periph = Peripheral<CDChanger, Amplifier>;
 
 const char *const offon[] = {"OFF", "ON"};
 
@@ -459,8 +460,11 @@ int main() {
 #if AVCLAN_BLUETOOTH
   static bluetooth::Mobile mobile;
   static media::Binding<media::Playback> playback;
+  static media::Binding<media::Volume> volume;
   peripheral.device<CDChanger>().attach(playback);
+  peripheral.device<Amplifier>().attach(volume);
   mobile.attach(playback);
+  mobile.attach(volume);
 #endif
   static Queue<Frame> incoming(CACHE_SIZE);
   static Queue<Frame> outgoing(CACHE_SIZE);

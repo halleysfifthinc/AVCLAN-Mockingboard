@@ -117,12 +117,13 @@ void Avrcp::wake(const Playback::Request & /* msg */) { platform::wake(); }
 void Avrcp::wake(const Volume::Report & /* msg */) { platform::wake(); }
 
 // The head unit owns the volume; the phone's slider only mirrors it
+// NOLINTNEXTLINE(readability-make-member-function-const)
 void Avrcp::receive(const Volume::Level &lvl) {
   const uint8_t level = std::min(lvl.level, Volume::MAX);
-  volume =
+  const auto absolute =
       static_cast<uint8_t>(((level * 127) + (Volume::MAX / 2)) / Volume::MAX);
   if (cid != 0)
-    avrcp_target_volume_changed(cid, volume);
+    avrcp_target_volume_changed(cid, absolute);
 }
 
 void Avrcp::receive(const Playback::Play &p) { enqueue(p); }
@@ -283,8 +284,6 @@ void Avrcp::on_connection(uint8_t packet_type, uint16_t /* channel */,
       // A phone registers only for the events the target lists
       avrcp_target_support_event(self->cid,
                                  AVRCP_NOTIFICATION_EVENT_VOLUME_CHANGED);
-      // So the phone's volume slider shows our volume
-      avrcp_target_volume_changed(self->cid, self->volume);
       break;
     }
     case AVRCP_SUBEVENT_CONNECTION_RELEASED:
@@ -433,13 +432,11 @@ void Avrcp::on_target(uint8_t packet_type, uint16_t /* channel */,
       auto absolute =
           avrcp_subevent_notification_volume_changed_get_absolute_volume(
               packet);
-      self->volume = absolute;
 #ifndef NDEBUG
       printf("phone set absolute volume -> %u/127\n", absolute);
 #endif
       self->send(Volume::Set{
-          .level = static_cast<uint8_t>(((absolute * Volume::MAX) + (127 / 2)) /
-                                        127),
+          static_cast<uint8_t>(((absolute * Volume::MAX) + (127 / 2)) / 127),
       });
       break;
     }

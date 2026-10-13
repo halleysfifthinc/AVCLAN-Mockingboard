@@ -11,11 +11,11 @@ namespace avclan::media {
 // The model is the head unit's amplifier. Levels are on its scale, 0..MAX. The
 // view is the phone's volume buttons and slider (bluetooth::Avrcp).
 struct Volume {
-  // The amp's BCD volume byte can't exceed 99; its actual maximum is unknown
-  static constexpr uint8_t MAX = 99;
+  // The amp's loudest step (Amplifier's `attenuation` table)
+  static constexpr uint8_t MAX = 47;
 
   // Steps that arrive before the model endpoint drains coalesce into the
-  // latest level, which the amp then jumps to
+  // latest level. The amp steps to it.
   struct Set {
     uint8_t level;
   };

@@ -77,8 +77,7 @@ private:
   void pump();
   void enqueue(const Command &cmd);
 
-  uint16_t cid = 0;    // 0: not connected
-  uint8_t volume = 64; // absolute volume, 0..127
+  uint16_t cid = 0; // 0: not connected
   Playback::Direction held = Playback::Direction::None;
   media::Mailbox<Command> pending;
   btstack_timer_source_t pump_timer{
