@@ -27,10 +27,11 @@ enum class Device : uint8_t {
   COMM_CTRL = 0x01,
   COMMUNICATION_V1 = 0x11,
   COMMUNICATION_V2 = 0x12,
+  // SW == status write?
   SW_AUDIO = 0x21,
   SW_NAME = 0x23,
   SW_CONVERTING = 0x24,
-  CMD_SW = 0x25,
+  CMD_SW = 0x25, // ie force status write?
   STATUS = 0x31,
   INFO_DISPLAY2 = 0x32,
   BEEP_HU = 0x28,

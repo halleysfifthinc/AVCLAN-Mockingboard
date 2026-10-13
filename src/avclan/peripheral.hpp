@@ -233,13 +233,18 @@ public:
         default: break;
       }
     } else if (in.peripheral_addr == address_ && b0 == 0x00) {
+      // CMD_SW isn't a functional device, but is more of an order/command
+      // When CMD_SW is in the "to" field, the actual "to" device is in the
+      // "from" field. Unclear whether other SW_* "devices" should be treated
+      // similarly (never observed)
+      const auto id =
+          static_cast<Device>(b2 == to_underlying(CMD_SW) ? b1 : b2);
       auto handle_d = [&](auto &d, auto &out) {
         if constexpr (requires { d.handle(in, out); })
           d.handle(in, out);
       };
-      ((Devs::id == static_cast<Device>(b2)
-            ? originate(std::get<Devs>(devices_), *out, handle_d)
-            : void()),
+      ((Devs::id == id ? originate(std::get<Devs>(devices_), *out, handle_d)
+                       : void()),
        ...);
     }
 
