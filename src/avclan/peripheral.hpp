@@ -111,14 +111,29 @@ public:
     using enum Device;
     using enum Action;
 
-    if (is_muted() || in.length < 3)
+    if (in.length < 3)
       return {};
 
-    std::unique_ptr<Frame> out = Frame::acquire();
-    if (!out) {
-      puts("!! failed Frame alloc in route !!");
-      return unexpected{Error::Read::POOL_EMPTY};
+    // Acquired before observing: a POOL_EMPTY retry must not observe twice
+    std::unique_ptr<Frame> out;
+    if (!is_muted()) {
+      out = Frame::acquire();
+      if (!out) {
+        puts("!! failed Frame alloc in route !!");
+        return unexpected{Error::Read::POOL_EMPTY};
+      }
     }
+
+    // Device (vs LAN) related messages are longer than 3 bytes and are
+    // functionally independent of bus mute state
+    auto maybe_observe = [&](auto &dev) {
+      if constexpr (requires { dev.observe(in); })
+        dev.observe(in);
+    };
+    (maybe_observe(std::get<Devs>(devices_)), ...);
+
+    if (!out)
+      return {};
 
     // 0xFF placeholders are variant bytes filled by writing directly to
     // out->data[N] after memcpy.
