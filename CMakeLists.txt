@@ -76,7 +76,7 @@ target_compile_definitions(avclan PUBLIC
 )
 
 target_compile_options(avclan PUBLIC
-    -Wall -Wswitch-enum -Werror
+    -Wall -Wswitch-enum -Wimplicit-fallthrough -Werror
 
     # Debug must not be -O0: both the vendored usart.h and avr-libc's
     # <util/delay.h> #warning when __OPTIMIZE__ is undefined, and -Werror makes
