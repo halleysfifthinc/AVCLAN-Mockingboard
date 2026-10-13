@@ -194,24 +194,35 @@ struct NonNotifier {
   void emit(Frame & /*out*/, notification_t /*tag*/, uint32_t /*payload*/) {}
 };
 
+template <class T> constexpr bool is_listed = true;
+template <class T>
+  requires requires { std::bool_constant<T::listed>{}; }
+constexpr bool is_listed<T> = T::listed;
+
 // `conditions`: the number of unique conditions (max of 32)
 // `reserve_events`: the number of event queue slots to reserve for the device;
 // should be based on the expected device activity and to minimize blocking
 // durations
+// Devices are listed by default in response to List_Functions_Req unless
+// T::listed == false
+// `handle` and `reported_active` member functions are required when listed, and
+// optional otherwise
 template <class T>
 concept DeviceInterface =
     requires { std::integral_constant<Device, T::id>{}; } &&
     requires { std::integral_constant<uint8_t, T::conditions>{}; } &&
     (T::conditions < 32) &&
     requires { std::integral_constant<uint8_t, T::reserve_events>{}; } &&
-    requires(T dev, NotifyQueues queues, const Frame &in, Frame &out,
+    requires(T dev, NotifyQueues queues, Frame &out,
              expected<std::unique_ptr<Frame>, detail::SendError> exp,
              uint32_t payload) {
       dev.init(queues);
-      dev.handle(in, out);
-      dev.reported_active(out);
       { dev.react(std::move(exp)) } -> std::same_as<std::unique_ptr<Frame>>;
       dev.emit(out, condition, payload);
       dev.emit(out, event, payload);
-    };
+    } &&
+    (!is_listed<T> || requires(T dev, const Frame &in, Frame &out) {
+      dev.handle(in, out);
+      dev.reported_active(out);
+    });
 } // namespace avclan

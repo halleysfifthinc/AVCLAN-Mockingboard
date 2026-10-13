@@ -170,7 +170,8 @@ public:
         case PACK3(COMMUNICATION_V2, COMM_CTRL,
                    to_underlying(Active_Function)): {
           auto reported_active_d = [](auto &d, auto &out) {
-            d.reported_active(out);
+            if constexpr (requires { d.reported_active(out); })
+              d.reported_active(out);
           };
           ((Devs::id == static_cast<Device>(b3)
                 ? originate(std::get<Devs>(devices_), *out, reported_active_d)
@@ -199,10 +200,17 @@ public:
           stamp<Recipient>(*out); // re-stamp now that controller_ is known
           out->is_unicast = true;
           const uint8_t list_functions_resp[] = {
-              0x00, to_underlying(COMM_CTRL), from,
-              to_underlying(List_Functions_Resp), to_underlying(Devs::id)...};
+              0x00,
+              to_underlying(COMM_CTRL),
+              from,
+              to_underlying(List_Functions_Resp),
+          };
           out->length = sizeof(list_functions_resp);
           memcpy(out->data, list_functions_resp, sizeof(list_functions_resp));
+          ((is_listed<Devs>
+                ? void(out->data[out->length++] = to_underlying(Devs::id))
+                : void()),
+           ...);
           out->reaction = 1;
           break;
         }
@@ -210,7 +218,10 @@ public:
         default: break;
       }
     } else if (in.peripheral_addr == address_ && b0 == 0x00) {
-      auto handle_d = [&](auto &d, auto &out) { d.handle(in, out); };
+      auto handle_d = [&](auto &d, auto &out) {
+        if constexpr (requires { d.handle(in, out); })
+          d.handle(in, out);
+      };
       ((Devs::id == static_cast<Device>(b2)
             ? originate(std::get<Devs>(devices_), *out, handle_d)
             : void()),
