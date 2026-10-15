@@ -77,8 +77,7 @@ public:
   void handle(const Frame &in, Frame &out);
   std::unique_ptr<Frame>
   react(expected<std::unique_ptr<Frame>, detail::SendError> exp);
-  void enable(Frame &out);
-  void disable(Frame &out);
+  void reported_active(Frame &out);
   bool isPlaying() const;
 
 private:

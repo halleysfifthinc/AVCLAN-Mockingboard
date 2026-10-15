@@ -82,24 +82,24 @@ void CDChanger::handle(const Frame &in, Frame &out) {
 #pragma GCC diagnostic ignored "-Wswitch-enum"
   // Unicast to CD changer: bytes are (0x00, from, to, action, [extra...]).
   switch (const std::lock_guard lock(mutex); action) {
-    case Enable_Function_Req:
+    case Activate_Function_Req:
       out.is_unicast = true;
       out.length = sizeof(function_change_resp);
       memcpy(out.data, function_change_resp, sizeof(function_change_resp));
       out.data[2] = to_underlying(from);
-      out.data[3] = to_underlying(Enable_Function_Resp);
+      out.data[3] = to_underlying(Activate_Function_Resp);
       state = 0;
       flags2 = 0x80;
       out.reaction = r_StatusReport;
       break;
-    case Disable_Function_Req:
+    case Deactivate_Function_Req:
       // Head unit always expects a response, but the state change can be
       // conditional
       out.is_unicast = true;
       out.length = sizeof(function_change_resp);
       memcpy(out.data, function_change_resp, sizeof(function_change_resp));
       out.data[2] = to_underlying(from);
-      out.data[3] = to_underlying(Disable_Function_Resp);
+      out.data[3] = to_underlying(Deactivate_Function_Resp);
       if (isPlaying()) {
         media = stopPlaying();
         state = 0;
@@ -355,7 +355,7 @@ CDChanger::react(expected<std::unique_ptr<Frame>, detail::SendError> exp) {
   return next;
 }
 
-void CDChanger::enable(Frame &out) {
+void CDChanger::reported_active(Frame &out) {
   if (!isPlaying()) {
     const std::lock_guard lock(mutex);
     if (!time)

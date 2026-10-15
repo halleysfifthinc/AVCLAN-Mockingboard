@@ -166,13 +166,14 @@ public:
           out->data[3] = to_underlying(Lancheck_End_Resp);
           out->reaction = 1;
           break;
-        case PACK3(COMMUNICATION_V1, COMM_CTRL,
-                   to_underlying(Advertise_Function)):
+        case PACK3(COMMUNICATION_V1, COMM_CTRL, to_underlying(Active_Function)):
         case PACK3(COMMUNICATION_V2, COMM_CTRL,
-                   to_underlying(Advertise_Function)): {
-          auto enable_d = [](auto &d, auto &out) { d.enable(out); };
+                   to_underlying(Active_Function)): {
+          auto reported_active_d = [](auto &d, auto &out) {
+            d.reported_active(out);
+          };
           ((Devs::id == static_cast<Device>(b3)
-                ? originate(std::get<Devs>(devices_), *out, enable_d)
+                ? originate(std::get<Devs>(devices_), *out, reported_active_d)
                 : void()),
            ...);
           break;

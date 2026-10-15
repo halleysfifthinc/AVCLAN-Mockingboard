@@ -208,7 +208,7 @@ concept DeviceInterface =
              uint32_t payload) {
       dev.init(queues);
       dev.handle(in, out);
-      dev.enable(out);
+      dev.reported_active(out);
       { dev.react(std::move(exp)) } -> std::same_as<std::unique_ptr<Frame>>;
       dev.emit(out, condition, payload);
       dev.emit(out, event, payload);

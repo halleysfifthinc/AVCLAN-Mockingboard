@@ -44,13 +44,13 @@ enum AVCLAN_ENUM_CLASS Action : uint8_t {
   Ping_Req = 0x20,
   Ping_Resp = 0x30,
 
-  // Device switching
-  Enable_Function_Req = 0x42,
-  Enable_Function_Resp = 0x52,
-  Disable_Function_Req = 0x43,
-  Disable_Function_Resp = 0x53,
+  // Function activation
+  Activate_Function_Req = 0x42,
+  Activate_Function_Resp = 0x52,
+  Deactivate_Function_Req = 0x43,
+  Deactivate_Function_Resp = 0x53,
 
-  Advertise_Function = 0x45,
+  Active_Function = 0x45,
   General_Query = 0x46,
 
   // Events

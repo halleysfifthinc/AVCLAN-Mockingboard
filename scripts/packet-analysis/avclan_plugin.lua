@@ -266,7 +266,7 @@ local known_devices_names = invert(known_devices)
 
 local f_from_device = ProtoField.uint8("avclan.from_device", "From device", base.HEX, known_devices)
 local f_to_device = ProtoField.uint8("avclan.to_device", "To device", base.HEX, known_devices)
-local f_active_device = ProtoField.uint8("avclan.active_device", "Active device", base.HEX, known_devices)
+local f_active_function = ProtoField.uint8("avclan.active_function", "Active function", base.HEX, known_devices)
 
 -- Action conventions:
 --  - REQ/RESP pairs differ by 0x10, where the REQ is the lesser
@@ -300,12 +300,18 @@ local known_actions = {
     -- [0x21] = "??" -- Observed as [00 11 00 21] incorrect 0xf0/INITIAL_REPORT_RESP message (double leading zeros instead of single unicast leading zero)
     [0x30] = "PING_RESP",
 
-    [0x42] = "ENABLE_FUNCTION_REQ",
-    [0x52] = "ENABLE_FUNCTION_RESP",
-    [0x43] = "DISABLE_FUNCTION_REQ",
-    [0x53] = "DISABLE_FUNCTION_RESP",
+    -- Have only been observed in the context of audio device/functions, but use
+    -- of general broadcast (vs audio group broadcast) weakens this assumption
+    [0x42] = "ACTIVATE_FUNCTION_REQ",
+    [0x52] = "ACTIVATE_FUNCTION_RESP",
+    [0x43] = "DEACTIVATE_FUNCTION_REQ",
+    [0x53] = "DEACTIVATE_FUNCTION_RESP",
 
-    [0x45] = "ADVERTISE_FUNCTION",
+    -- Broadcast ~5 s and on change; 0x01 (COMM_CTRL): no active function
+    -- Functions don't appear to be considered completely active until the
+    -- ACTIVE_FUNCTION announcement after an ACTIVATE_FUNCTION REQ/RESP
+    [0x45] = "ACTIVE_FUNCTION",
+
     [0x46] = "GENERAL_QUERY",
 
     -- Physical actions
@@ -525,7 +531,7 @@ local f_tape_flag4 = ProtoField.bool("avclan.tape.flags.flag4", "UNKNOWN4", 16, 
 avclanproto.fields = {
     f_from_device,
     f_to_device,
-    f_active_device,
+    f_active_function,
     f_action,
     f_functions,
     f_ping_count,
@@ -718,8 +724,8 @@ local function decode_from_comm(subtree, buffer, offset, to_device)
     if to_device == known_devices_names["COMM_CTRL"] then
         add_action(subtree, buffer(offset+2,1))
         local action = field_action().value
-        if action == known_actions_names["ADVERTISE_FUNCTION"] then
-            add_device(subtree, f_active_device, buffer(offset+3,1))
+        if action == known_actions_names["ACTIVE_FUNCTION"] then
+            add_device(subtree, f_active_function, buffer(offset+3,1))
         elseif action == known_actions_names["PING_REQ"] then
             subtree:add(f_ping_count, buffer(offset+3,1))
             subtree:add_proto_expert_info(pe_ping_req, "Ping request " .. buffer(offset+3,1):uint())
@@ -729,7 +735,7 @@ local function decode_from_comm(subtree, buffer, offset, to_device)
         end
     else
         -- Control actions addressed to a peripheral rather than COMM_CTRL, e.g.
-        -- function enable/disable (COMM_v1/v2 -> CD_CHANGER, 0x42/0x43). These
+        -- function activate/deactivate (COMM_v1/v2 -> CD_CHANGER, 0x42/0x43). These
         -- are understood apart from a trailing 0x01 of unknown meaning.
         add_action(subtree, buffer(offset+2,1))
     end
@@ -951,8 +957,8 @@ local function decode_cd(subtree, buffer, offset, action)
             local title = nametree:add(f_cd_title, buffer(offset+7))
             title:append_text(" (\"" .. buffer(offset+7):string() .. "\")")
         end
-    elseif action == known_actions_names["ENABLE_FUNCTION_RESP"] or
-        action == known_actions_names["DISABLE_FUNCTION_RESP"] then
+    elseif action == known_actions_names["ACTIVATE_FUNCTION_RESP"] or
+        action == known_actions_names["DEACTIVATE_FUNCTION_RESP"] then
         -- Understood apart from a trailing 0x01 of unknown meaning; not flagged.
     elseif buffer:len() > offset+3 then
         -- Recognized CD action (initial report 0xf0, TOC 0xf9, track name
