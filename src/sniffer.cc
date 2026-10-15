@@ -462,7 +462,7 @@ int main() {
   static media::Binding<media::Playback> playback;
   static media::Binding<media::Volume> volume;
   peripheral.device<CDChanger>().attach(playback);
-  peripheral.device<Amplifier>().attach(volume);
+  peripheral.device<Amplifier>().attach(volume, peripheral.device<CDChanger>());
   mobile.attach(playback);
   mobile.attach(volume);
 #endif

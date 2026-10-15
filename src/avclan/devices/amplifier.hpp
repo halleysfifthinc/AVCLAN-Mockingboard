@@ -31,10 +31,18 @@ public:
 
   void init(NotifyQueues queues);
 
+  // `source` is the function whose audio the binding's volume controls
+  template <DeviceInterface Source>
+  void attach(media::Binding<Volume> &b, const Source & /* source */) {
+    source_ = Source::id;
+    media::Model<Amplifier, Volume>::attach(b);
+  }
+
   std::unique_ptr<Frame>
   react(expected<std::unique_ptr<Frame>, detail::SendError> exp);
 
   void observe(const Frame &);
+  void active_changed(Device function);
 
   void receive(const Volume::Set &s);
 
@@ -54,6 +62,11 @@ private:
 
   std::optional<uint16_t> amp_addr_;
 
+  // Written once
+  Device source_ = NoDevice;
+  // Phone volume applies only while `source_` is the active function
+  bool source_active_ = false;
+
   // Possibly indicated in first byte (post from/to/action header) seen as 0xb0
   // => 0x90 (bit 5 cleared) in transition from no active device to cdchanger
   // active
@@ -61,7 +74,8 @@ private:
 
   // The amp's last reported volume byte (see `attenuation`)
   std::optional<uint8_t> volume_;
-  // The phone's level; cleared once reached
+  // The phone's level. Dropped while `source_` isn't active; cleared once
+  // reached.
   std::optional<uint8_t> target_;
   // The level the pending step requested; set while it's pending
   std::optional<uint8_t> requested_;

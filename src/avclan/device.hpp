@@ -222,10 +222,13 @@ constexpr bool is_listed<T> = T::listed;
   Optional members of `T`:
   - `T::listed` (undefined is equivalent to `true`): listed in response to
   List_Functions_Req; when `false`, `handle` and `reported_active` are optional
+  - `active_changed(Device function)`: runs when the head unit's active function
+    changes (`NoDevice`: none); fills no frame, and runs before the same
+    frame's `handle()`/`reported_active()`
   - `observe(const Frame &in)`: runs for every received frame of 3+ bytes,
     before routing, including while muted
 
-  Neither `handle` nor `reported_active` runs while muted.
+  Neither `active_changed`, `handle` nor `reported_active` runs while muted.
 */
 template <class T>
 concept DeviceInterface =

@@ -133,7 +133,7 @@ void Amplifier::observe(const Frame &in) {
     // (Successful) pending resolution
     clear_pending();
     notify(condition, r_VolumeRequest);
-  } else if (!requested_ && changed) {
+  } else if (!requested_ && changed && source_active_) {
     send(Volume::Level{level});
   }
 
@@ -144,6 +144,19 @@ void Amplifier::observe(const Frame &in) {
   // bass_ = offset16_t::from(*data++).transform(offset16_to_int8);
   // mid_ = offset16_t::from(*data++).transform(offset16_to_int8);
   // treble_ = offset16_t::from(*data++).transform(offset16_to_int8);
+}
+
+void Amplifier::active_changed(Device function) {
+  const bool is_source = function != NoDevice && function == source_;
+  // A fill() between the store and the requested_ read would send a step that
+  // this report then contradicts
+  const std::lock_guard lock(mutex);
+  if (is_source == source_active_)
+    return;
+  source_active_ = is_source;
+  // Sets may have been dropped, and knob turns unreported, while not active
+  if (source_active_ && volume_ && !requested_)
+    send(Volume::Level{level_of(*volume_)});
 }
 
 void Amplifier::wake(const Volume::Request & /* msg */) {
@@ -173,8 +186,9 @@ void Amplifier::fill(Frame &out, condition_t /* tag */, uint32_t payload) {
     return;
   const uint8_t level = level_of(*volume_);
   // Amplifier steps are coarser than Bluetooth, so (multiple) volume steps
-  // may not produce a different amplifier volume
-  if (target_ == level)
+  // may not produce a different amplifier volume. Sets are dropped while
+  // `source_` isn't active.
+  if (target_ == level || !source_active_)
     target_.reset();
 
   // Held until the amp reports (so its address is known)
@@ -198,7 +212,7 @@ void Amplifier::fill(Frame &out, condition_t /* tag */, uint32_t payload) {
     out.reaction = set_id_ = static_cast<uint8_t>((set_id_ % 255) + 1);
     requested_ = static_cast<uint8_t>(louder ? level + 1 : level - 1);
     deadline_.reset();
-  } else if (failed && !drained) [[unlikely]] {
+  } else if (failed && !drained && source_active_) [[unlikely]] {
     send(Volume::Level{level});
   }
 }

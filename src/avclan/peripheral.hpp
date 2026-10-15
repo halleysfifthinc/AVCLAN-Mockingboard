@@ -143,6 +143,17 @@ public:
 
     stamp<Recipient>(*out);
 
+    auto set_active = [&](Device function) {
+      if (function == active_)
+        return;
+      active_ = function;
+      auto active_changed_d = [&](auto &d) {
+        if constexpr (requires { d.active_changed(function); })
+          d.active_changed(function);
+      };
+      (active_changed_d(std::get<Devs>(devices_)), ...);
+    };
+
     const uint8_t *data = in.data;
     const uint8_t b0 = *data++;
     const uint8_t b1 = *data++;
@@ -184,6 +195,7 @@ public:
         case PACK3(COMMUNICATION_V1, COMM_CTRL, to_underlying(Active_Function)):
         case PACK3(COMMUNICATION_V2, COMM_CTRL,
                    to_underlying(Active_Function)): {
+          set_active(static_cast<Device>(b3));
           auto reported_active_d = [](auto &d, auto &out) {
             if constexpr (requires { d.reported_active(out); })
               d.reported_active(out);
@@ -239,6 +251,10 @@ public:
       // similarly (never observed)
       const auto id =
           static_cast<Device>(b2 == to_underlying(CMD_SW) ? b1 : b2);
+      if (b3 == to_underlying(Activate_Function_Req))
+        set_active(id);
+      else if (b3 == to_underlying(Deactivate_Function_Req) && id == active_)
+        set_active(NoDevice);
       auto handle_d = [&](auto &d, auto &out) {
         if constexpr (requires { d.handle(in, out); })
           d.handle(in, out);
@@ -325,6 +341,8 @@ private:
 
   Bus &bus;
   uint16_t controller_ = 0;
+  // The head unit's active function; NoDevice: none known
+  Device active_ = NoDevice;
   const uint16_t address_;
   std::tuple<Devs...> devices_;
   QueueHandle_t conditions_;
