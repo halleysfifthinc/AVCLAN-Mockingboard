@@ -199,14 +199,33 @@ template <class T>
   requires requires { std::bool_constant<T::listed>{}; }
 constexpr bool is_listed<T> = T::listed;
 
-// `conditions`: the number of unique conditions (max of 32)
-// `reserve_events`: the number of event queue slots to reserve for the device;
-// should be based on the expected device activity and to minimize blocking
-// durations
-// Devices are listed by default in response to List_Functions_Req unless
-// T::listed == false
-// `handle` and `reported_active` member functions are required when listed, and
-// optional otherwise
+/**
+  \brief The interface required for Device implementations used by Peripheral
+
+  Required members of `T`:
+  - `T::id` (`Device`): the function the device answers to
+  - `T::conditions` (`uint8_t`, < 32): the number of unique conditions
+  - `T::reserve_events` (`uint8_t`): event queue slots to reserve for the
+    device; base it on the expected device activity to keep blocking short
+  - `init(NotifyQueues)`, `emit(Frame &, condition_t|event_t, uint32_t)`: from
+    `Notifier`, or `NonNotifier` for a device that never notifies
+  - `react(expected<std::unique_ptr<Frame>, SendError>)`: gets the result of
+    sending a frame the device owns; returns the next frame to send, or null
+  - When listed:
+    - `handle(in, out)`: gets frames addressed to the device
+    - `reported_active(out)`: runs for every ACTIVE_FUNCTION naming the device,
+      including the head unit's ≈5 s repeats, so it must be idempotent
+
+    Both may fill `out`.
+
+  Optional members of `T`:
+  - `T::listed` (undefined is equivalent to `true`): listed in response to
+  List_Functions_Req; when `false`, `handle` and `reported_active` are optional
+  - `observe(const Frame &in)`: runs for every received frame of 3+ bytes,
+    before routing, including while muted
+
+  Neither `handle` nor `reported_active` runs while muted.
+*/
 template <class T>
 concept DeviceInterface =
     requires { std::integral_constant<Device, T::id>{}; } &&

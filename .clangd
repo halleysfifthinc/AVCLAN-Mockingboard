@@ -12,3 +12,5 @@ CompileFlags:
     - -fno-malloc-dce
   Add:
     - -Wno-missing-field-initializers
+Documentation:
+  CommentFormat: Doxygen
