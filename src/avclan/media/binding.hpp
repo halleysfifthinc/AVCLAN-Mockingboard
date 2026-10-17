@@ -111,14 +111,14 @@ template <Domain D> struct Binding {
 // A report must never cause a request.
 template <class Derived, Domain D, class In, class Out> class Endpoint {
 public:
-  // Attach one end of a Binding to this model/view.
-  // Unsafe to call when the scheduler is running due to non-atomic writes that
-  // could allow racy reads in `send`
+  // Attach one end of a Binding to this model/view. Only before the scheduler
+  // starts: `send` reads the binding without a lock.
   void attach(Binding<D> &b) {
+    configASSERT(xTaskGetSchedulerState() == taskSCHEDULER_NOT_STARTED);
     binding = &b;
     b.template inbox<In>() = {
         .deliver =
-            [](void *self, const In &msg) static {
+            [](void *self, const In &msg) {
               static_cast<Endpoint *>(self)->deliver(msg);
             },
         .endpoint = this,
