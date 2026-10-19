@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -94,6 +95,8 @@ private:
   friend Notifier<CDChanger>;
   friend media::View<CDChanger, Playback>;
 
+  static constexpr int WIRE_SIZE = 8; // cd state report size in bytes
+
   void wake(const Playback::Report &msg);
   void fill(Frame &out, condition_t tag, uint32_t payload);
 
@@ -110,6 +113,9 @@ private:
   void normalizeState();
 
   TimerHandle_t statusTimer = nullptr;
+  // The last broadcast status sent. A ~1 Hz or report-driven status that
+  // matches it (e.g. while paused) isn't sent.
+  std::array<uint8_t, WIRE_SIZE> sentStatus{};
 
   // Track time is a stopwatch: `time` is relative to `refTick`, and advances
   // while `playing` and the source isn't paused. nullopt means no time is
@@ -132,8 +138,6 @@ private:
   uint8_t track = 1; // Decimal storage; serialize to BCD. 0: no track (source
                      // has no active player)
   uint8_t flags = 0;
-  // The random bits the head unit last asked for; shown when shuffle is on
-  uint8_t requestedRandom = RANDOM;
   uint8_t flags2 = 0x80;
 };
 

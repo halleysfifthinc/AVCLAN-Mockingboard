@@ -35,7 +35,6 @@ constexpr uint8_t cdloading_resp[] = {
     0x02,
 };
 
-constexpr int WIRE_SIZE = 8; // cd state report size in bytes
 constexpr int TWODIGIT_MAX = 99;
 constexpr auto MAX_TIME = std::chrono::minutes{TWODIGIT_MAX} + 59s;
 
@@ -76,13 +75,8 @@ void CDChanger::handle(const Frame &in, Frame &out) {
   static const uint8_t function_change_resp[] = {
       0x00, to_underlying(Device::CD_CHANGER), 0xFF, 0xFF, 0x01};
 
-  // The source has one shuffle and one repeat setting for both the disc and
-  // whole-changer flags. `flags` changes only once the source reports.
-  const auto requestShuffle = [this](uint8_t want) {
-    if (const uint8_t random = want & (RANDOM | DISK_RANDOM); random != 0)
-      requestedRandom = random;
-    send(Playback::SetShuffle{(want & (RANDOM | DISK_RANDOM)) != 0});
-  };
+  // The source has one repeat setting for both the disc and whole-changer
+  // flags. `flags` changes only once the source reports.
   const auto requestRepeat = [this](uint8_t want) {
     if ((want & REPEAT) != 0)
       send(Playback::SetRepeat{Playback::RepeatMode::Track});
@@ -185,13 +179,11 @@ void CDChanger::handle(const Frame &in, Frame &out) {
       out.is_unicast = true;
       out.reaction = r_SendOnly;
       break;
+    // The track number changes only once the source reports. Previous may
+    // instead restart the track.
     case Track_Seek_Up:
       endSeeking();
       state = SEEKING_TRACK;
-      if (track >= TWODIGIT_MAX)
-        track = 1;
-      else if (track != 0) // No track: the source picks one
-        ++track;
       time.reset();
       generateStatus(out, true, Device::CMD_SW);
       send(Playback::Next{});
@@ -200,14 +192,6 @@ void CDChanger::handle(const Frame &in, Frame &out) {
     case Track_Seek_Down:
       endSeeking();
       state = SEEKING_TRACK;
-      // Track down returns to track beginning if in ~middle of song (the
-      // source decides likewise; its report corrects any mismatch)
-      if (const auto t = trackTime(); t && *t < 5s) {
-        if (track > 1)
-          --track;
-        else if (track != 0)
-          track = TWODIGIT_MAX;
-      }
       time.reset();
       send(Playback::Previous{});
       generateStatus(out, true, Device::CMD_SW);
@@ -225,14 +209,17 @@ void CDChanger::handle(const Frame &in, Frame &out) {
       out.reaction = r_SendOnly;
       break;
     }
+    // The source has one shuffle setting, shown as RANDOM for either button
     case CD_Enable_Random:
+    case CD_Enable_Disk_Random:
       generateStatus(out, true, Device::CMD_SW);
-      requestShuffle(flags | RANDOM);
+      send(Playback::SetShuffle{true});
       out.reaction = r_StatusReport;
       break;
     case CD_Disable_Random:
+    case CD_Disable_Disk_Random:
       generateStatus(out, true, Device::CMD_SW);
-      requestShuffle(flags & ~RANDOM);
+      send(Playback::SetShuffle{false});
       out.reaction = r_StatusReport;
       break;
     case CD_Enable_Repeat:
@@ -243,16 +230,6 @@ void CDChanger::handle(const Frame &in, Frame &out) {
     case CD_Disable_Repeat:
       generateStatus(out, true, Device::CMD_SW);
       requestRepeat(flags & ~REPEAT);
-      out.reaction = r_StatusReport;
-      break;
-    case CD_Enable_Disk_Random:
-      generateStatus(out, true, Device::CMD_SW);
-      requestShuffle(flags | DISK_RANDOM);
-      out.reaction = r_StatusReport;
-      break;
-    case CD_Disable_Disk_Random:
-      generateStatus(out, true, Device::CMD_SW);
-      requestShuffle(flags & ~DISK_RANDOM);
       out.reaction = r_StatusReport;
       break;
     case CD_Enable_Disk_Repeat:
@@ -305,6 +282,9 @@ CDChanger::react(expected<std::unique_ptr<Frame>, detail::SendError> exp) {
     }
   } else {
     auto out = std::move(exp.value());
+    if (!out->is_unicast && out->length == WIRE_SIZE + 3 &&
+        out->data[2] == to_underlying(Action::Playback_Status))
+      std::copy_n(&out->data[3], WIRE_SIZE, sentStatus.begin());
     auto resp = static_cast<reaction_t>(out->reaction);
     out->reaction = r_Nothing;
     switch (resp) {
@@ -411,6 +391,8 @@ void CDChanger::fill(Frame &out, condition_t /*tag*/, uint32_t payload) {
   if (!playing) // Deactivated after the status was requested
     return;
   generateStatus(out, false, Device::STATUS);
+  if (std::equal(sentStatus.begin(), sentStatus.end(), &out.data[3]))
+    return;
   out.reaction = r_StateReport;
   // Restarts the ~1 Hz interval, so reports that each emit a status don't add
   // to it
@@ -539,9 +521,9 @@ void CDChanger::normalizeState() {
 // The receive()s run under `mutex`, from drain()
 
 void CDChanger::receive(const Playback::Shuffle &s) {
-  flags &= (uint8_t)~(RANDOM | DISK_RANDOM);
+  flags &= (uint8_t)~RANDOM;
   if (s.on)
-    flags |= requestedRandom;
+    flags |= RANDOM;
 }
 
 void CDChanger::receive(const Playback::Repeat &r) {
