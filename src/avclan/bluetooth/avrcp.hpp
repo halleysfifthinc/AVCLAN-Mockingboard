@@ -96,6 +96,16 @@ private:
           },
       .context = this,
   };
+  // A phone restores its own volume shortly after connecting; without one, it
+  // takes the amp's
+  btstack_timer_source_t volume_timer{
+      .process =
+          [](btstack_timer_source_t *ts) static {
+            static_cast<Avrcp *>(btstack_run_loop_get_timer_context(ts))
+                ->send(Volume::Reset{});
+          },
+      .context = this,
+  };
   uint8_t controller_record[114]{};
   uint8_t target_record[107]{};
 };

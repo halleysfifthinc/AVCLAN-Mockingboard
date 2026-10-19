@@ -284,6 +284,9 @@ void Avrcp::on_connection(uint8_t packet_type, uint16_t /* channel */,
       // A phone registers only for the events the target lists
       avrcp_target_support_event(self->cid,
                                  AVRCP_NOTIFICATION_EVENT_VOLUME_CHANGED);
+      // A phone was seen to restore its volume 71 ms after connecting
+      constexpr uint32_t VOLUME_GRACE_MS = 500;
+      restart(self->volume_timer, VOLUME_GRACE_MS);
       break;
     }
     case AVRCP_SUBEVENT_CONNECTION_RELEASED:
@@ -296,7 +299,10 @@ void Avrcp::on_connection(uint8_t packet_type, uint16_t /* channel */,
       self->pending = {};
       btstack_run_loop_remove_timer(&self->pump_timer);
       btstack_run_loop_remove_timer(&self->track_check_timer);
+      btstack_run_loop_remove_timer(&self->volume_timer);
       self->send(Playback::Connected{false});
+      // A level held for this phone doesn't outlive it
+      self->send(Volume::Reset{});
       break;
     default: break;
   }
@@ -435,6 +441,7 @@ void Avrcp::on_target(uint8_t packet_type, uint16_t /* channel */,
 #ifndef NDEBUG
       printf("phone set absolute volume -> %u/127\n", absolute);
 #endif
+      btstack_run_loop_remove_timer(&self->volume_timer);
       self->send(Volume::Set{
           static_cast<uint8_t>(((absolute * Volume::MAX) + (127 / 2)) / 127),
       });

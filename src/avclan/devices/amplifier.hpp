@@ -45,6 +45,7 @@ public:
   void active_changed(Device function);
 
   void receive(const Volume::Set &s);
+  void receive(const Volume::Reset &);
 
 private:
   friend Notifier<Amplifier>;
@@ -59,6 +60,7 @@ private:
   void fill(Frame &out, condition_t tag, uint32_t payload);
 
   void clear_pending();
+  void sync();
 
   std::optional<uint16_t> amp_addr_;
 
@@ -74,8 +76,8 @@ private:
 
   // The amp's last reported volume byte (see `attenuation`)
   std::optional<uint8_t> volume_;
-  // The phone's level. Dropped while `source_` isn't active; cleared once
-  // reached.
+  // The phone's level. Held while `source_` isn't active; cleared once
+  // reached, or when the head unit changes the volume while active.
   std::optional<uint8_t> target_;
   // The level the pending step requested; set while it's pending
   std::optional<uint8_t> requested_;

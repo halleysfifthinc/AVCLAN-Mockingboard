@@ -8,6 +8,7 @@
 #include <cstring>
 #include <functional>
 #include <optional>
+#include <utility>
 
 #include "amplifier.hpp"
 #include "avclan.h"
@@ -77,6 +78,14 @@ void Amplifier::clear_pending() {
   xTimerStop(timeout_, 0);
 }
 
+// Steps to a held phone level, or else tells the phone the amp's
+void Amplifier::sync() {
+  if (target_)
+    notify(condition, r_VolumeRequest);
+  else
+    send(Volume::Level{level_of(*volume_)});
+}
+
 std::unique_ptr<Frame>
 Amplifier::react(expected<std::unique_ptr<Frame>, detail::SendError> exp) {
   const uint8_t set = exp ? (*exp)->reaction : exp.error().reaction;
@@ -123,19 +132,31 @@ void Amplifier::observe(const Frame &in) {
   if (b1 == 0)
     return;
 
-  amplifier_muted_ = ((b1 & (1 << 5U)) != 0);
+  const bool was_muted = std::exchange(amplifier_muted_, (b1 & (1 << 5U)) != 0);
   const uint8_t volume = *data++;
-  const bool changed = volume != volume_;
-  volume_ = volume;
-  // The phone already shows what it set. While pending, other volumes (e.g. a
-  // knob turn or ramp) aren't reported; the timeout reports the final volume.
+  const std::optional<uint8_t> previous = std::exchange(volume_, volume);
+
   if (const uint8_t level = level_of(volume); requested_ == level) {
     // (Successful) pending resolution
     clear_pending();
     notify(condition, r_VolumeRequest);
-  } else if (!requested_ && changed && source_active_) {
-    send(Volume::Level{level});
+  } else if (volume != previous) {
+    // The first report, or the head unit changed it (e.g. its knob, or a
+    // recall on a source switch)
+    if (requested_)
+      clear_pending();
+
+    if (source_active_) {
+      // The head unit wins over a phone level
+      if (previous)
+        target_.reset();
+      sync();
+    }
   }
+  // The amp mutes for 0.5-1.5 s after a source switch, just when a held level
+  // is due, so steps wait for it to unmute
+  if (was_muted && !amplifier_muted_ && target_ && !requested_)
+    notify(condition, r_VolumeRequest);
 
   // // Skip reading/parsing remaining fields due to current unuse
   // constexpr auto offset16_to_int8 = &offset16_t::operator int8_t;
@@ -154,9 +175,9 @@ void Amplifier::active_changed(Device function) {
   if (is_source == source_active_)
     return;
   source_active_ = is_source;
-  // Sets may have been dropped, and knob turns unreported, while not active
+  // Amplifier volume is only synchronized with the source when active
   if (source_active_ && volume_ && !requested_)
-    send(Volume::Level{level_of(*volume_)});
+    sync();
 }
 
 void Amplifier::wake(const Volume::Request & /* msg */) {
@@ -167,6 +188,12 @@ void Amplifier::receive(const Volume::Set &s) {
   target_ = std::min(s.level, Volume::MAX);
 }
 
+void Amplifier::receive(const Volume::Reset & /* reset */) {
+  target_.reset();
+  if (source_active_ && volume_)
+    send(Volume::Level{level_of(*volume_)});
+}
+
 void Amplifier::fill(Frame &out, condition_t /* tag */, uint32_t payload) {
   const bool failed = payload == r_FailedVolume;
   // Stale: the step landed, or the timeout/failure is an earlier step's
@@ -175,8 +202,10 @@ void Amplifier::fill(Frame &out, condition_t /* tag */, uint32_t payload) {
     return;
   if (failed) {
     clear_pending();
-    // Abandoned
-    target_.reset();
+    // Abandoned, unless the amp muted (e.g. a source switch reported after the
+    // activation) and so may have ignored it; the unmute retries
+    if (!amplifier_muted_)
+      target_.reset();
   }
 
   const bool drained = drain();
@@ -186,13 +215,13 @@ void Amplifier::fill(Frame &out, condition_t /* tag */, uint32_t payload) {
     return;
   const uint8_t level = level_of(*volume_);
   // Amplifier steps are coarser than Bluetooth, so (multiple) volume steps
-  // may not produce a different amplifier volume. Sets are dropped while
-  // `source_` isn't active.
-  if (target_ == level || !source_active_)
+  // may not produce a different amplifier volume
+  if (target_ == level)
     target_.reset();
 
-  // Held until the amp reports (so its address is known)
-  if (target_) {
+  // Held until `source_` is active, and the amp reports (so its address is
+  // known) and unmutes
+  if (target_ && source_active_ && !amplifier_muted_) {
     const bool louder = *target_ > level;
     out.is_unicast = true;
     out.peripheral_addr = *amp_addr_;
@@ -212,7 +241,7 @@ void Amplifier::fill(Frame &out, condition_t /* tag */, uint32_t payload) {
     out.reaction = set_id_ = static_cast<uint8_t>((set_id_ % 255) + 1);
     requested_ = static_cast<uint8_t>(louder ? level + 1 : level - 1);
     deadline_.reset();
-  } else if (failed && !drained && source_active_) [[unlikely]] {
+  } else if (failed && !target_ && !drained && source_active_) [[unlikely]] {
     send(Volume::Level{level});
   }
 }

@@ -15,11 +15,14 @@ struct Volume {
   static constexpr uint8_t MAX = 47;
 
   // Steps that arrive before the model endpoint drains coalesce into the
-  // latest level. The amp steps to it.
+  // latest level. The amp steps to it if/when its source is active.
   struct Set {
     uint8_t level;
   };
-  using Request = std::variant<Set>;
+  // Clears a held set; the model then reports its level if its source is
+  // active
+  struct Reset {};
+  using Request = std::variant<Set, Reset>;
 
   struct Level {
     uint8_t level;
