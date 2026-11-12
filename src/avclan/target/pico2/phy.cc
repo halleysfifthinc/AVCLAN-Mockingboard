@@ -190,9 +190,33 @@ public:
     xSemaphoreTake(xNotice, xTicksToWait);
   }
 
+  // Blocks until the frame being received ends, for at most a max-length frame;
+  // returns at once between frames. The end is signalled after reading
+  // the frame's last field, before its last ack slot. Returns immediately when
+  // a frame has already been dropped (transmitting, deafened, or full RX queue
+  // and message is to us).
+  void wait_frame_end() {
+    frame_end_waiter_ = xTaskGetCurrentTaskHandle();
+    if (state_ != RxField::Broadcast)
+      ulTaskNotifyTake(pdTRUE, MAX_FRAME_TICKS);
+    frame_end_waiter_ = nullptr;
+    // Drain any racey notifications:
+    //  - Between waiter registration and state check
+    //  - Between timed-out wait and deregistration
+    ulTaskNotifyTake(pdTRUE, 0);
+  }
+
   void release() { rxq_tail_ = (rxq_tail_ + 1) & (RXQ_N - 1); }
 
 private:
+  // A start bit, 44 header bits (fields, parities and acks), and 10 bits per
+  // data byte
+  static constexpr double MAX_FRAME_S =
+      AVCLAN_STARTBIT_LOGIC_0 + AVCLAN_STARTBIT_LOGIC_1 +
+      ((44 + (10 * sizeof(RxFrame::data))) * AVCLAN_BIT_LENGTH_MAX);
+  static constexpr auto MAX_FRAME_TICKS =
+      static_cast<TickType_t>(MAX_FRAME_S * configTICK_RATE_HZ) + 1;
+
   // True when publish() would have nowhere to put the frame being received.
   bool queue_full() const {
     return ((rxq_head_ + 1) & (RXQ_N - 1)) == rxq_tail_;
@@ -381,6 +405,8 @@ private:
       rxq_head_ = (rxq_head_ + 1) & (RXQ_N - 1);
       xSemaphoreGiveFromISR(xNotice, &xHigherPriorityTaskWoken);
     }
+    if (TaskHandle_t waiter = frame_end_waiter_) // Only load volatile once
+      vTaskNotifyGiveFromISR(waiter, &xHigherPriorityTaskWoken);
     begin_frame();
   }
 
@@ -411,11 +437,14 @@ private:
   // NAK'd for want of room; the sender still owns the frame and sends it again.
   volatile uint32_t rxq_refused_ = 0;
 
+  // Given by publish when new frame reads are complete; initialized with RXQ_N
+  // slots
   SemaphoreHandle_t xNotice = nullptr;
+  volatile TaskHandle_t frame_end_waiter_ = nullptr; // set by wait_frame_end()
   BaseType_t xHigherPriorityTaskWoken = false;
 
   RxFrame building_ = {};
-  RxField state_ = RxField::Broadcast;
+  volatile RxField state_ = RxField::Broadcast; // read by wait_frame_end()
   uint8_t data_i_ = 0;
   bool controller_ok_ = false; // parity verdict, held until the peripheral slot
 };
@@ -606,10 +635,15 @@ public:
     // Our frame is over, won or not.
     rx_.rearm_ack();
     words_ = 0;
-    const Send err = fault_;
-    fault_ = Send{0};
+    const Send err = std::exchange(fault_, Send{0});
     if (err == NAK_DATA)
       *data_index = (uint8_t)(failed_word_ - data_start_);
+    // A retry has to find the bus free: outwait the frame that held it, then
+    // that frame's last ack slot, which follows its end signal
+    if (err == BUSY || err == LOST_ARBITRATION) {
+      rx_.wait_frame_end();
+      vTaskDelay(2); // At least one whole tick
+    }
     return err;
   }
 
