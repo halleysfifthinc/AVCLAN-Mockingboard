@@ -122,6 +122,9 @@ void Avrcp::receive(const Volume::Level &lvl) {
   const uint8_t level = std::min(lvl.level, Volume::MAX);
   const auto absolute =
       static_cast<uint8_t>(((level * 127) + (Volume::MAX / 2)) / Volume::MAX);
+#ifndef NDEBUG
+  printf("reporting absolute volume -> %u/127\n", absolute);
+#endif
   if (cid != 0)
     avrcp_target_volume_changed(cid, absolute);
 }

@@ -69,9 +69,9 @@ private:
   // Phone volume applies only while `source_` is the active function
   bool source_active_ = false;
 
-  // Possibly indicated in first byte (post from/to/action header) seen as 0xb0
-  // => 0x90 (bit 5 cleared) in transition from no active device to cdchanger
-  // active
+  // Bit 5 of the first byte after the from/to/action header: set for 0.5-1.5 s
+  // after any source switch or power-on (0xb0 => 0x90). Bit 7 clears while the
+  // head unit is off (0x30).
   bool amplifier_muted_ = true;
 
   // The amp's last reported volume byte (see `attenuation`)

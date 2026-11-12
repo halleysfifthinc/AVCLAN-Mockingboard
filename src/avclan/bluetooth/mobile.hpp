@@ -9,6 +9,7 @@
 #include "btstack.h" // IWYU pragma: export
 
 #include "a2dp_sink.hpp"
+#include "audio/stream.hpp"
 #include "avrcp.hpp"
 #include "bonds.hpp"
 #include "gap.hpp"
@@ -34,6 +35,7 @@ public:
   void forget_pairings();
   // As if the Playback view had sent it
   void inject(const media::Playback::Request &r) { avrcp.deliver(r); }
+  void print_audio_stats() const { stream.print_stats(); }
 #endif
 
 private:
@@ -49,7 +51,8 @@ private:
 
   Gap gap;
   Avrcp avrcp;
-  A2dpSink a2dp{avrcp};
+  audio::Stream stream;
+  A2dpSink a2dp{avrcp, stream};
   Bonds bonds{*this};
   btstack_packet_callback_registration_t hci_registration{
       .callback = &on_hci_event,

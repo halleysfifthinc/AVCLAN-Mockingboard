@@ -30,7 +30,9 @@ constexpr std::underlying_type_t<Enum> to_underlying(Enum e) noexcept {
 #endif
 
 enum TaskPriority : UBaseType_t {
-  BToothPriority = tskIDLE_PRIORITY + 4,
+  BToothPriority = tskIDLE_PRIORITY + 5,
+  // Below BT, so decoding can't starve CYW43 or HCI
+  AudioPriority = tskIDLE_PRIORITY + 4,
   // Message handlers must be ranked such that queues deterministically tend to
   // empty
   SendPriority = tskIDLE_PRIORITY + 3,

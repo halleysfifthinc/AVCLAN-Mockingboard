@@ -47,8 +47,10 @@ pico_enable_stdio_usb(avclan 1)
 
 if(AVCLAN_BLUETOOTH)
   target_sources(avclan_bluetooth PRIVATE
+      audio.cc
       bluetooth.cc
   )
+  pico_generate_pio_header(avclan_bluetooth ${CMAKE_CURRENT_LIST_DIR}/i2s.pio)
   target_link_libraries(avclan_bluetooth PUBLIC
       pico_cyw43_arch_sys_freertos
       pico_btstack_cyw43

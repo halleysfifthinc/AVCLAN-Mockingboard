@@ -268,6 +268,11 @@ constexpr Command commands[] = {
         .help = "Forget all Bluetooth pairings",
         .run = [](Context &ctx) static { ctx.mobile.forget_pairings(); },
     },
+    {
+        .key = 'a',
+        .help = "Print audio stats",
+        .run = [](Context &ctx) static { ctx.mobile.print_audio_stats(); },
+    },
   #endif
   #ifdef MEASURE_BUS
     {'M', "Measure bit-timing (pulse-widths and periods)",
