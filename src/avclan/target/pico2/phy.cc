@@ -5,6 +5,7 @@
 #include <hardware/clocks.h>
 #include <hardware/dma.h>
 #include <limits>
+#include <utility>
 
 #include "FreeRTOS.h" // IWYU pragma: export
 #include "semphr.h"
@@ -193,8 +194,8 @@ public:
   // Blocks until the frame being received ends, for at most a max-length frame;
   // returns at once between frames. The end is signalled after reading
   // the frame's last field, before its last ack slot. Returns immediately when
-  // a frame has already been dropped (transmitting, deafened, or full RX queue
-  // and message is to us).
+  // a frame has already been dropped (one for us that we NAK: no room in the RX
+  // queue, deaf or transmitting).
   void wait_frame_end() {
     frame_end_waiter_ = xTaskGetCurrentTaskHandle();
     if (state_ != RxField::Broadcast)
@@ -252,32 +253,46 @@ private:
           break;
 
         case RxField::Peripheral: {
-          // Past arbitration our own frame is the tx SM's business: it reads
-          // its own acks, and a copy here would only cost a queue slot. A frame
-          // we owe an ack for is refused when there is no room for it -- the
-          // NAK asks the sender to send it again, rather than losing it behind
-          // an ack we can't honour. One we will not ack at all goes the same
-          // way: deaf we keep nothing, and a lost arbitration leaves the
-          // winner's frame unacked until we rearm. Not mute -- a muted device
-          // still listens, and its log takes a duplicate over a gap. They come
-          // before the field checks: a frame being given up needs no parity
-          // verdict, and reporting one would name the wrong cause for the same
-          // NAK.
-          const bool ours =
+          // Ignore/drop our own transmissions
+          const bool self_tx =
               building_.controller_addr == (uint16_t)(self_addrp_ >> 1);
-          const bool not_acking = deafened_ || transmitting_;
-          const bool refuse =
-              !ours && queue_full() && pio_interrupt_get(pio_, ack_latch);
 
-          if (ours || not_acking || refuse) {
-            if (refuse)
-              rxq_refused_ = rxq_refused_ + 1;
+          // If acking has been disarmed (when transmitting, muted, or
+          // deafened), the ack_latch can disagree with a frame sent to us
+          // The ack_latch is read because it reflects the SM's actual verdict
+          // at the time of comparison (where tx, mute, deaf may have been
+          // reconfigured before/after)
+          const bool to_us = slot == self_addrp_;
+          const bool acking = pio_interrupt_get(pio_, ack_latch);
+
+          // (Unicast) frame transmission is (expected to be) immediately
+          // aborted (and typically later resent) when NAK'ed.
+          // Being deafened or attempting to transmit during a frame sent to us
+          // will set nak_disarmed
+          // TODO: Test abortion by muting *after* complete LAN boot (to ensure
+          // head-unit sends unicast frames to us). Confirmed by presence of
+          // parity/length errors (incomplete/NAK'ed frames aren't logged, so
+          // the aborted frames won't be directly visible in REPL logs). Drop
+          // !muted_ if confirmed
+          const bool nak_full = to_us && acking && queue_full();
+          const bool nak_disarmed = to_us && !acking && !muted_;
+
+          // Check if ignoring first because errors (e.g. bad parity) in ignored
+          // frames are also ignored
+          // Ignore this frame because it's our own transmission or
+          // because it will be/has been aborted due to being NAK'ed; we only
+          // follow complete frames
+          if (self_tx || nak_full || nak_disarmed) {
+            if (nak_full)
+              rxq_nak_full_ = rxq_nak_full_ + 1;
+            if (nak_full || nak_disarmed)
+              signal_frame_end(); // Its sender aborts at this NAK
             // Withdrawing the ack is part of giving the frame up; its slot is
             // still ahead of the SM. Re-dispatching the start-bit block hands
             // the rest of the frame back to it: those bits are far too short to
             // read as a start bit, so it re-syncs on the next real one by
             // itself.
-            pio_interrupt_clear(pio_, ack_latch);
+            pio_interrupt_clear(pio_, ack_latch); // No-op unless nak_full
             begin_frame();
             break;
           }
@@ -398,16 +413,25 @@ private:
     if (err != Read{0})
       pio_interrupt_clear(pio_, ack_latch);
     building_.err = err;
-    if (queue_full()) {
+    if (deafened_) {
+      // Always drop frames when deaf, error or not (but followed to completion
+      // to correctly synchronize idle bus begin (aka frame TX end) with the
+      // waiter notification)
+    } else if (queue_full()) {
       rxq_drops_ = rxq_drops_ + 1; // Never stall the bus for a lagging reader
     } else {
       rxq_[rxq_head_] = building_;
       rxq_head_ = (rxq_head_ + 1) & (RXQ_N - 1);
       xSemaphoreGiveFromISR(xNotice, &xHigherPriorityTaskWoken);
     }
+    signal_frame_end();
+    begin_frame();
+  }
+
+  // Wakes wait_frame_end(), if a task is in it
+  void __time_critical_func(signal_frame_end)() {
     if (TaskHandle_t waiter = frame_end_waiter_) // Only load volatile once
       vTaskNotifyGiveFromISR(waiter, &xHigherPriorityTaskWoken);
-    begin_frame();
   }
 
   inline static constinit IEBusRx *instance_ = nullptr;
@@ -435,7 +459,7 @@ private:
   // unicast addressed elsewhere.
   volatile uint32_t rxq_drops_ = 0;
   // NAK'd for want of room; the sender still owns the frame and sends it again.
-  volatile uint32_t rxq_refused_ = 0;
+  volatile uint32_t rxq_nak_full_ = 0;
 
   // Given by publish when new frame reads are complete; initialized with RXQ_N
   // slots
