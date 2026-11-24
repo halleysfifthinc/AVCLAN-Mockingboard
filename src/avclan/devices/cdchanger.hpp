@@ -64,7 +64,6 @@ public:
     r_NormalizeState, // cd_status needs normalized and resent
     r_StartPlaying, // ~equivalent to normalizeState, but cycles to BeganPlaying
     r_BeganPlaying,
-    r_TrackChange, // Time needs reset
     r_Ejection,
     r_Report_Load,
     r_StateReport, // *IS* a status report (follow-up or unprompted)
@@ -118,17 +117,17 @@ private:
   std::array<uint8_t, WIRE_SIZE> sentStatus{};
 
   // Track time is a stopwatch: `time` is relative to `refTick`, and advances
-  // while `playing` and the source isn't paused. nullopt means no time is
-  // shown. rebaseTime() must precede any change to `playing` or
-  // `sourcePlaying`.
+  // while `playing` and the source reports playing. Only the source's reports
+  // set it; nullopt means no time is shown. rebaseTime() must precede any
+  // change to `playing` or `sourcePlaying`.
   std::optional<std::chrono::milliseconds> time;
   TickType_t refTick = 0;
   // The head unit activated us (activation began)
   bool active = false;
   // Activation completed; status timer runs
   bool playing = false;
-  // What the source last reported; nullopt: no reports (the clock free-runs)
-  std::optional<bool> sourcePlaying;
+  // What the source last reported; false while disconnected
+  bool sourcePlaying = false;
   int failedStatusReports = 0;
   uint8_t cds = CD1;
   uint8_t state = SEEKING | SEEKING_TRACK;

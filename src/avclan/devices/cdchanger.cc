@@ -187,7 +187,7 @@ void CDChanger::handle(const Frame &in, Frame &out) {
       time.reset();
       generateStatus(out, true, Device::CMD_SW);
       send(Playback::Next{});
-      out.reaction = r_TrackChange;
+      out.reaction = r_NormalizeState;
       break;
     case Track_Seek_Down:
       endSeeking();
@@ -195,7 +195,7 @@ void CDChanger::handle(const Frame &in, Frame &out) {
       time.reset();
       send(Playback::Previous{});
       generateStatus(out, true, Device::CMD_SW);
-      out.reaction = r_TrackChange;
+      out.reaction = r_NormalizeState;
       break;
     case Track_Fast_Forward: {
       beginSeeking(Playback::Direction::Forward);
@@ -272,14 +272,27 @@ CDChanger::react(expected<std::unique_ptr<Frame>, detail::SendError> exp) {
   std::unique_ptr<Frame> next;
 
   if (const std::lock_guard lock(mutex); !exp) {
-    if (exp.error().reaction == to_underlying(r_StateReport) &&
-        exp.error().err == detail::Error::Send::NAK_ADDRESS &&
-        ++failedStatusReports > 1) {
-      failedStatusReports = 0;
-      active = false;
-      stopPlaying(); // Disable periodic updates if e.g. no-one's listening
-                     // (car was turned off?)
-    }
+    const auto failed = exp.error().reaction;
+    // Device activation triggers a sequence of state evolution and reports. A
+    // send failure should not disrupt the state evolution, and should
+    // (internally) trigger a final state report
+    if (failed == to_underlying(r_StartPlaying) ||
+        failed == to_underlying(r_BeganPlaying)) {
+      normalizeState();
+      startPlaying();
+      notify(condition, r_StateReport);
+    } // else if (failed == to_underlying(r_StateReport) &&
+    //            exp.error().err == detail::Error::Send::NAK_ADDRESS &&
+    //            //                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    //            // Specific non-functional aspect: no NAK's for broadcast
+    //            ++failedStatusReports > 1) {
+    //   // Branch is currently non-functional. Intention is to disable periodic
+    //   // updates if e.g. the car was turned off. Eventual v2 hardware will
+    //   // contain car power status detection
+    //   failedStatusReports = 0;
+    //   active = false;
+    //   stopPlaying();
+    // }
   } else {
     auto out = std::move(exp.value());
     if (!out->is_unicast && out->length == WIRE_SIZE + 3 &&
@@ -309,10 +322,6 @@ CDChanger::react(expected<std::unique_ptr<Frame>, detail::SendError> exp) {
         out->data[2] = to_underlying(Action::Loading_Status);
         out->reaction = r_SendOnly;
         break;
-      case r_TrackChange:
-        if (track != 0)
-          seek(0ms);
-        [[fallthrough]];
       case r_NormalizeState:
         normalizeState();
         generateStatus(*out, false, Device::STATUS);
@@ -350,8 +359,6 @@ void CDChanger::reported_active(Frame &out) {
   if (playing)
     return;
   active = true;
-  if (!time && track != 0)
-    seek(0ms);
   state = SEEKING | SEEKING_TRACK;
   flags2 = 0x80;
   generateStatus(out, false, Device::STATUS);
@@ -400,12 +407,15 @@ void CDChanger::fill(Frame &out, condition_t /*tag*/, uint32_t payload) {
     xTimerReset(statusTimer, 0);
 }
 
-// Starts track time and the ~1 Hz status report (the first ~1 sec from now)
+// Starts track time and the ~1 Hz status report (the first ~1 sec from now),
+// unless deactivated since activation began
 void CDChanger::startPlaying() {
-  rebaseTime();
-  playing = true;
-  xTimerReset(statusTimer, 0);
-  send(Playback::Play{});
+  if (active) {
+    rebaseTime();
+    playing = true;
+    xTimerReset(statusTimer, 0);
+    send(Playback::Play{});
+  }
 }
 
 void CDChanger::stopPlaying() {
@@ -417,8 +427,7 @@ void CDChanger::stopPlaying() {
 }
 
 std::optional<std::chrono::milliseconds> CDChanger::trackTime() const {
-  if (!time || !playing || !sourcePlaying.value_or(true) ||
-      (state & SEEKING) != 0)
+  if (!time || !playing || !sourcePlaying || (state & SEEKING) != 0)
     return time;
   return *time + std::chrono::milliseconds{
                      pdTICKS_TO_MS(xTaskGetTickCount() - refTick)};
@@ -512,8 +521,6 @@ void CDChanger::generateStatus(Frame &status, bool is_unicast,
 
 void CDChanger::normalizeState() {
   endSeeking();
-  if (!time && track != 0)
-    seek(0ms);
   state = PLAYBACK;
   flags &= (uint8_t)~(DISK_SCAN | SCAN);
 }
@@ -576,16 +583,12 @@ void CDChanger::receive(const Playback::Playing &p) {
     notify(condition, r_Ejection);
 }
 
-// On disconnect nothing reports anymore; fall back to the free-running clock
+// Reset playback state on disconnection
 void CDChanger::receive(const Playback::Connected &c) {
-  if (c.connected)
-    return;
-  rebaseTime();
-  sourcePlaying = std::nullopt;
-  if (track != 0)
-    return;
-  track = 1;
-  seek(0ms);
+  if (!c.connected) {
+    time.reset();
+    sourcePlaying = false;
+  }
 }
 
 } // namespace avclan

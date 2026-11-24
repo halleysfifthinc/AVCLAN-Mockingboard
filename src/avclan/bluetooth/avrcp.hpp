@@ -91,8 +91,10 @@ private:
   btstack_timer_source_t track_check_timer{
       .process =
           [](btstack_timer_source_t *ts) static {
-            static_cast<Avrcp *>(btstack_run_loop_get_timer_context(ts))
-                ->enqueue(NowPlaying{});
+            auto *avrcp =
+                static_cast<Avrcp *>(btstack_run_loop_get_timer_context(ts));
+            avrcp->enqueue(NowPlaying{});
+            avrcp->enqueue(PlayStatus{});
           },
       .context = this,
   };
