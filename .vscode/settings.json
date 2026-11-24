@@ -1,14 +1,38 @@
 {
-    "editor.formatOnSave": true,
-    "C_Cpp.codeAnalysis.clangTidy.checks.disabled": [
-        "clang-analyzer-core.NullDereference"
-    ],
-    "C_Cpp.files.exclude": {
-        "build/**": true
-    },
-    "files.associations": {
-        "*.S": "avr"
-    },
-    "cmake.configureOnOpen": true,
-    "compilerexplorer.compilationDirectory": "${workspaceFolder}/build",
+  "editor.formatOnSave": true,
+  "editor.showDeprecated": false,
+  "editor.semanticTokenColorCustomizations": {
+    "enabled": true,
+    "rules": {
+      "*.deprecated": {
+        "strikethrough": false,
+        "italic": true,
+        "underline": true
+      }
+    }
+  },
+  "C_Cpp.files.exclude": {
+    "${workspaceFolder}/build/**": true,
+    "${workspaceFolder}/out/build/**": true
+  },
+  "C_Cpp.codeAnalysis.clangTidy.enabled": true,
+  "C_Cpp.codeAnalysis.clangTidy.useBuildPath": true,
+  "C_Cpp.codeAnalysis.clangTidy.args": [
+    "--config-file=${workspaceFolder}/.clang-tidy",
+    "--exclude-header-filter=${workspaceFolder}/out/.*"
+  ],
+  "C_Cpp.codeAnalysis.clangTidy.headerFilter": "${workspaceFolder}/src/.*",
+  "cmake.configureOnOpen": true,
+  "compilerexplorer.compilationDirectory": "${workspaceFolder}/out/build",
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=**",
+    "--compile-commands-dir=${workspaceFolder}/out/build"
+  ],
+  "clangd.fallbackFlags": [
+    "-w"
+  ],
+  "terminal.integrated.env.linux": {
+    "PYTHONPYCACHEPREFIX": "${workspaceFolder}/__pycache__"
+  }
 }
