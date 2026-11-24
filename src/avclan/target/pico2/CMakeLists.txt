@@ -30,7 +30,6 @@ include(${freertos_kernel_SOURCE_DIR}/portable/ThirdParty/GCC/RP2040/FreeRTOS_Ke
 
 target_sources(avclan PRIVATE
     phy.cc
-    media.cc
     board.cc
     stdio.cc
     )
@@ -39,14 +38,30 @@ pico_generate_pio_header(avclan ${CMAKE_CURRENT_LIST_DIR}/iebus.pio)
 target_link_libraries(avclan PUBLIC
     hardware_pio
     hardware_dma
-    pico_stdlib 
+    pico_stdlib
     pico_stdio_usb
-    pico_multicore
-    pico_async_context_freertos
     freertos_config
     FreeRTOS-Kernel-Heap4
 )
 pico_enable_stdio_usb(avclan 1)
+
+if(AVCLAN_BLUETOOTH)
+  target_sources(avclan_bluetooth PRIVATE
+      audio.cc
+      bluetooth.cc
+  )
+  pico_generate_pio_header(avclan_bluetooth ${CMAKE_CURRENT_LIST_DIR}/i2s.pio)
+  target_link_libraries(avclan_bluetooth PUBLIC
+      pico_cyw43_arch_sys_freertos
+      pico_btstack_cyw43
+      pico_btstack_ble
+      pico_btstack_classic
+      pico_btstack_sbc_decoder
+  )
+  target_compile_definitions(avclan_bluetooth PUBLIC
+      CYW43_LWIP=0
+  )
+endif()
 
 # stdio_write_nonblock() is all-or-nothing and the largest buffer is a ~186 byte
 # frame log line; the SDK default of 64 would drop every one. PUBLIC so the
@@ -60,14 +75,17 @@ add_executable(mockingboard
 )
 target_link_libraries(mockingboard PUBLIC
     avclan
+    $<TARGET_NAME_IF_EXISTS:avclan_bluetooth>
 )
 
 # Silence warnings in TinyUSB, and only there.
-file(GLOB_RECURSE _tinyusb_sources ${PICO_TINYUSB_PATH}/src/*.c)
-set_source_files_properties(${_tinyusb_sources}
+file(GLOB_RECURSE _system_sources 
+    ${PICO_TINYUSB_PATH}/src/*.c
+    ${PICO_BTSTACK_PATH}/src/*.c)
+set_source_files_properties(${_system_sources}
     TARGET_DIRECTORY avclan mockingboard
-    PROPERTIES COMPILE_OPTIONS "-w")
-unset(_tinyusb_sources)
+    PROPERTIES COMPILE_OPTIONS "-Wno-switch-enum;-Wno-unused-function;-fno-analyzer")
+unset(_system_sources)
 
 pico_add_extra_outputs(mockingboard)
 

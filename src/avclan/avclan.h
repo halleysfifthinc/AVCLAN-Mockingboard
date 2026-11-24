@@ -5,6 +5,9 @@
 
 #include <stdint.h>
 
+#include "FreeRTOS.h" // IWYU pragma: export
+#include "task.h"
+
 #ifdef __cplusplus
   #define AVCLAN_ENUM_CLASS class
 
@@ -26,6 +29,18 @@ constexpr std::underlying_type_t<Enum> to_underlying(Enum e) noexcept {
   #define AVCLAN_ENUM_CLASS
 #endif
 
+enum TaskPriority : UBaseType_t {
+  BToothPriority = tskIDLE_PRIORITY + 5,
+  // Below BT, so decoding can't starve CYW43 or HCI
+  AudioPriority = tskIDLE_PRIORITY + 4,
+  // Message handlers must be ranked such that queues deterministically tend to
+  // empty
+  SendPriority = tskIDLE_PRIORITY + 3,
+  RoutePriority = tskIDLE_PRIORITY + 2,
+  PollPriority = tskIDLE_PRIORITY + 2,
+  ReceivePriority = tskIDLE_PRIORITY + 1,
+};
+
 enum AVCLAN_ENUM_CLASS Action : uint8_t {
   // LAN related
   List_Functions_Req = 0x00,
@@ -44,13 +59,13 @@ enum AVCLAN_ENUM_CLASS Action : uint8_t {
   Ping_Req = 0x20,
   Ping_Resp = 0x30,
 
-  // Device switching
-  Enable_Function_Req = 0x42,
-  Enable_Function_Resp = 0x52,
-  Disable_Function_Req = 0x43,
-  Disable_Function_Resp = 0x53,
+  // Function activation
+  Activate_Function_Req = 0x42,
+  Activate_Function_Resp = 0x52,
+  Deactivate_Function_Req = 0x43,
+  Deactivate_Function_Resp = 0x53,
 
-  Advertise_Function = 0x45,
+  Active_Function = 0x45,
   General_Query = 0x46,
 
   // Events
@@ -101,23 +116,13 @@ enum AVCLAN_ENUM_CLASS Action : uint8_t {
   Playback_Status = 0xf1, // Typically unprompted, sent to Device::STATUS
   Loading_Status = 0xf3,  // Typically unprompted, sent to Device::STATUS
   Report_TOC = 0xf9,
-};
 
-// Media functions a source device can perform (ultimately bounded by the Action
-// set above).
-enum AVCLAN_ENUM_CLASS MediaAction : uint8_t {
-  Play = 0x01,
-  Pause = 0x02,
-  Play_Pause = Play | Pause,
-  Skip_Forward,
-  Skip_Backward,
-  Track_Next,
-  Track_Prev,
-  Repeat,
-  Repeat_Single,
-  Shuffle,
-  Volume_Up,
-  Volume_Down,
+  // Amplifier (to Device::AUDIO_AMP; values alias the actions above)
+  Amp_Balance = 0x91,
+  Amp_Fade = 0x92,
+  Amp_Bass = 0x93,
+  Amp_Mid = 0x94,
+  Amp_Treble = 0x95,
 };
 
 #ifdef __cplusplus

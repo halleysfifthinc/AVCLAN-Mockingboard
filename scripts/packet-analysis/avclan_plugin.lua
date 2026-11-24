@@ -266,7 +266,7 @@ local known_devices_names = invert(known_devices)
 
 local f_from_device = ProtoField.uint8("avclan.from_device", "From device", base.HEX, known_devices)
 local f_to_device = ProtoField.uint8("avclan.to_device", "To device", base.HEX, known_devices)
-local f_active_device = ProtoField.uint8("avclan.active_device", "Active device", base.HEX, known_devices)
+local f_active_function = ProtoField.uint8("avclan.active_function", "Active function", base.HEX, known_devices)
 
 -- Action conventions:
 --  - REQ/RESP pairs differ by 0x10, where the REQ is the lesser
@@ -300,12 +300,18 @@ local known_actions = {
     -- [0x21] = "??" -- Observed as [00 11 00 21] incorrect 0xf0/INITIAL_REPORT_RESP message (double leading zeros instead of single unicast leading zero)
     [0x30] = "PING_RESP",
 
-    [0x42] = "ENABLE_FUNCTION_REQ",
-    [0x52] = "ENABLE_FUNCTION_RESP",
-    [0x43] = "DISABLE_FUNCTION_REQ",
-    [0x53] = "DISABLE_FUNCTION_RESP",
+    -- Have only been observed in the context of audio device/functions, but use
+    -- of general broadcast (vs audio group broadcast) weakens this assumption
+    [0x42] = "ACTIVATE_FUNCTION_REQ",
+    [0x52] = "ACTIVATE_FUNCTION_RESP",
+    [0x43] = "DEACTIVATE_FUNCTION_REQ",
+    [0x53] = "DEACTIVATE_FUNCTION_RESP",
 
-    [0x45] = "ADVERTISE_FUNCTION",
+    -- Broadcast ~5 s and on change; 0x01 (COMM_CTRL): no active function
+    -- Functions don't appear to be considered completely active until the
+    -- ACTIVE_FUNCTION announcement after an ACTIVATE_FUNCTION REQ/RESP
+    [0x45] = "ACTIVE_FUNCTION",
+
     [0x46] = "GENERAL_QUERY",
 
     -- Physical actions
@@ -370,7 +376,19 @@ local known_actions = {
 }
 local known_actions_names = invert(known_actions)
 
+-- Actions addressed to AUDIO_AMP. The codes overlap known_actions, so the
+-- destination device selects the table.
+local known_amp_actions = {
+    [0x91] = "AMP_BALANCE",
+    [0x92] = "AMP_FADE",
+    [0x93] = "AMP_BASS",
+    [0x94] = "AMP_MID",
+    [0x95] = "AMP_TREBLE", -- inferred from report field order, unobserved
+}
+local known_amp_actions_names = invert(known_amp_actions)
+
 local f_action = ProtoField.uint8("avclan.action", "Action", base.HEX, known_actions)
+local f_amp_action = ProtoField.uint8("avclan.amp.action", "Amp action", base.HEX, known_amp_actions)
 local f_functions = ProtoField.bytes("avclan.functions", "Functions", base.SPACE, "Device functions")
 
 local f_ping_count = ProtoField.uint8("avclan.ping.count", "Ping count")
@@ -414,6 +432,10 @@ local f_radio_freq = ProtoField.uint16("avclan.radio.freq", "Radio frequency")
 -- Volume is BCD encoded here. NOTE: @enkiusz treats the volume byte as plain
 -- binary (no BCD conversion); the two disagree for values with a nibble > 9.
 local f_amp_volume = ProtoField.uint8("avclan.amp.volume", "Volume", base.DEC)
+
+-- Relative step (1-4) of a volume knob turn. The HU's amp ignores
+-- it and moves one level per frame.
+local f_amp_volume_step = ProtoField.uint8("avclan.amp.volume_step", "Volume step", base.DEC)
 
 -- Amp bass, mid, treble, fade, and balance are offset-binary (offset-16) encoded
 local f_amp_bass = ProtoField.uint8("avclan.amp.bass", "Bass", base.HEX, {
@@ -509,7 +531,7 @@ local f_tape_flag4 = ProtoField.bool("avclan.tape.flags.flag4", "UNKNOWN4", 16, 
 avclanproto.fields = {
     f_from_device,
     f_to_device,
-    f_active_device,
+    f_active_function,
     f_action,
     f_functions,
     f_ping_count,
@@ -529,7 +551,9 @@ avclanproto.fields = {
     f_radioflag_reg,
     f_radioflag_st,
     f_radioflag_ta,
+    f_amp_action,
     f_amp_volume,
+    f_amp_volume_step,
     f_amp_bass,
     f_amp_mid,
     f_amp_treble,
@@ -656,29 +680,42 @@ end
 -- preserving the historical precedence order.
 -- ---------------------------------------------------------------------------
 
--- CMD_SW source. Sub-commands to the amplifier (actions 0x90-0x95) set a
--- tone/level control; these codes collide with physical-interface actions, so
--- the CMD_SW -> AUDIO_AMP device pair disambiguates them.
+-- CMD_SW source. Actions to the amplifier come from known_amp_actions, whose
+-- codes collide with known_actions, except the volume knob turns.
 local function decode_cmd_sw(subtree, buffer, offset, to_device)
-    add_action(subtree, buffer(offset+2,1))
-    local action = field_action().value
-    if to_device == known_devices_names["AUDIO_AMP"] then
-        local amptree = subtree:add(avclanproto, buffer(offset+2,-1), "Device: Audio amplifier control")
-        local param = buffer(offset+3,1)
-        if action == 0x90 then -- VOLUME (BCD)
-            local vol_raw = param:uint()
-            amptree:add(f_amp_volume, param, bcd2dec(vol_raw) or vol_raw):append_text(" (VOLUME)")
-        elseif action == 0x91 then
-            amptree:add(f_amp_balance, param)
-        elseif action == 0x92 then
-            amptree:add(f_amp_fade, param)
-        elseif action == 0x93 then
-            amptree:add(f_amp_bass, param)
-        elseif action == 0x94 then
-            amptree:add(f_amp_mid, param)
-        elseif action == 0x95 then
-            amptree:add(f_amp_treble, param)
+    if to_device ~= known_devices_names["AUDIO_AMP"] then
+        add_action(subtree, buffer(offset+2,1))
+        return
+    end
+    local action_range = buffer(offset+2,1)
+    local action = action_range:uint()
+    local knob_turn = action == known_actions_names["PWRVOL_KNOB_RIGHTHAND_TURN"] or
+        action == known_actions_names["PWRVOL_KNOB_LEFTHAND_TURN"]
+    if knob_turn then
+        add_action(subtree, action_range)
+    else
+        local item = subtree:add(f_amp_action, action_range)
+        if known_amp_actions[action] == nil then
+            item:add_proto_expert_info(pe_unknown_action)
         end
+    end
+    if buffer:len() <= offset+3 then
+        return
+    end
+    local amptree = subtree:add(avclanproto, buffer(offset+2,-1), "Device: Audio amplifier control")
+    local param = buffer(offset+3,1)
+    if knob_turn then
+        amptree:add(f_amp_volume_step, param)
+    elseif action == known_amp_actions_names["AMP_BALANCE"] then
+        amptree:add(f_amp_balance, param)
+    elseif action == known_amp_actions_names["AMP_FADE"] then
+        amptree:add(f_amp_fade, param)
+    elseif action == known_amp_actions_names["AMP_BASS"] then
+        amptree:add(f_amp_bass, param)
+    elseif action == known_amp_actions_names["AMP_MID"] then
+        amptree:add(f_amp_mid, param)
+    elseif action == known_amp_actions_names["AMP_TREBLE"] then
+        amptree:add(f_amp_treble, param)
     end
 end
 
@@ -687,8 +724,8 @@ local function decode_from_comm(subtree, buffer, offset, to_device)
     if to_device == known_devices_names["COMM_CTRL"] then
         add_action(subtree, buffer(offset+2,1))
         local action = field_action().value
-        if action == known_actions_names["ADVERTISE_FUNCTION"] then
-            add_device(subtree, f_active_device, buffer(offset+3,1))
+        if action == known_actions_names["ACTIVE_FUNCTION"] then
+            add_device(subtree, f_active_function, buffer(offset+3,1))
         elseif action == known_actions_names["PING_REQ"] then
             subtree:add(f_ping_count, buffer(offset+3,1))
             subtree:add_proto_expert_info(pe_ping_req, "Ping request " .. buffer(offset+3,1):uint())
@@ -698,7 +735,7 @@ local function decode_from_comm(subtree, buffer, offset, to_device)
         end
     else
         -- Control actions addressed to a peripheral rather than COMM_CTRL, e.g.
-        -- function enable/disable (COMM_v1/v2 -> CD_CHANGER, 0x42/0x43). These
+        -- function activate/deactivate (COMM_v1/v2 -> CD_CHANGER, 0x42/0x43). These
         -- are understood apart from a trailing 0x01 of unknown meaning.
         add_action(subtree, buffer(offset+2,1))
     end
@@ -920,8 +957,8 @@ local function decode_cd(subtree, buffer, offset, action)
             local title = nametree:add(f_cd_title, buffer(offset+7))
             title:append_text(" (\"" .. buffer(offset+7):string() .. "\")")
         end
-    elseif action == known_actions_names["ENABLE_FUNCTION_RESP"] or
-        action == known_actions_names["DISABLE_FUNCTION_RESP"] then
+    elseif action == known_actions_names["ACTIVATE_FUNCTION_RESP"] or
+        action == known_actions_names["DEACTIVATE_FUNCTION_RESP"] then
         -- Understood apart from a trailing 0x01 of unknown meaning; not flagged.
     elseif buffer:len() > offset+3 then
         -- Recognized CD action (initial report 0xf0, TOC 0xf9, track name

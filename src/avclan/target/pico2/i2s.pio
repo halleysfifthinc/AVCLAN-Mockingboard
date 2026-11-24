@@ -1,0 +1,35 @@
+;
+; Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
+;
+; SPDX-License-Identifier: BSD-3-Clause
+;
+; pico-extras' audio_i2s program.
+
+; Transmit a stereo I2S audio stream, 16 bits per sample.
+;
+; Autopull must be enabled, with threshold set to 32.
+; Since I2S is MSB-first, shift direction should be to left.
+; Hence the format of the FIFO word is:
+;
+; | 31   :   16 | 15   :    0 |
+; | sample ws=0 | sample ws=1 |
+;
+; Data is output at 1 bit per clock. Use clock divider to adjust frequency.
+
+.program audio_i2s
+.side_set 2
+
+                    ;        /--- LRCLK
+                    ;        |/-- BCLK
+bitloop1:           ;        ||
+    out pins, 1       side 0b10
+    jmp x-- bitloop1  side 0b11
+    out pins, 1       side 0b00
+    set x, 14         side 0b01
+
+bitloop0:
+    out pins, 1       side 0b00
+    jmp x-- bitloop0  side 0b01
+    out pins, 1       side 0b10
+public entry_point:
+    set x, 14         side 0b11

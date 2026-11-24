@@ -38,24 +38,33 @@
 
 ;;; Start-bit read (auto-resets until a proper start bit is observed)
 ; A start bit is dominant for AVCLAN_STARTBIT_LOGIC_0 (~169us) and recessive for
-; AVCLAN_STARTBIT_LOGIC_0 (~20us) more.
-; The bus state is polled as fast as target bounds (80% and 120%) can be evenly
-; divided (must be faster than shortest recessive period  AVCLAN_BIT0_LOGIC_1 to
-; detect/distinguish normal bits mid-frame).
+; AVCLAN_STARTBIT_LOGIC_1 (~20us) more.
+; The bus state is polled as often as the 5-bit counters allow while each loop's
+; last poll still lands just under its bound (80% and 120%), and always faster
+; than the shortest recessive period AVCLAN_BIT0_LOGIC_1, to detect/distinguish
+; normal bits mid-frame.
 public rx_startbit:
     wait 1 pin 0
 leading_edge:
-    wait 0 pin 0
-    set x 29
+    wait 0 pin 0 [29]       ; The first poll waits so that 31 polls, as many as
+    set x 30 [31]           ; the counter gives, end at 0.8x; a release before it
+                            ; is still caught by it
 dominant:
-    jmp pin leading_edge [10]  ; Pin HIGH == released before 0.8x: not a start bit
-                            ; Polled every 11 cycles, starting 2 cycles after leading edge
-                            ; Last poll at 332 cycles (~80% * AVCLAN_STARTBIT_LOGIC_0)
-    jmp x-- dominant        ; Cycle 333 on fall-through
-    set x 18                ; 334
+    jmp pin leading_edge    ; Pin HIGH == released before 0.8x: not a start bit
+                            ; Polled every 9 cycles (1 here plus the decrement
+                            ; jmp below, which costs its cycles whether or not it
+                            ; is taken), starting 62 cycles after the leading edge.
+                            ; 31 polls, the last at 332 cycles
+                            ; (79.8% * AVCLAN_STARTBIT_LOGIC_0). A release is
+                            ; caught by the first poll at or after it, so this
+                            ; last one is the rejection threshold: anything
+                            ; released later falls through to the recessive loop.
+    jmp x-- dominant [7]    ; Cycle 333 on fall-through
+    set x 31 [31]           ; 341
 recessive:
     jmp pin valid_startbit  ; Pin HIGH == released within bounds
-    jmp x-- recessive [8]   ; + 19 * 9 = 506 total (~120% * AVCLAN_STARTBIT_LOGIC_0)
+    jmp x-- recessive [2]   ; Polled every 4 cycles from 373; 32 polls, the last
+                            ; at 497 (119.5% * AVCLAN_STARTBIT_LOGIC_0)
                             ; Delay on decrement jmp to keep the release jmp quick
     jmp rx_startbit         ; Still dominant: too long to be proper start bit
 valid_startbit:
@@ -114,9 +123,10 @@ push_slot:
     mov x, status           ; Load ack_latch state into x
     jmp !x wait_read
     irq next set ack_irq    ; The ack SM (iebus_tx's ack_entry, on the other (TX)
-                            ; PIO) is released 32 cycles after sender began bit,
-                            ; and its jmp to ack_drive takes the slot over at 34
-                            ; (~70% of AVCLAN_BIT1_LOGIC_0), holding it dominant.
+                            ; PIO) is released 33 cycles after sender began bit;
+                            ; after the cross-PIO IRQ's 1-2 cycles its jmp to
+                            ; ack_drive takes the slot over at 36-37 (~75% of
+                            ; AVCLAN_BIT1_LOGIC_0), holding it dominant.
 .wrap
 
 ; Can execute one streamed instruction every 3 cycles
@@ -149,16 +159,18 @@ push_slot:
 ;;; Emit or synchronize to a start bit
 ; Reached by a CPU initiated force exec jmp to tx_startbit, with x = JOIN_SAMPLES
 ; and y = IDLE_SAMPLES. We originate once the bus has stayed recessive for the
-; idle window. A dominant pulse is joined only if it outlasts every bit's
-; dominant period (i.e. it's a start bit); otherwise the bus is busy, reported as
-; a lost bid before any word is pulled.
-.define public IDLE_SAMPLES 11  ; 12 * 16 = 192 cycles (~2 * AVCLAN_BIT_LENGTH_MAX)
+; idle window. A dominant pulse is joined only if it is still dominant at the last
+; join sample, well after any bit's dominant period (i.e. it's a start bit);
+; otherwise the bus is busy, reported as a lost bid before any word is pulled.
+.define public IDLE_SAMPLES 31  ; Last of 32 samples at 31 * 6 = 186 cycles
+                                ; (~2 * AVCLAN_BIT_LENGTH_MAX)
 ; TODO: Explore tightening the idle window to 3 * AVCLAN_STARTBIT_LOGIC_1 (the
 ; longest recessive period within a frame)
-.define public JOIN_SAMPLES 8   ; 9 * 12 = 108 cycles (> 1.2 * AVCLAN_BIT0_LOGIC_0)
+.define public JOIN_SAMPLES 14  ; Last of 15 samples at 1 + 14 * 12 = 169 cycles
+                                ; (> 2 * AVCLAN_BIT0_LOGIC_0)
 
 idle_ok:
-    jmp y-- tx_startbit [14]    ; Sampled every 16 cycles
+    jmp y-- tx_startbit [4]     ; Sampled every 6 cycles
     set x 31                    ; Idle: originate
     set pins, 0     [30]
 public tx_startbit:
@@ -213,27 +225,29 @@ lost:
 .wrap
 
 bit_end:
-    set pins, 1         [9]     ; Delay must be common to all following control flow paths
+    set pins, 1                 ; Release a zero; each route on carries its own delay
     jmp x-- slow_jmp            ; Fall through once x (the bit count) is exhausted
-    out pc, 5           [1]     ; "Next": reset, or ack_drive to read ACK
+    out pc, 5           [12]    ; "Next": reset, or ack_drive to read ACK. 15 cycles
+                                ; from bit_end to ack_drive's `set pins, 0`; 17 to the
+                                ; next field's, through reset
 
 ;;; read ack
 public ack_drive:
     set pins, 0         [31]    ; Start ACK bit with a AVCLAN_BIT1_LOGIC_0 length pulse
-    out x, 1            [15]    ; Preload NAK ok
+    out x, 1            [14]    ; Preload NAK ok
 public ack_release:
-    set pins, 1         [15]    ; Release bus
-    jmp pin handle_nak  [13]    ; Sampled at 64 cycles (~AVCLAN_READBIT_THRESHOLD);
+    set pins, 1         [16]    ; Release bus
+    jmp pin handle_nak          ; Sampled at 64 cycles (~AVCLAN_READBIT_THRESHOLD);
                                 ; both flow paths reach ack_done one instr later
     jmp ack_done
 
 slow_jmp:
-    jmp send_bit        [3]     ; 15 cycles from bit_end to `set pins, 0`, the same
-                                ; as the last bit's path through `out pc` and reset
+    jmp send_bit        [12]    ; 15 cycles from bit_end to `set pins, 0`, the same
+                                ; as the last bit's path through `out pc` to ack_drive
 
 ;;; Send an ack for iebus_rx
 ; Run by its own SM, wrapping from ack_release back to ack_entry: it borrows
-; ack_drive's 48-cycle pulse to hold the slot dominant for *less than* a complete
+; ack_drive's 47-cycle pulse to hold the slot dominant for *less than* a complete
 ; AVCLAN_BIT0_LOGIC_0, releasing at ~AVCLAN_BIT0_LOGIC_0 after the slot's
 ; leading edge.
 public ack_entry:

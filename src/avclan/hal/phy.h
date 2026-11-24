@@ -78,7 +78,8 @@ Read phy_read_data(uint8_t *data, uint8_t length, uint8_t *data_index);
 
 // Send start and broadcast bits. Returns success or one of these error values:
 // MUTED, BUSY, or LOST_ARBITRATION (if another device overrides our frame with
-// a broadcast).
+// a broadcast). BUSY and LOST_ARBITRATION return only once the frame holding
+// the bus has ended, so a retry may start at once.
 Send phy_send_header(bool is_unicast);
 
 // Send the controller address. Returns success or LOST_ARBITRATION (a device
@@ -94,7 +95,8 @@ Send phy_send_data(const uint8_t *data, uint8_t length, bool expect_ack,
 // Allows asynchronous ports to block until the phy has finished sending the
 // frame. Returns success or the relevant field-specific NAK (e.g. NAK_ADDRESS,
 // etc) or CONTENDED_BUS; a port that queues the header and controller address
-// also reports their BUSY or LOST_ARBITRATION here. `data_index` is only
+// also reports their BUSY or LOST_ARBITRATION here, with the same wait for the
+// frame holding the bus as phy_send_header. `data_index` is only
 // written to for NAK_DATA. A fully synchronous port should always report
 // success.
 Send phy_send_done(uint8_t *data_index);
